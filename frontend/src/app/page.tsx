@@ -1,23 +1,21 @@
 import AdminDashboard from '@/components/admin/Dashboard'
 import Footer from '@/components/footer/Footer'
-import Navbar from '@/components/navbar/Navbar'
+import Navbar from '@/components/navbar/UserNavbar'
 import JourneyAndReviews from '@/components/reviews/JourneyAndReviews'
 import UserDashBoard from '@/components/user/Dashboard'
 import HomePage from '@/components/user/HomePage'
 import UserPage from '@/components/user/UserPage'
 import VendorDashboard from '@/components/vendor/Dashboard'
+import VendorPage from '@/components/vendor/VendorPage'
 import React from 'react'
 
 const page = () => {
   const user = {
-    role:"user"
+    role:"vendor"
   }
   return (
     <div >
-      {/* <Navbar /> */}
-      {user?.role === "user" ? (<HomePage />) : user?.role === "vendor" ? (<VendorDashboard  />) : (<AdminDashboard />)}
-      {/* <JourneyAndReviews/>
-      <Footer /> */}
+      {user?.role === "user" ? (<HomePage />) : user?.role === "vendor" ? (<VendorPage  />) : (<AdminDashboard />)}
     </div>
   )
 }

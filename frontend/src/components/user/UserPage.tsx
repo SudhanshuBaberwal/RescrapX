@@ -3,7 +3,6 @@
 import UserDashBoard from './Dashboard'
 import MyBookings from './MyBookings'
 import Documents from './Documents'
-import Settings from './Settings'
 import Support from './Support'
 import { useSearchParams } from 'next/navigation'
 import Profile from './Profile'

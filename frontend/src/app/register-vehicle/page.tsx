@@ -1,7 +1,7 @@
 'use client';
 
 import Footer from '@/components/footer/Footer';
-import Navbar from '@/components/navbar/Navbar';
+import Navbar from '@/components/navbar/UserNavbar';
 import VehicleRegistrationDetails from '@/components/user/vehicleRegistraion/VehicleRegistationDetails';
 import React, { useState } from 'react';
 

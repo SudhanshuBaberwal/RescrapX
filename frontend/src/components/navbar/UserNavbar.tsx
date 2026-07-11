@@ -1,14 +1,18 @@
+'use client'
+
 import React from 'react';
 import { ChevronDown, Bell } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function Navbar() {
+  const router = useRouter()
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs backdrop-blur-md bg-white/95">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs backdrop-blur-md">
       {/* max-w-7xl expanded to max-w-full with tight margins to push elements completely to the outer edges */}
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
         
         {/* Left Side: Brand Logo Alignment */}
-        <div className="flex flex-col justify-center select-none">
+        <div onClick={() => router.push("/")} className="flex flex-col justify-center select-none">
           <div className="flex items-center gap-1 text-xl font-extrabold text-gray-900 tracking-tight">
             <span className="text-[#0B5B32]">🚗 Rescrap</span>
             <span className="text-[#10B981]">X</span>

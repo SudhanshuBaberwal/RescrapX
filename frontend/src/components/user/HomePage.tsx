@@ -1,7 +1,7 @@
 'use client'
 
 import React from "react";
-import Navbar from "../navbar/Navbar";
+import Navbar from "../navbar/UserNavbar";
 import Sidebar from "./Sidebar";
 import JourneyAndReviews from "../reviews/JourneyAndReviews";
 import Footer from "../footer/Footer";
