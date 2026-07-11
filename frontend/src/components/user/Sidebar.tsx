@@ -1,26 +1,29 @@
-
 'use client'
 
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion'; // Make sure to install: npm install framer-motion
 import {
   LayoutDashboard, Package, FileText, Settings,
-  HelpCircle, LogOut, CheckCircle, ShieldCheck
+  HelpCircle, LogOut, CheckCircle, ShieldCheck,
+  Wallet
 } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab") || "overview";
 
+  // Clean consolidated items removing the duplicate profile settings row
   const sidebarItems = [
     { title: "Overview", href: "overview", icon: LayoutDashboard },
     { title: "My Bookings", href: "bookings", icon: Package },
     { title: "My Documents", href: "documents", icon: FileText },
-    { title: "Profile Settings", href: "profile-settings", icon: Settings },
+    { title: "Payments", href: "payment", icon: Wallet },
     { title: "Support & Help", href: "support", icon: HelpCircle },
+    { title: "Settings", href: "settings", icon: Settings },
   ];
-  const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "overview";
 
   return (
     <div className="w-full bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-6">
@@ -46,26 +49,46 @@ export default function Sidebar() {
       <hr className="border-gray-100" />
 
       {/* Navigation Stack */}
-      <nav className="space-y-1">
+      <nav className="space-y-1 relative">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
-
           const active = currentTab === item.href;
 
           return (
             <Link
               key={item.href}
               href={`?tab=${item.href}`}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-all duration-150 select-none ${active
-                ? "bg-[#E6F4EA]/70 text-[#0B5B32] font-black"
-                : "text-gray-600 font-bold hover:bg-gray-50 hover:text-gray-900"
-                }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-colors duration-300 relative select-none group ${
+                active ? "text-[#0B5B32] font-black" : "text-gray-600 font-bold hover:text-gray-900"
+              }`}
             >
+              {/* Animated Floating Background Capsule Indicator */}
+              {active && (
+                <motion.div
+                  layoutId="activeSidebarIndicator"
+                  className="absolute inset-0 bg-[#E6F4EA]/70 rounded-xl -z-10"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+
+              {/* Dynamic Left Vertical Stroke Accent Animation */}
+              {active && (
+                <motion.div 
+                  layoutId="activeSidebarLine"
+                  className="absolute left-0 top-2.5 bottom-2.5 w-1 bg-[#0B5B32] rounded-r-md"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+
               <Icon
                 size={16}
-                className={active ? "text-[#0B5B32]" : "text-gray-400"}
+                className={`transition-transform duration-200 group-active:scale-95 ${
+                  active ? "text-[#0B5B32]" : "text-gray-400 group-hover:text-gray-600"
+                }`}
               />
-              <span>{item.title}</span>
+              <span className="transition-transform duration-200 group-active:translate-x-0.5">
+                {item.title}
+              </span>
             </Link>
           );
         })}
@@ -73,9 +96,9 @@ export default function Sidebar() {
         {/* Logout Link */}
         <Link
           href="/logout"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50/50 transition-all duration-150"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50/50 transition-all duration-150 group active:scale-[0.98]"
         >
-          <LogOut size={16} className="text-red-400" />
+          <LogOut size={16} className="text-red-400 transition-transform group-hover:-translate-x-0.5" />
           <span>Logout</span>
         </Link>
       </nav>

@@ -6,6 +6,9 @@ import Documents from './Documents'
 import Settings from './Settings'
 import Support from './Support'
 import { useSearchParams } from 'next/navigation'
+import Profile from './Profile'
+import CustomerSettingsLayout from './Settings'
+import PaymentHistoryPage from './Payment'
 
 const UserPage = () => {
 
@@ -17,8 +20,10 @@ const UserPage = () => {
             case "overview": return <UserDashBoard />;
             case "bookings": return <MyBookings />;
             case "documents": return <Documents />;
-            case "setting": return <Settings />
+            case "profile-settings": return <Profile />
             case "support": return <Support />
+            case "settings": return <CustomerSettingsLayout />
+            case "payment" : return <PaymentHistoryPage/>
             default: return <UserDashBoard />;
         }
     }

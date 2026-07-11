@@ -1,11 +1,13 @@
 'use client'
 
 import React from 'react';
-import { CheckCircle2, ArrowRight, Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowRight, Star, PlusCircle } from 'lucide-react';
 
 export default function JourneyAndReviews() {
+  const router = useRouter();
+
   return (
-    /* Removed px-4 sm:px-6 lg:px-8 side paddings from the root tag */
     <section className="w-full py-4 space-y-14 bg-white">
       
       {/* ========================================== */}
@@ -83,10 +85,16 @@ export default function JourneyAndReviews() {
           </div>
         </div>
 
-        {/* Bottom Banner Note Info Pill */}
-        <div className="inline-flex items-center gap-2 bg-[#E6F4EA]/60 border border-[#A7F3D0]/50 rounded-full px-5 py-2 text-xs text-[#0B5B32] font-semibold">
-          <span>⏳</span>
-          <p>We will notify you at every step of the process via <span className="font-extrabold">SMS, Email & WhatsApp.</span></p>
+        {/* NEW: Interactive Dynamic Form Core Redirection Link CTA */}
+        <div className="pt-2">
+          <button 
+            onClick={() => router.push('/register-vehicle')}
+            className="inline-flex items-center gap-2 bg-[#E6F4EA] hover:bg-[#d8f0dd] text-[#0B5B32] font-black text-xs px-6 py-3 rounded-full transition-all duration-200 shadow-3xs hover:shadow-2xs active:scale-[0.99]"
+          >
+            <PlusCircle size={15} className="stroke-[2.5]" />
+            <span>Register a New Vehicle for Scrapping</span>
+            <ArrowRight size={14} className="stroke-[2.5] ml-0.5" />
+          </button>
         </div>
       </div>
 
@@ -103,7 +111,10 @@ export default function JourneyAndReviews() {
 
         {/* Interactive CTA & Graphics Frame Right Anchor */}
         <div className="flex items-center gap-6 z-10 w-full md:w-auto justify-between md:justify-end flex-wrap sm:flex-nowrap">
-          <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-sm px-6 py-3.5 rounded-xl flex items-center gap-2 shadow-xs transition w-full sm:w-auto justify-center">
+          <button 
+            onClick={() => router.push('?tab=register-vehicle')}
+            className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-sm px-6 py-3.5 rounded-xl flex items-center gap-2 shadow-xs transition w-full sm:w-auto justify-center"
+          >
             <span>Get Instant Valuation</span>
             <ArrowRight size={16} />
           </button>
