@@ -5,7 +5,7 @@ import VendorPage from '@/components/vendor/VendorPage'
 
 const page = () => {
   const user = {
-    role: "admin"
+    role: "user"
   }
   return (
     <div >
