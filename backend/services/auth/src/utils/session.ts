@@ -30,6 +30,7 @@ class SessionService {
 
     return storedHash === this.hashToken(refreshToken);
   }
+
 }
 
 export default new SessionService();

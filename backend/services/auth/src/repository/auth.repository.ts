@@ -2,11 +2,23 @@ import User, { IUser } from "../models/user.model.js";
 
 class AuthRepository {
   async findByEmail(email: string) {
-    return await User.findOne({ email });
+    return User.findOne({ email });
+  }
+
+  async findByEmailWithPassword(email: string) {
+    return User.findOne({ email }).select("+password");
   }
 
   async createUser(user: Partial<IUser>) {
-    return await User.create(user);
+    return User.create(user);
+  }
+
+  async findById(userId: string) {
+    return User.findById(userId);
+  }
+
+  async save(user: IUser) {
+    return user.save();
   }
 }
 

@@ -4,7 +4,11 @@ import authRepository from "../repository/auth.repository.js";
 import ApiError from "../lib/ApiError.js";
 import jwtService from "../utils/jwt.js";
 import sessionService from "../utils/session.js";
-import { SignupDto, VerifyOtpDto } from "../validations/auth.validation.js";
+import {
+  LoginDto,
+  SignupDto,
+  VerifyOtpDto,
+} from "../validations/auth.validation.js";
 import User, { UserRole } from "../models/user.model.js";
 import notificationClient from "../clients/notification.client.js";
 
@@ -102,6 +106,63 @@ class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  async getCurrentUser(userId: string) {
+    const user = await authRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User Not Found");
+    }
+    return user.toObject();
+  }
+
+  async login(data: LoginDto) {
+    const email = data.email.trim().toLowerCase();
+    const password = data.password;
+    if (!email || !password) {
+      throw new ApiError(400, "Please Fill All The Fields");
+    }
+    const user = await authRepository.findByEmailWithPassword(email);
+    if (!user) {
+      throw new ApiError(401, "User Not Found");
+    }
+
+    if (!user.isVerified) {
+      throw new ApiError(400, "User Not Verified");
+    }
+    const isPasswordCorrect = await bcrypt.compare(
+      data.password,
+      user.password,
+    );
+
+    if (!isPasswordCorrect) {
+      throw new ApiError(401, "Invalid email or password");
+    }
+
+    const sessionId = crypto.randomUUID();
+    const refreshToken = jwtService.generateRefreshToken({
+      userId: user.id,
+      role: user.role as UserRole,
+      sessionId,
+    });
+    const accessToken = jwtService.generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      sessionId,
+    });
+    await sessionService.createSession(user.id, sessionId, refreshToken);
+    user.lastLogin = new Date();
+    await user.save();
+    return {
+      user,
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async logout(userId:string,sessionId:string){
+    await sessionService.deleteSession(userId,sessionId)
+    return {success:true}
   }
 }
 

@@ -8,14 +8,9 @@ export const signupSchema = z
       .min(3, "Name must be at least 3 characters")
       .max(50),
 
-    email: z
-      .email("Invalid email")
-      .trim()
-      .toLowerCase(),
+    email: z.email("Invalid email").trim().toLowerCase(),
 
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
 
     confirmPassword: z.string(),
   })
@@ -24,18 +19,16 @@ export const signupSchema = z
     message: "Passwords do not match",
   });
 
-export type SignupDto = z.infer<typeof signupSchema>;
-
 export const loginSchema = z.object({
-  email : z.email(),
-  password: z.string().min(8)
+  email: z.email(),
+  password: z.string().min(8).max(50),
+});
+
+export const VerifyOtpSchema = z.object({
+  email: z.email(),
+  otp: z.string().length(6),
 });
 
 export type LoginDto = z.infer<typeof loginSchema>;
-
-export const VerifyOtpSchema = z.object({
-  email:z.email(),
-  otp:z.string().length(6)
-})
-
-export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>
+export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>;
+export type SignupDto = z.infer<typeof signupSchema>;

@@ -1,22 +1,90 @@
 'use client'
 
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, ArrowRight, CheckSquare, Square } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, ArrowRight, CheckSquare, Square, Loader2 } from 'lucide-react';
+// Imported custom toast hook
+import api from '@/utils/api';
+import { useToast } from '@/lib/ui/toast/ToastContext';
 
 export default function SignUpPage() {
+  const { showToast } = useToast();
+
+  // Input Field States
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  // Structural Toggles
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [agreeTerms, setAgreeTerms] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Unified Input Handler
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Submit Handler with full pipeline verification
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // 1. Terms Agreement Guard Clause
+    if (!agreeTerms) {
+      showToast("Please review and agree to the Terms & Conditions to proceed.", "warning");
+      return;
+    }
+
+    // 2. Strict Password Match Guard Clause
+    if (formData.password !== formData.confirmPassword) {
+      showToast("Password confirmation mismatch. Both strings must look identical.", "error");
+      return;
+    }
+
+    // 3. Password Strength Guard Clause
+    if (formData.password.length < 8) {
+      showToast("Security risk: Password must be at least 8 characters long.", "warning");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // API call structure matching endpoint pipeline requirements
+      const result = await api.post("/api/auth/register", {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
+      });
+
+      showToast("Registration initialized successfully! Proceeding to validation setup.", "success");
+
+      // Optional programmatic routing can be appended here safely
+      // window.location.href = "/verify-otp";
+
+    } catch (error: any) {
+      console.error(error);
+      const fallbackErrorMessage = error?.response?.data?.message || error?.message || "Registration pipe failure.";
+      showToast(fallbackErrorMessage, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-between p-4 md:p-8 font-sans text-gray-800">
-      
+
       {/* Main Container */}
       <div className="w-full max-w-6xl mx-auto my-auto bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[820px]">
-        
+
         {/* Left Column: Form Content */}
         <div className="col-span-1 lg:col-span-7 p-8 md:p-14 flex flex-col justify-between h-full order-2 lg:order-1">
-          
+
           {/* Mobile Head Logo */}
           <div className="flex flex-col items-center mb-6 lg:hidden">
             <div className="flex items-center gap-1 text-2xl font-bold text-gray-900 tracking-tight">
@@ -52,48 +120,61 @@ export default function SignUpPage() {
             </div>
 
             {/* Main Multi-input Form */}
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
+            <form onSubmit={handleSignUp} className="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
               {/* Full Name */}
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Full Name</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition">
+                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
                   <User size={18} className="absolute left-4 text-gray-400" />
-                  <input type="text" placeholder="Enter your full name" className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800" />
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800"
+                    disabled={isLoading}
+                    required
+                  />
                 </div>
               </div>
 
-              {/* Mobile Input */}
+              {/* Email Address Fields */}
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Mobile Number</label>
-                <div className="flex border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition">
-                  <div className="flex items-center bg-gray-50 px-4 border-r border-gray-100 gap-2 text-sm font-semibold text-gray-700">
-                    <span className="w-5 h-3.5 bg-orange-400 block relative overflow-hidden rounded-sm">
-                      <span className="absolute inset-x-0 top-1/3 bottom-1/3 bg-white"></span>
-                      <span className="absolute inset-x-0 bottom-0 bg-green-600"></span>
-                    </span>
-                    <span>+91</span>
-                    <span className="text-gray-400 text-[10px]">▼</span>
-                  </div>
-                  <input type="tel" placeholder="Enter your mobile number" className="w-full px-4 py-3 text-sm outline-none font-medium text-gray-800" />
-                </div>
-              </div>
-
-              {/* Email Fields */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Email Address <span className="text-gray-400 font-normal lowercase">(optional)</span></label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition">
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Email Address</label>
+                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
                   <Mail size={18} className="absolute left-4 text-gray-400" />
-                  <input type="email" placeholder="Enter your email address" className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800" />
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email address"
+                    className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800"
+                    disabled={isLoading}
+                    required
+                  />
                 </div>
               </div>
 
               {/* Create Password */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Password</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition">
+                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
                   <Lock size={18} className="absolute left-4 text-gray-400" />
-                  <input type={showPassword ? "text" : "password"} placeholder="Create a password" className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-gray-400">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Create a password"
+                    className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isLoading} className="absolute right-3 text-gray-400 hover:text-gray-600 transition">
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
                 <p className="text-[10px] text-gray-400 font-medium mt-1 leading-normal">Min. 8 characters with numbers & letters</p>
               </div>
@@ -101,28 +182,52 @@ export default function SignUpPage() {
               {/* Confirm Password */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Confirm Password</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition">
+                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
                   <Lock size={18} className="absolute left-4 text-gray-400" />
-                  <input type={showConfirmPassword ? "text" : "password"} placeholder="Confirm password" className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800" />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 text-gray-400">{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm password"
+                    className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={isLoading} className="absolute right-3 text-gray-400 hover:text-gray-600 transition">
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
 
               {/* Terms and conditions segment */}
               <div className="sm:col-span-2 flex items-start gap-3 py-2">
-                <button type="button" onClick={() => setAgreeTerms(!agreeTerms)} className="mt-0.5 text-[#0B5B32] flex-shrink-0">
+                <button type="button" onClick={() => setAgreeTerms(!agreeTerms)} disabled={isLoading} className="mt-0.5 text-[#0B5B32] flex-shrink-0 disabled:opacity-50">
                   {agreeTerms ? <CheckSquare size={20} className="fill-[#0B5B32] stroke-white" /> : <Square size={20} className="text-gray-300" />}
                 </button>
-                <p className="text-xs text-gray-500 leading-normal font-medium">
+                <p className="text-xs text-gray-500 leading-normal font-medium selection:bg-transparent">
                   I expressly verify and agree to the <a href="#" className="text-[#0B5B32] font-bold hover:underline">Terms & Conditions</a> along with the company's detailed <a href="#" className="text-[#0B5B32] font-bold hover:underline">Privacy Policy</a>.
                 </p>
               </div>
 
               {/* Register Call to Action */}
               <div className="sm:col-span-2">
-                <button type="submit" className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition">
-                  <span>Continue Registration</span>
-                  <ArrowRight size={18} />
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#0B5B32] hover:bg-[#094d2a] disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition disabled:transform-none disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Creating Secure Account...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Continue Registration</span>
+                      <ArrowRight size={18} />
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -135,23 +240,23 @@ export default function SignUpPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <button className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition">Google</button>
-              <button className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition">Apple ID</button>
+              <button disabled={isLoading} className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">Google</button>
+              <button disabled={isLoading} className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">Apple ID</button>
             </div>
           </div>
 
           {/* Core redirection linking */}
           <div className="text-center mt-6 text-sm text-gray-500 font-medium">
             Already registered an account?{' '}
-            <a href="/login" className="text-[#10B981] font-extrabold hover:underline">
+            <a href="/authUser/userAuth/login" className="text-[#10B981] font-extrabold hover:underline">
               Login here
             </a>
           </div>
         </div>
 
-        {/* Right Column: Dynamic Informative Feature Grid Showcase Sidebar (Visible on lg layout) */}
+        {/* Right Column: Dynamic Informative Feature Grid Showcase Sidebar */}
         <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-tr from-gray-900 to-emerald-950 p-12 flex-col justify-between text-white relative order-1 lg:order-2">
-          
+
           {/* Top Brand Tag */}
           <div>
             <div className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
