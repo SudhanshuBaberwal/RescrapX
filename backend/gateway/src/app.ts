@@ -9,5 +9,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", proxy(env.AUTH_SERVICE_URL));
+app.use("/api/notification", proxy(env.NOTIFICATION_SERVICE_URL));
 
 export default app;

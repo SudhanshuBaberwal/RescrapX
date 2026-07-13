@@ -32,3 +32,10 @@ export const loginSchema = z.object({
 });
 
 export type LoginDto = z.infer<typeof loginSchema>;
+
+export const VerifyOtpSchema = z.object({
+  email:z.email(),
+  otp:z.string().length(6)
+})
+
+export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>

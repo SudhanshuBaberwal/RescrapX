@@ -26,4 +26,7 @@ export const env = {
 
   REFRESH_TOKEN_EXPIRES:
     process.env.REFRESH_TOKEN_EXPIRES || "7d",
+
+  NOTIFICATION_SERVICE_URL:
+    process.env.NOTIFICATION_SERVICE_URL!
 };

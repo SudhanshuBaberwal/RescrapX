@@ -4,30 +4,70 @@ import authRepository from "../repository/auth.repository.js";
 import ApiError from "../lib/ApiError.js";
 import jwtService from "../utils/jwt.js";
 import sessionService from "../utils/session.js";
-import { SignupDto } from "../validations/auth.validation.js";
-import { UserRole } from "../models/user.model.js";
+import { SignupDto, VerifyOtpDto } from "../validations/auth.validation.js";
+import User, { UserRole } from "../models/user.model.js";
+import notificationClient from "../clients/notification.client.js";
 
 class AuthService {
   async signup(data: SignupDto) {
-    // Normalize email
     const email = data.email.trim().toLowerCase();
-
-    // Check existing user
     const existingUser = await authRepository.findByEmail(email);
-
+    const fullName = data.fullName;
     if (existingUser) {
       throw new ApiError(409, "User already exists");
     }
-
-    // Hash password
     const hashedPassword = await bcrypt.hash(data.password, 12);
 
-    // Create user
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await notificationClient.post("/email/verification", {
+      email,
+      fullName,
+      otp,
+    });
+
+    const verificationTokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const user = await authRepository.createUser({
       fullName: data.fullName,
       email,
       password: hashedPassword,
+      verificationToken: otp,
+      verificationTokenExpiresAt,
     });
+    return user;
+  }
+
+  async verifyOTP(data: VerifyOtpDto) {
+    const email = data.email;
+    const otp = data.otp;
+    if (!email || !otp) {
+      throw new ApiError(400, "Email and OTP are required");
+    }
+
+    const user = await authRepository.findByEmail(email.trim().toLowerCase());
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (user.isVerified) {
+      throw new ApiError(400, "Email already verified");
+    }
+
+    if (!user.verificationToken) {
+      throw new ApiError(400, "OTP not found");
+    }
+
+    if (
+      !user.verificationTokenExpiresAt ||
+      user.verificationTokenExpiresAt < new Date()
+    ) {
+      throw new ApiError(400, "OTP has expired");
+    }
+
+    if (otp !== user.verificationToken) {
+      throw new ApiError(400, "Invalid OTP");
+    }
 
     // Generate Session ID
     const sessionId = crypto.randomUUID();
@@ -46,16 +86,17 @@ class AuthService {
     });
 
     // Store Refresh Token Hash in Redis
-    await sessionService.createSession(
-      user.id,
-      sessionId,
-      refreshToken
-    );
+    await sessionService.createSession(user.id, sessionId, refreshToken);
 
     // Update Last Login
     user.lastLogin = new Date();
-    await user.save();
+    // await user.save();
 
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpiresAt = undefined;
+    await user.save();
+    // return user;
     return {
       user: user.toObject(), // password already removed automatically
       accessToken,
