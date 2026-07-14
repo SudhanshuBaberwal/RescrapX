@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import api from '@/utils/api';
 import { useToast } from '@/lib/ui/toast/ToastContext';
+import { logout } from '@/services/auth.service';
+import queryClient from '@/lib/query/queryClient';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -29,9 +31,9 @@ export default function Sidebar() {
   const router = useRouter()
   const handleLogout = async () => {
     try {
-      await api.post("/api/auth/logout")
-      showToast("Logout Successfully", "success")
-      router.push("/authUser")
+      await logout()
+      queryClient.removeQueries({ queryKey: ["current-user"] });
+      window.location.href = "/authUser"
     } catch (error: any) {
       showToast(error?.message || "Login failed. Please try again.", "error");
     }

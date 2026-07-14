@@ -5,16 +5,134 @@ import ApiError from "../lib/ApiError.js";
 import jwtService from "../utils/jwt.js";
 import sessionService from "../utils/session.js";
 import {
+  ChangePasswordDto,
   ForgotPasswordDto,
   LoginDto,
+  ResendVerificationDto,
   ResetPasswordDto,
   SignupDto,
   VerifyOtpDto,
 } from "../validations/auth.validation.js";
-import User, { UserRole } from "../models/user.model.js";
+import User, { IUser, UserRole } from "../models/user.model.js";
 import notificationClient from "../clients/notification.client.js";
+// import googleClient from "../providers/google.js";
+import { GoogleLoginDto } from "../validations/auth.validation.js";
+import { AuthProvider } from "../models/user.model.js";
+import googleClient from "../providers/google.js";
+import { env } from "../config/env.js";
 
 class AuthService {
+  // async verifyOTP(data: VerifyOtpDto) {
+  //   const email = data.email;
+  //   const otp = data.otp;
+  //   if (!email || !otp) {
+  //     throw new ApiError(400, "Email and OTP are required");
+  //   }
+
+  //   const user = await authRepository.findByEmail(email.trim().toLowerCase());
+
+  //   if (!user) {
+  //     throw new ApiError(404, "User not found");
+  //   }
+
+  //   if (user.isVerified) {
+  //     throw new ApiError(400, "Email already verified");
+  //   }
+
+  //   if (!user.verificationToken) {
+  //     throw new ApiError(400, "OTP not found");
+  //   }
+
+  //   if (
+  //     !user.verificationTokenExpiresAt ||
+  //     user.verificationTokenExpiresAt < new Date()
+  //   ) {
+  //     throw new ApiError(400, "OTP has expired");
+  //   }
+
+  //   if (otp !== user.verificationToken) {
+  //     throw new ApiError(400, "Invalid OTP");
+  //   }
+
+  //   // Generate Session ID
+  //   const sessionId = crypto.randomUUID();
+
+  //   // Generate Tokens
+  //   const accessToken = jwtService.generateAccessToken({
+  //     userId: user.id,
+  //     role: user.role as UserRole,
+  //     sessionId,
+  //   });
+
+  //   const refreshToken = jwtService.generateRefreshToken({
+  //     userId: user.id,
+  //     role: user.role as UserRole,
+  //     sessionId,
+  //   });
+
+  //   // Store Refresh Token Hash in Redis
+  //   await sessionService.createSession(user.id, sessionId, refreshToken);
+
+  //   // Update Last Login
+  //   user.lastLogin = new Date();
+  //   // await user.save();
+
+  //   user.isVerified = true;
+  //   user.verificationToken = undefined;
+  //   user.verificationTokenExpiresAt = undefined;
+  //   await user.save();
+  //   // return user;
+  //   return {
+  //     user: user.toObject(), // password already removed automatically
+  //     accessToken,
+  //     refreshToken,
+  //   };
+  // }
+
+  // async login(data: LoginDto) {
+  //   const email = data.email.trim().toLowerCase();
+  //   const password = data.password;
+  //   if (!email || !password) {
+  //     throw new ApiError(400, "Please Fill All The Fields");
+  //   }
+  //   const user = await authRepository.findByEmailWithPassword(email);
+  //   if (!user) {
+  //     throw new ApiError(401, "User Not Found");
+  //   }
+
+  //   if (!user.isVerified) {
+  //     throw new ApiError(400, "User Not Verified");
+  //   }
+  //   const isPasswordCorrect = await bcrypt.compare(
+  //     data.password,
+  //     user.password,
+  //   );
+
+  //   if (!isPasswordCorrect) {
+  //     throw new ApiError(401, "Invalid email or password");
+  //   }
+
+  //   const sessionId = crypto.randomUUID();
+  //   const refreshToken = jwtService.generateRefreshToken({
+  //     userId: user.id,
+  //     role: user.role as UserRole,
+  //     sessionId,
+  //   });
+  //   const accessToken = jwtService.generateAccessToken({
+  //     userId: user.id,
+  //     role: user.role,
+  //     sessionId,
+  //   });
+  //   await sessionService.createSession(user.id, sessionId, refreshToken);
+  //   user.lastLogin = new Date();
+  //   await user.save();
+  //   return {
+  //     user,
+  //     accessToken,
+  //     refreshToken,
+  //   };
+  // }
+
   async signup(data: SignupDto) {
     const email = data.email.trim().toLowerCase();
     const existingUser = await authRepository.findByEmail(email);
@@ -26,12 +144,6 @@ class AuthService {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    await notificationClient.post("/email/verification", {
-      email,
-      fullName,
-      otp,
-    });
-
     const verificationTokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const user = await authRepository.createUser({
       fullName: data.fullName,
@@ -40,126 +152,19 @@ class AuthService {
       verificationToken: otp,
       verificationTokenExpiresAt,
     });
+    await notificationClient.post("/email/verification", {
+      email,
+      fullName,
+      otp,
+    });
     return user;
   }
-
-  async verifyOTP(data: VerifyOtpDto) {
-    const email = data.email;
-    const otp = data.otp;
-    if (!email || !otp) {
-      throw new ApiError(400, "Email and OTP are required");
-    }
-
-    const user = await authRepository.findByEmail(email.trim().toLowerCase());
-
-    if (!user) {
-      throw new ApiError(404, "User not found");
-    }
-
-    if (user.isVerified) {
-      throw new ApiError(400, "Email already verified");
-    }
-
-    if (!user.verificationToken) {
-      throw new ApiError(400, "OTP not found");
-    }
-
-    if (
-      !user.verificationTokenExpiresAt ||
-      user.verificationTokenExpiresAt < new Date()
-    ) {
-      throw new ApiError(400, "OTP has expired");
-    }
-
-    if (otp !== user.verificationToken) {
-      throw new ApiError(400, "Invalid OTP");
-    }
-
-    // Generate Session ID
-    const sessionId = crypto.randomUUID();
-
-    // Generate Tokens
-    const accessToken = jwtService.generateAccessToken({
-      userId: user.id,
-      role: user.role as UserRole,
-      sessionId,
-    });
-
-    const refreshToken = jwtService.generateRefreshToken({
-      userId: user.id,
-      role: user.role as UserRole,
-      sessionId,
-    });
-
-    // Store Refresh Token Hash in Redis
-    await sessionService.createSession(user.id, sessionId, refreshToken);
-
-    // Update Last Login
-    user.lastLogin = new Date();
-    // await user.save();
-
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpiresAt = undefined;
-    await user.save();
-    // return user;
-    return {
-      user: user.toObject(), // password already removed automatically
-      accessToken,
-      refreshToken,
-    };
-  }
-
   async getCurrentUser(userId: string) {
     const user = await authRepository.findById(userId);
     if (!user) {
       throw new ApiError(404, "User Not Found");
     }
     return user.toObject();
-  }
-
-  async login(data: LoginDto) {
-    const email = data.email.trim().toLowerCase();
-    const password = data.password;
-    if (!email || !password) {
-      throw new ApiError(400, "Please Fill All The Fields");
-    }
-    const user = await authRepository.findByEmailWithPassword(email);
-    if (!user) {
-      throw new ApiError(401, "User Not Found");
-    }
-
-    if (!user.isVerified) {
-      throw new ApiError(400, "User Not Verified");
-    }
-    const isPasswordCorrect = await bcrypt.compare(
-      data.password,
-      user.password,
-    );
-
-    if (!isPasswordCorrect) {
-      throw new ApiError(401, "Invalid email or password");
-    }
-
-    const sessionId = crypto.randomUUID();
-    const refreshToken = jwtService.generateRefreshToken({
-      userId: user.id,
-      role: user.role as UserRole,
-      sessionId,
-    });
-    const accessToken = jwtService.generateAccessToken({
-      userId: user.id,
-      role: user.role,
-      sessionId,
-    });
-    await sessionService.createSession(user.id, sessionId, refreshToken);
-    user.lastLogin = new Date();
-    await user.save();
-    return {
-      user,
-      accessToken,
-      refreshToken,
-    };
   }
 
   async logout(userId: string, sessionId: string) {
@@ -172,10 +177,10 @@ class AuthService {
       throw new ApiError(401, "Refresh token is required");
     }
 
-    // 1. Verify Refresh JWT
+    // Verify JWT
     const decoded = jwtService.verifyRefreshToken(refreshToken);
 
-    // 2. Verify Session in Redis
+    // Verify Redis Session
     const isValidSession = await sessionService.verifySession(
       decoded.userId,
       decoded.sessionId,
@@ -186,7 +191,7 @@ class AuthService {
       throw new ApiError(401, "Invalid session");
     }
 
-    // 3. Fetch User
+    // Find User
     const user = await authRepository.findById(decoded.userId);
 
     if (!user) {
@@ -201,30 +206,8 @@ class AuthService {
       throw new ApiError(403, "Account has been disabled");
     }
 
-    // 4. Generate New Tokens
-    const newAccessToken = jwtService.generateAccessToken({
-      userId: user.id,
-      role: user.role,
-      sessionId: decoded.sessionId,
-    });
-
-    const newRefreshToken = jwtService.generateRefreshToken({
-      userId: user.id,
-      role: user.role,
-      sessionId: decoded.sessionId,
-    });
-
-    // 5. Refresh Token Rotation
-    await sessionService.updateSession(
-      user.id,
-      decoded.sessionId,
-      newRefreshToken,
-    );
-
-    return {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    };
+    // Reuse same session (Refresh Token Rotation)
+    return await this.createAuthSession(user, decoded.sessionId);
   }
 
   async forgotPassword(data: ForgotPasswordDto) {
@@ -237,14 +220,11 @@ class AuthService {
     if (!user.isVerified) {
       throw new ApiError(403, "Please verify your email first");
     }
-    console.log("Before:", user);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetPasswordToken = otp;
     user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
-    console.log("OTP Before Save:", user.resetPasswordToken);
 
     const savedUser = await authRepository.save(user);
-    console.log("After Save:", savedUser);
 
     await notificationClient.post("/email/forgot-password", {
       email: user.email,
@@ -286,6 +266,289 @@ class AuthService {
     return {
       message: "Password reset successfully",
     };
+  }
+
+  async changePassword(userId: string, data: ChangePasswordDto) {
+    const user = await authRepository.findByIdWithPassword(userId);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(
+      data.oldPassword,
+      user.password,
+    );
+
+    if (!isPasswordCorrect) {
+      throw new ApiError(400, "Old password is incorrect");
+    }
+
+    const isSamePassword = await bcrypt.compare(
+      data.newPassword,
+      user.password,
+    );
+
+    if (isSamePassword) {
+      throw new ApiError(400, "New password cannot be same as old password");
+    }
+
+    user.password = await bcrypt.hash(data.newPassword, 12);
+
+    await authRepository.save(user);
+
+    // Logout From Every Device
+    await sessionService.deleteAllSessions(user.id);
+
+    // Email Notification
+    try {
+      await notificationClient.post("/email/password-changed", {
+        email: user.email,
+        fullName: user.fullName,
+      });
+    } catch (err) {
+      console.error(err);
+    }
+
+    return {
+      message: "Password changed successfully. Please login again.",
+    };
+  }
+
+  async resendVerificationOtp(data: ResendVerificationDto) {
+    const email = data.email.trim().toLowerCase();
+
+    const user = await authRepository.findByEmail(email);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (user.isVerified) {
+      throw new ApiError(400, "Email already verified");
+    }
+
+    // 60 sec cooldown
+    if (
+      user.verificationOtpSentAt &&
+      Date.now() - user.verificationOtpSentAt.getTime() < 60 * 1000
+    ) {
+      throw new ApiError(
+        429,
+        "Please wait 60 seconds before requesting another OTP.",
+      );
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.verificationToken = otp;
+    user.verificationTokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.verificationOtpSentAt = new Date();
+
+    await authRepository.save(user);
+
+    await notificationClient.post("/email/verification", {
+      email: user.email,
+      fullName: user.fullName,
+      otp,
+    });
+
+    return {
+      message: "Verification OTP sent successfully",
+    };
+  }
+
+  async logoutAll(userId: string) {
+    await sessionService.deleteAllSessions(userId);
+
+    return {
+      message: "Logged out from all devices successfully",
+    };
+  }
+
+  private async createAuthSession(user: IUser, sessionId?: string) {
+    const userId = user._id.toString();
+
+    const currentSessionId = sessionId ?? crypto.randomUUID();
+
+    const accessToken = jwtService.generateAccessToken({
+      userId,
+      role: user.role,
+      sessionId: currentSessionId,
+    });
+
+    const refreshToken = jwtService.generateRefreshToken({
+      userId,
+      role: user.role,
+      sessionId: currentSessionId,
+    });
+
+    if (sessionId) {
+      await sessionService.updateSession(
+        userId,
+        currentSessionId,
+        refreshToken,
+      );
+    } else {
+      await sessionService.createSession(
+        userId,
+        currentSessionId,
+        refreshToken,
+      );
+    }
+
+    user.lastLogin = new Date();
+
+    await authRepository.save(user);
+
+    return {
+      user: user.toObject(),
+      accessToken,
+      refreshToken,
+    };
+  }
+
+  async login(data: LoginDto) {
+    const email = data.email.trim().toLowerCase();
+
+    const password = data.password;
+
+    if (!email || !password) {
+      throw new ApiError(400, "Please fill all fields");
+    }
+
+    const user = await authRepository.findByEmailWithPassword(email);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (!user.isVerified) {
+      throw new ApiError(400, "User not verified");
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+      throw new ApiError(401, "Invalid email or password");
+    }
+
+    return await this.createAuthSession(user);
+  }
+
+  async verifyOTP(data: VerifyOtpDto) {
+    const email = data.email.trim().toLowerCase();
+    const otp = data.otp;
+
+    if (!email || !otp) {
+      throw new ApiError(400, "Email and OTP are required");
+    }
+
+    const user = await authRepository.findByEmail(email);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (user.isVerified) {
+      throw new ApiError(400, "Email already verified");
+    }
+
+    if (!user.verificationToken) {
+      throw new ApiError(400, "OTP not found");
+    }
+
+    if (
+      !user.verificationTokenExpiresAt ||
+      user.verificationTokenExpiresAt < new Date()
+    ) {
+      throw new ApiError(400, "OTP has expired");
+    }
+
+    if (user.verificationToken !== otp) {
+      throw new ApiError(400, "Invalid OTP");
+    }
+
+    // Verify user
+    user.isVerified = true;
+
+    // Clear verification fields
+    user.verificationToken = undefined;
+    user.verificationTokenExpiresAt = undefined;
+
+    // Create session + JWT + Redis
+    return await this.createAuthSession(user);
+  }
+
+  async googleLogin(data: GoogleLoginDto) {
+    const { token } = data;
+
+    // Verify Google ID Token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload) {
+      throw new ApiError(401, "Invalid Google token");
+    }
+
+    const { sub: googleId, email, name, picture, email_verified } = payload;
+
+    if (!email) {
+      throw new ApiError(400, "Google account has no email");
+    }
+
+    if (!email_verified) {
+      throw new ApiError(400, "Google email is not verified");
+    }
+
+    // Find by Google ID
+    let user = await authRepository.findByGoogleId(googleId);
+
+    if (user) {
+      if (!user.isActive) {
+        throw new ApiError(403, "Account has been disabled");
+      }
+
+      return this.createAuthSession(user);
+    }
+
+    // Find existing LOCAL account with same email
+    user = await authRepository.findByEmail(email);
+
+    if (user) {
+      if (!user.isActive) {
+        throw new ApiError(403, "Account has been disabled");
+      }
+
+      // Link Google Account
+      user.googleId = googleId;
+      user.provider = AuthProvider.GOOGLE;
+
+      if (!user.avatar && picture) {
+        user.avatar = picture;
+      }
+
+      await authRepository.save(user);
+
+      return this.createAuthSession(user);
+    }
+
+    // Create New Google User
+    user = await authRepository.createUser({
+      fullName: name || "Google User",
+      email,
+      avatar: picture || "",
+      googleId,
+      provider: AuthProvider.GOOGLE,
+      isVerified: true,
+    });
+
+    return this.createAuthSession(user);
   }
 }
 

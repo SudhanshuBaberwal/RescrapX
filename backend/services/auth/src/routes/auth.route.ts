@@ -1,17 +1,24 @@
 import { Router } from "express";
 import {
+  changePasswordController,
   forgotPasswordController,
   getCurrentUser,
+  googleLoginController,
   login,
   logout,
+  logoutAllController,
   refreshTokenController,
+  resendVerificationController,
   resetPasswordController,
   signup,
   verifyOtpController,
 } from "../controllers/auth.controller.js";
 import {
+  changePasswordSchema,
   forgotPasswordSchema,
+  googleLoginSchema,
   loginSchema,
+  resendVerificationSchema,
   resetPasswordSchema,
   signupSchema,
   VerifyOtpSchema,
@@ -49,5 +56,18 @@ authrouter.post(
   validate(resetPasswordSchema),
   resetPasswordController,
 );
+authrouter.patch(
+  "/change-password",
+  protect,
+  validate(changePasswordSchema),
+  changePasswordController,
+);
+authrouter.post(
+  "/resend-verification",
+  validate(resendVerificationSchema),
+  resendVerificationController,
+);
+authrouter.post("/google", validate(googleLoginSchema), googleLoginController);
 
+authrouter.post("/logout-all", protect, logoutAllController);
 export default authrouter;

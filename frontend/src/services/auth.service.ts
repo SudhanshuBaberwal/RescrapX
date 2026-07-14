@@ -10,10 +10,7 @@ export const logout = async () => {
   return res.data;
 };
 
-export const login = async (data: {
-  email: string;
-  password: string;
-}) => {
+export const login = async (data: { email: string; password: string }) => {
   const res = await api.post("/api/auth/login", data);
   return res.data;
 };
@@ -28,10 +25,27 @@ export const signup = async (data: {
   return res.data;
 };
 
-export const verifyOTP = async (data: {
+export const verifyOTP = async (data: { email: string; otp: string }) => {
+  const res = await api.post("/api/auth/verification", data);
+  return res.data;
+};
+
+export const forgotPassword = async (data: { email: string }) => {
+  const res = await api.post("/api/auth/forgot-password", data);
+  return res.data;
+};
+
+export const resetPassword = async (data: {
   email: string;
   otp: string;
+  password: string;
+  confirmPassword: string;
 }) => {
-  const res = await api.post("/api/auth/verify-email", data);
+  const res = await api.post("/api/auth/reset-password", data);
   return res.data;
+};
+
+export const googleLogin = async (token: string) => {
+    const res = await api.post("/api/auth/google", { token });
+    return res.data;
 };

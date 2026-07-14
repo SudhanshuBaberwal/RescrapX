@@ -2,48 +2,42 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-import AdminLayout from "@/components/admin/AdminLayout";
-import HomePage from "@/components/user/HomePage";
-import VendorPage from "@/components/vendor/VendorPage";
-
 import { useAuth } from "@/context/AuthProvider";
 
+import HomePage from "@/components/user/HomePage";
+import VendorPage from "@/components/vendor/VendorPage";
+import AdminLayout from "@/components/admin/AdminLayout";
+import { Loader } from "lucide-react";
+
 export default function Page() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
+    const { user, loading } = useAuth();
+    const router = useRouter();
 
-  useEffect(() => {
-    if (loading) return;
+    useEffect(() => {
+        if (loading) return;
 
-    if (!user) {
-      router.replace("/authUser");
+        if (!user) {
+            router.replace("/authUser/login");
+        }
+    }, [loading, user]);
+
+    if (loading) {
+        return <Loader />;
     }
-  }, [loading, user, router]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
+    if (!user) return null;
 
-  if (!user) {
-    return null;
-  }
+    switch (user.role) {
+        case "USER":
+            return <HomePage />;
 
-  switch (user.role) {
-    case "USER":
-      return <HomePage />;
+        case "PARTNER":
+            return <VendorPage />;
 
-    case "PARTNER":
-      return <VendorPage />;
+        case "ADMIN":
+            return <AdminLayout />;
 
-    case "ADMIN":
-      return <AdminLayout />;
-
-    default:
-      return <div>Invalid Role</div>;
-  }
+        default:
+            return null;
+    }
 }

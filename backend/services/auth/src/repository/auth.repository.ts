@@ -20,6 +20,18 @@ class AuthRepository {
   async save(user: IUser) {
     return user.save();
   }
+
+  async findByIdWithPassword(userId: string) {
+    return User.findById(userId).select("+password");
+  }
+
+  async findByGoogleId(googleId: string) {
+    return User.findOne({
+      googleId,
+    });
+  }
+
+  
 }
 
 export default new AuthRepository();

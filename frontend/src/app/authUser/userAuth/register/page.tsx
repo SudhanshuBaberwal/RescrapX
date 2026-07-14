@@ -1,10 +1,17 @@
 'use client'
 
+import { useRouter } from "next/navigation";
 import React, { useState } from 'react';
 import { Eye, EyeOff, User, Mail, Lock, ArrowRight, CheckSquare, Square, Loader2 } from 'lucide-react';
 // Imported custom toast hook
 import api from '@/utils/api';
 import { useToast } from '@/lib/ui/toast/ToastContext';
+import { googleLogin, signup } from '@/services/auth.service';
+import {
+  GoogleLogin,
+} from "@react-oauth/google";
+import { useAuth } from "@/context/AuthProvider";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function SignUpPage() {
   const { showToast } = useToast();
@@ -16,7 +23,9 @@ export default function SignUpPage() {
     password: '',
     confirmPassword: ''
   });
-
+  const { refetchUser } = useAuth();
+  const queryClient = useQueryClient();
+  
   // Structural Toggles
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
@@ -29,48 +38,56 @@ export default function SignUpPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const router = useRouter();
+
   // Submit Handler with full pipeline verification
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // 1. Terms Agreement Guard Clause
     if (!agreeTerms) {
-      showToast("Please review and agree to the Terms & Conditions to proceed.", "warning");
+      showToast(
+        "Please review and agree to the Terms & Conditions to proceed.",
+        "warning"
+      );
       return;
     }
 
-    // 2. Strict Password Match Guard Clause
     if (formData.password !== formData.confirmPassword) {
-      showToast("Password confirmation mismatch. Both strings must look identical.", "error");
+      showToast("Passwords do not match.", "error");
       return;
     }
 
-    // 3. Password Strength Guard Clause
     if (formData.password.length < 8) {
-      showToast("Security risk: Password must be at least 8 characters long.", "warning");
+      showToast("Password must be at least 8 characters.", "warning");
       return;
     }
-
-    setIsLoading(true);
 
     try {
-      // API call structure matching endpoint pipeline requirements
-      const result = await api.post("/api/auth/register", {
-        name: formData.name,
+      setIsLoading(true);
+
+      await signup({
+        fullName: formData.name,
         email: formData.email,
         password: formData.password,
-        confirmPassword: formData.confirmPassword
+        confirmPassword: formData.confirmPassword,
       });
 
-      showToast("Registration initialized successfully! Proceeding to validation setup.", "success");
+      showToast(
+        "Registration initialized successfully!",
+        "success"
+      );
 
-      // Optional programmatic routing can be appended here safely
-      // window.location.href = "/verify-otp";
-
+      router.push(
+        `/authUser/userAuth/verify-otp?email=${encodeURIComponent(
+          formData.email
+        )}`
+      );
     } catch (error: any) {
-      console.error(error);
-      const fallbackErrorMessage = error?.response?.data?.message || error?.message || "Registration pipe failure.";
-      showToast(fallbackErrorMessage, "error");
+      showToast(
+        error?.response?.data?.message ||
+        "Registration failed.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -239,9 +256,31 @@ export default function SignUpPage() {
               <div className="flex-grow border-t border-gray-100"></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <button disabled={isLoading} className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">Google</button>
-              <button disabled={isLoading} className="flex items-center justify-center gap-2 border-2 border-gray-100 rounded-xl py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">Apple ID</button>
+            {/* Centered Single Google Login Wrapper */}
+            <div className="w-full flex justify-center">
+              <div className="w-full max-w-sm flex justify-center [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full">
+                <GoogleLogin
+                  onSuccess={async (credentialResponse) => {
+                    if (!credentialResponse.credential) return;
+
+                    const response = await googleLogin(
+                      credentialResponse.credential
+                    );
+
+                    // Immediately update auth state cache
+                    queryClient.setQueryData(
+                      ["current-user"],
+                      response
+                    );
+
+                    router.replace("/");
+                  }}
+                  onError={() => {
+                    console.log("Google Login Failed");
+                  }}
+                  width="100%"
+                />
+              </div>
             </div>
           </div>
 

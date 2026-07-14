@@ -82,3 +82,58 @@ export const resetPasswordController = asyncHandler(async (req, res) => {
   const result = await authService.resetPassword(req.body);
   return ApiResponse.success(res, 200, result.message);
 });
+
+export const changePasswordController = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const result = await authService.changePassword(req.user.id, req.body);
+
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    return ApiResponse.success(res, 200, result.message);
+  },
+);
+
+export const resendVerificationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await authService.resendVerificationOtp(req.body);
+
+    return ApiResponse.success(res, 200, result.message);
+  },
+);
+
+export const logoutAllController = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const result = await authService.logoutAll(req.user.id);
+
+    res.clearCookie("accessToken", accessCookieOptions);
+    res.clearCookie("refreshToken", refreshCookieOptions);
+
+    return ApiResponse.success(res, 200, result.message);
+  },
+);
+
+export const googleLoginController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await authService.googleLogin(req.body);
+
+    res.cookie(
+      "accessToken",
+      result.accessToken,
+      accessCookieOptions
+    );
+
+    res.cookie(
+      "refreshToken",
+      result.refreshToken,
+      refreshCookieOptions
+    );
+
+    return ApiResponse.success(
+      res,
+      200,
+      "Google login successful",
+      result.user
+    );
+  }
+);

@@ -6,6 +6,12 @@ export enum UserRole {
   ADMIN = "ADMIN",
 }
 
+export enum AuthProvider {
+  LOCAL = "LOCAL",
+  GOOGLE = "GOOGLE",
+  APPLE = "APPLE",
+}
+
 export interface IUser extends Document {
   fullName: string;
   userName: string;
@@ -23,9 +29,13 @@ export interface IUser extends Document {
 
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
-
+  verificationOtpSentAt?: Date;
   isActive: boolean;
   lastLogin: Date;
+
+  provider: AuthProvider;
+
+  googleId?: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -58,7 +68,7 @@ const userSchema = new Schema<IUser>(
 
     password: {
       type: String,
-      required: true,
+      // required: true,
       minlength: 8,
       select: false,
     },
@@ -78,10 +88,26 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
-
+    verificationOtpSentAt: {
+      type: Date,
+      default: null,
+    },
     verificationToken: {
       type: String,
       default: null,
+    },
+
+    provider: {
+      type: String,
+      enum: Object.values(AuthProvider),
+      default: AuthProvider.LOCAL,
+    },
+
+    googleId: {
+      type: String,
+      default: null,
+      unique: true,
+      sparse: true,
     },
 
     verificationTokenExpiresAt: {

@@ -45,6 +45,31 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+export const changePasswordSchema = z
+  .object({
+    oldPassword: z.string().min(8),
+
+    newPassword: z.string().min(8),
+
+    confirmPassword: z.string().min(8),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+export const resendVerificationSchema = z.object({
+  email: z.email(),
+});
+
+export const googleLoginSchema = z.object({
+  token: z.string().min(1),
+});
+
+export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
+
+export type ResendVerificationDto = z.infer<typeof resendVerificationSchema>;
+export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
 export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>;
 export type SignupDto = z.infer<typeof signupSchema>;
