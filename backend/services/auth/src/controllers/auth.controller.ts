@@ -77,3 +77,8 @@ export const forgotPasswordController = asyncHandler(async (req, res) => {
   const result = await authService.forgotPassword(req.body);
   return ApiResponse.success(res, 200, result.message);
 });
+
+export const resetPasswordController = asyncHandler(async (req, res) => {
+  const result = await authService.resetPassword(req.body);
+  return ApiResponse.success(res, 200, result.message);
+});

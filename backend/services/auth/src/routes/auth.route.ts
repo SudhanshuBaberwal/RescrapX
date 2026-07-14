@@ -5,12 +5,14 @@ import {
   login,
   logout,
   refreshTokenController,
+  resetPasswordController,
   signup,
   verifyOtpController,
 } from "../controllers/auth.controller.js";
 import {
   forgotPasswordSchema,
   loginSchema,
+  resetPasswordSchema,
   signupSchema,
   VerifyOtpSchema,
 } from "../validations/auth.validation.js";
@@ -41,6 +43,11 @@ authrouter.post(
   "/forgot-password",
   validate(forgotPasswordSchema),
   forgotPasswordController,
+);
+authrouter.post(
+  "/reset-password",
+  validate(resetPasswordSchema),
+  resetPasswordController,
 );
 
 export default authrouter;

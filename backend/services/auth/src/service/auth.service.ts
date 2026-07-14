@@ -7,6 +7,7 @@ import sessionService from "../utils/session.js";
 import {
   ForgotPasswordDto,
   LoginDto,
+  ResetPasswordDto,
   SignupDto,
   VerifyOtpDto,
 } from "../validations/auth.validation.js";
@@ -236,11 +237,14 @@ class AuthService {
     if (!user.isVerified) {
       throw new ApiError(403, "Please verify your email first");
     }
-
-    const otp = Math.floor(100000 + Math.random() * 90000).toString();
+    console.log("Before:", user);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetPasswordToken = otp;
     user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await authRepository.save(user);
+    console.log("OTP Before Save:", user.resetPasswordToken);
+
+    const savedUser = await authRepository.save(user);
+    console.log("After Save:", savedUser);
 
     await notificationClient.post("/email/forgot-password", {
       email: user.email,
@@ -248,6 +252,40 @@ class AuthService {
       otp,
     });
     return { message: "Password reset OTP sent successfully" };
+  }
+
+  async resetPassword(data: ResetPasswordDto) {
+    const email = data.email.trim().toLowerCase();
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    if (!user.resetPasswordToken) {
+      throw new ApiError(400, "OTP Not found");
+    }
+
+    if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+      throw new ApiError(400, "Otp has expired");
+    }
+
+    if (user.resetPasswordToken !== data.otp) {
+      throw new ApiError(400, "Invalid OTP");
+    }
+
+    // All fields are correct now hash the password
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await authRepository.save(user);
+    await sessionService.deleteAllSessions(user.id);
+    await notificationClient.post("/email/password-changed", {
+      email: user.email,
+      fullName: user.fullName,
+    });
+    return {
+      message: "Password reset successfully",
+    };
   }
 }
 
