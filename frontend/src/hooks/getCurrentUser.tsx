@@ -9,6 +9,7 @@ export const getCurrentUser = async () => {
       const fetchUser = async () => {
         try {
           const result = await api.get("/api/auth/me");
+          return result;
         } catch (error) {
           console.log(error);
         }

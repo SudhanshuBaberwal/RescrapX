@@ -11,15 +11,24 @@ import { useAuth } from "@/context/AuthProvider";
 
 export default function Page() {
   const router = useRouter();
-
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+
+    if (!user) {
       router.replace("/authUser");
     }
-    router.push("/")
   }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+
   if (!user) {
     return null;
   }

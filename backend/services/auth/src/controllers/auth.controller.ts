@@ -4,6 +4,7 @@ import ApiResponse from "../lib/ApiResponse.js";
 import authService from "../service/auth.service.js";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/cookies.js";
 import { AuthRequest } from "../types/auth-request.js";
+import ApiError from "../lib/ApiError.js";
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.signup(req.body);
@@ -52,4 +53,27 @@ export const logout = asyncHandler(async (req: AuthRequest, res: Response) => {
   res.clearCookie("refreshToken", refreshCookieOptions);
 
   return ApiResponse.success(res, 200, "Logged out successfully");
+});
+
+export const refreshTokenController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      throw new ApiError(401, "Refresh token not found");
+    }
+
+    const tokens = await authService.refreshToken(refreshToken);
+
+    res.cookie("accessToken", tokens.accessToken, accessCookieOptions);
+
+    res.cookie("refreshToken", tokens.refreshToken, refreshCookieOptions);
+
+    return ApiResponse.success(res, 200, "Token refreshed successfully");
+  },
+);
+
+export const forgotPasswordController = asyncHandler(async (req, res) => {
+  const result = await authService.forgotPassword(req.body);
+  return ApiResponse.success(res, 200, result.message);
 });

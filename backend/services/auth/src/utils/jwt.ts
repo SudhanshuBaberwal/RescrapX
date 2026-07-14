@@ -1,13 +1,15 @@
 import jwt, { Secret, SignOptions } from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { UserRole } from "../models/user.model.js";
+import ApiError from "../lib/ApiError.js";
 
-interface JwtPayload {
+export interface JwtPayload {
   userId: string;
   role: UserRole;
   sessionId: string;
 }
-class jwtService {
+
+class JwtService {
   generateAccessToken(payload: JwtPayload): string {
     return jwt.sign(
       payload,
@@ -29,12 +31,20 @@ class jwtService {
   }
 
   verifyAccessToken(token: string): JwtPayload {
-    return jwt.verify(token, env.JWT_ACCESS_SECRET as Secret) as JwtPayload;
+    try {
+      return jwt.verify(token, env.JWT_ACCESS_SECRET as Secret) as JwtPayload;
+    } catch {
+      throw new ApiError(401, "Invalid or expired access token");
+    }
   }
 
   verifyRefreshToken(token: string): JwtPayload {
-    return jwt.verify(token, env.JWT_REFRESH_SECRET as Secret) as JwtPayload;
+    try {
+      return jwt.verify(token, env.JWT_REFRESH_SECRET as Secret) as JwtPayload;
+    } catch {
+      throw new ApiError(401, "Invalid or expired refresh token");
+    }
   }
 }
 
-export default new jwtService();
+export default new JwtService();

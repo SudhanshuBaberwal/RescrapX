@@ -5,6 +5,7 @@ import ApiError from "../lib/ApiError.js";
 import jwtService from "../utils/jwt.js";
 import sessionService from "../utils/session.js";
 import {
+  ForgotPasswordDto,
   LoginDto,
   SignupDto,
   VerifyOtpDto,
@@ -160,9 +161,93 @@ class AuthService {
     };
   }
 
-  async logout(userId:string,sessionId:string){
-    await sessionService.deleteSession(userId,sessionId)
-    return {success:true}
+  async logout(userId: string, sessionId: string) {
+    await sessionService.deleteSession(userId, sessionId);
+    return { success: true };
+  }
+
+  async refreshToken(refreshToken: string) {
+    if (!refreshToken) {
+      throw new ApiError(401, "Refresh token is required");
+    }
+
+    // 1. Verify Refresh JWT
+    const decoded = jwtService.verifyRefreshToken(refreshToken);
+
+    // 2. Verify Session in Redis
+    const isValidSession = await sessionService.verifySession(
+      decoded.userId,
+      decoded.sessionId,
+      refreshToken,
+    );
+
+    if (!isValidSession) {
+      throw new ApiError(401, "Invalid session");
+    }
+
+    // 3. Fetch User
+    const user = await authRepository.findById(decoded.userId);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (!user.isVerified) {
+      throw new ApiError(401, "User is not verified");
+    }
+
+    if (!user.isActive) {
+      throw new ApiError(403, "Account has been disabled");
+    }
+
+    // 4. Generate New Tokens
+    const newAccessToken = jwtService.generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      sessionId: decoded.sessionId,
+    });
+
+    const newRefreshToken = jwtService.generateRefreshToken({
+      userId: user.id,
+      role: user.role,
+      sessionId: decoded.sessionId,
+    });
+
+    // 5. Refresh Token Rotation
+    await sessionService.updateSession(
+      user.id,
+      decoded.sessionId,
+      newRefreshToken,
+    );
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+
+  async forgotPassword(data: ForgotPasswordDto) {
+    const email = data.email.trim().toLowerCase();
+    const user = await authRepository.findByEmail(email);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (!user.isVerified) {
+      throw new ApiError(403, "Please verify your email first");
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 90000).toString();
+    user.resetPasswordToken = otp;
+    user.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await authRepository.save(user);
+
+    await notificationClient.post("/email/forgot-password", {
+      email: user.email,
+      fullName: user.fullName,
+      otp,
+    });
+    return { message: "Password reset OTP sent successfully" };
   }
 }
 

@@ -19,25 +19,25 @@ router.get("/test", (_req, res) => {
 router.post(
   "/email/verification",
   validate(verificationEmailSchema),
-  notificationController.sendVerificationEmail
+  notificationController.sendVerificationEmail,
 );
 
 router.post(
   "/email/welcome",
   validate(welcomeEmailSchema),
-  notificationController.sendWelcomeEmail
+  notificationController.sendWelcomeEmail,
 );
 
 router.post(
   "/email/forgot-password",
   validate(forgotPasswordSchema),
-  notificationController.sendForgotPasswordEmail
+  notificationController.sendForgotPasswordEmail,
 );
 
 router.post(
   "/email/password-changed",
   validate(passwordChangeSchema),
-  notificationController.sendPasswordChangedEmail
+  notificationController.sendPasswordChangedEmail,
 );
 
 export default router;
