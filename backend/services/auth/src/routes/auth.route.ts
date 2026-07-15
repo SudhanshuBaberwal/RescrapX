@@ -7,6 +7,7 @@ import {
   login,
   logout,
   logoutAllController,
+  partnerSignupController,
   refreshTokenController,
   resendVerificationController,
   resetPasswordController,
@@ -25,6 +26,7 @@ import {
 } from "../validations/auth.validation.js";
 import validate from "../middleware/validate.middleware.js";
 import protect from "../middleware/protect.middleware.js";
+import { partnerSignupSchema } from "../validations/partner.validation.js";
 
 const authrouter = Router();
 
@@ -70,4 +72,12 @@ authrouter.post(
 authrouter.post("/google", validate(googleLoginSchema), googleLoginController);
 
 authrouter.post("/logout-all", protect, logoutAllController);
+
+
+authrouter.post(
+  "/partner/signup",
+  validate(partnerSignupSchema),
+  partnerSignupController
+);
+
 export default authrouter;

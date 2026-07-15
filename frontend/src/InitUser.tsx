@@ -1,18 +1,31 @@
-"use client";
+'use client'
 
 import { useEffect } from "react";
-import { getCurrentUser } from "@/hooks/getCurrentUser";
+import { getCurrentUser } from "./services/auth.service";
+import { setUserData } from "./store/userSlice";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "./store/store";
 
-interface InitUserProps {
-  children: React.ReactNode;
-}
+const InitUser = () => {
 
-const InitUser = ({ children }: InitUserProps) => {
+  const dispatch = useDispatch<AppDispatch>()
   useEffect(() => {
-    getCurrentUser();
+    console.log("InitUser Mounted");
+    const init = async () => {
+      console.log("Calling /me");
+
+      const result = await getCurrentUser();
+
+      console.log(result);
+
+      dispatch(setUserData(result.data));
+
+      console.log("Dispatched");
+    };
+
+    init();
   }, []);
 
-  return <>{children}</>;
-};
+}
 
 export default InitUser;

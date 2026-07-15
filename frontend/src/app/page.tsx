@@ -2,32 +2,58 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthProvider";
+import { useSelector, useDispatch } from "react-redux";
+
+import { RootState, AppDispatch } from "@/store/store";
+import { setUserData, clearUser, setLoading } from "@/store/userSlice";
+
+import { getCurrentUser } from "@/services/auth.service";
 
 import HomePage from "@/components/user/HomePage";
 import VendorPage from "@/components/vendor/VendorPage";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Loader } from "lucide-react";
 
 export default function Page() {
-    const { user, loading } = useAuth();
+    getCurrentUser()
     const router = useRouter();
+    const dispatch = useDispatch<AppDispatch>();
+
+    const { userData, loading } = useSelector(
+        (state: RootState) => state.user
+    );
 
     useEffect(() => {
-        if (loading) return;
+        const checkUser = async () => {
+            dispatch(setLoading(true));
 
-        if (!user) {
-            router.replace("/authUser/login");
+            try {
+                const result = await getCurrentUser();
+
+                dispatch(setUserData(result.data));
+            } catch (error) {
+                dispatch(clearUser());
+                router.replace("/authUser");
+            }
+        };
+
+        if (!userData) {
+            checkUser();
         }
-    }, [loading, user]);
+    }, [dispatch, router, userData]);
 
     if (loading) {
-        return <Loader />;
+        return (
+            <div className="flex h-screen items-center justify-center">
+                Loading...
+            </div>
+        );
     }
 
-    if (!user) return null;
+    if (!userData) {
+        return null;
+    }
 
-    switch (user.role) {
+    switch (userData.role) {
         case "USER":
             return <HomePage />;
 

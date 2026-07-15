@@ -9,37 +9,126 @@ export enum UserRole {
 export enum AuthProvider {
   LOCAL = "LOCAL",
   GOOGLE = "GOOGLE",
-  APPLE = "APPLE",
 }
 
+export enum PartnerStatus {
+  PENDING = "PENDING",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 export interface IUser extends Document {
   fullName: string;
-  userName: string;
+  userName?: string;
   email: string;
-  password: string;
-
+  password?: string;
+  phoneNumber: string;
   avatar: string;
 
   role: UserRole;
-  isVerified: boolean;
-  verificationToken?: string;
-  verificationTokenExpiresAt?: Date;
-
-  refreshToken: string;
-
-  resetPasswordToken?: string;
-  resetPasswordExpires?: Date;
-  verificationOtpSentAt?: Date;
-  isActive: boolean;
-  lastLogin: Date;
-
   provider: AuthProvider;
 
   googleId?: string;
 
+  isVerified: boolean;
+  isActive: boolean;
+
+  verificationToken?: string;
+  verificationTokenExpiresAt?: Date;
+  verificationOtpSentAt?: Date;
+
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
+
+  refreshToken?: string;
+
+  lastLogin?: Date;
+
+  partnerStatus?: PartnerStatus;
+
+  company?: {
+    companyName: string;
+    gstNumber: string;
+    panNumber: string;
+    registrationNumber: string;
+    address: string;
+
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  documents?: {
+    idProof: string;
+    gstCertificate: string;
+    panCard: string;
+    registrationCertificate: string;
+    bankDetails: string;
+    rvsfCertificate: string;
+
+    uploadedAt?: Date;
+  };
+
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+const companySchema = new Schema(
+  {
+    companyName: {
+      type: String,
+      trim: true,
+    },
+
+    city: {
+      type: String,
+      trim: true,
+    },
+
+    state: {
+      type: String,
+      trim: true,
+    },
+
+    pincode: {
+      type: String,
+      trim: true,
+    },
+    gstNumber: {
+      type: String,
+      trim: true,
+    },
+    panNumber: {
+      type: String,
+      trim: true,
+    },
+    registrationNumber: {
+      type: String,
+      trim: true,
+    },
+    address: {
+      type: String,
+      trim: true,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+const documentsSchema = new Schema(
+  {
+    idProof: String,
+    gstCertificate: String,
+    panCard: String,
+    registrationCertificate: String,
+    bankDetails: String,
+    rvsfCertificate: String,
+  },
+  {
+    _id: false,
+  },
+);
+
 const userSchema = new Schema<IUser>(
   {
     fullName: {
@@ -68,7 +157,7 @@ const userSchema = new Schema<IUser>(
 
     password: {
       type: String,
-      // required: true,
+      default: null,
       minlength: 8,
       select: false,
     },
@@ -82,6 +171,22 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: Object.values(UserRole),
       default: UserRole.USER,
+    },
+
+    partnerStatus: {
+      type: String,
+      enum: Object.values(PartnerStatus),
+      default: null,
+    },
+
+    company: {
+      type: companySchema,
+      default: null,
+    },
+
+    documents: {
+      type: documentsSchema,
+      default: null,
     },
 
     isVerified: {
@@ -130,7 +235,10 @@ const userSchema = new Schema<IUser>(
       default: null,
       select: false,
     },
-
+    phoneNumber: {
+      type: String,
+      default: "",
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -145,8 +253,6 @@ const userSchema = new Schema<IUser>(
     versionKey: false,
   },
 );
-userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
 userSchema.set("toJSON", {
   transform: (_doc, ret: any) => {
     const { password, __v, ...user } = ret;

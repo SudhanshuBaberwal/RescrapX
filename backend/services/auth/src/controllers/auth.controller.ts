@@ -117,23 +117,26 @@ export const googleLoginController = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await authService.googleLogin(req.body);
 
-    res.cookie(
-      "accessToken",
-      result.accessToken,
-      accessCookieOptions
-    );
+    res.cookie("accessToken", result.accessToken, accessCookieOptions);
 
-    res.cookie(
-      "refreshToken",
-      result.refreshToken,
-      refreshCookieOptions
-    );
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
 
     return ApiResponse.success(
       res,
       200,
       "Google login successful",
-      result.user
+      result.user,
     );
-  }
+  },
 );
+
+export const partnerSignupController = asyncHandler(async (req, res) => {
+  const result = await authService.partnerSignup(req.body);
+
+  return ApiResponse.success(
+    res,
+    201,
+    "Partner registered successfully. Please verify your email.",
+    result,
+  );
+});

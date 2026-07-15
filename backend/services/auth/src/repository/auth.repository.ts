@@ -31,7 +31,9 @@ class AuthRepository {
     });
   }
 
-  
+  async createPartner(data: Partial<IUser>) {
+    return await User.create(data);
+  }
 }
 
 export default new AuthRepository();

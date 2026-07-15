@@ -1,22 +1,32 @@
-'use client'
+"use client";
 
-import api from "@/utils/api";
 import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/store/store";
+import { clearUser, setLoading, setUserData } from "@/store/userSlice";
+import api from "@/utils/api";
 
-export const getCurrentUser = async () => {
-  try {
-    useEffect(() => {
-      const fetchUser = async () => {
-        try {
-          const result = await api.get("/api/auth/me");
-          return result;
-        } catch (error) {
-          console.log(error);
+export const useCurrentUser = () => {
+  const dispatch = useDispatch<AppDispatch>();
+
+  useEffect(() => {
+    const fetchCurrentUser = async (dispatch: AppDispatch) => {
+      dispatch(setLoading(true));
+
+      try {
+        const res = await api.get("/api/auth/me");
+
+        dispatch(setUserData(res.data.data));
+      } catch (err: any) {
+        dispatch(clearUser());
+
+        if (err.response?.status === 401) {
+          window.location.replace("/authUser");
+          return;
         }
-      };
-      fetchUser();
-    }, []);
-  } catch (error) {
-    console.log(error);
-  }
+      }
+    };
+
+    fetchCurrentUser(dispatch);
+  }, [dispatch]);
 };

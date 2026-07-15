@@ -10,8 +10,10 @@ import { googleLogin, signup } from '@/services/auth.service';
 import {
   GoogleLogin,
 } from "@react-oauth/google";
-import { useAuth } from "@/context/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/store/store";
+import { clearUser, setUserData } from "@/store/userSlice";
 
 export default function SignUpPage() {
   const { showToast } = useToast();
@@ -23,14 +25,14 @@ export default function SignUpPage() {
     password: '',
     confirmPassword: ''
   });
-  const { refetchUser } = useAuth();
-  const queryClient = useQueryClient();
-  
+
   // Structural Toggles
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [agreeTerms, setAgreeTerms] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const dispatch = useDispatch<AppDispatch>()
 
   // Unified Input Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,18 +67,17 @@ export default function SignUpPage() {
     try {
       setIsLoading(true);
 
-      await signup({
+      const result = await signup({
         fullName: formData.name,
         email: formData.email,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
       });
-
+      // dispatch(setUserData(result.data))
       showToast(
         "Registration initialized successfully!",
         "success"
       );
-
       router.push(
         `/authUser/userAuth/verify-otp?email=${encodeURIComponent(
           formData.email
@@ -88,6 +89,7 @@ export default function SignUpPage() {
         "Registration failed.",
         "error"
       );
+      dispatch(clearUser())
     } finally {
       setIsLoading(false);
     }
@@ -266,12 +268,7 @@ export default function SignUpPage() {
                     const response = await googleLogin(
                       credentialResponse.credential
                     );
-
-                    // Immediately update auth state cache
-                    queryClient.setQueryData(
-                      ["current-user"],
-                      response
-                    );
+                    dispatch(setUserData(response.data))
 
                     router.replace("/");
                   }}

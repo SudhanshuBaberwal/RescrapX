@@ -4,6 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { verifyOTP } from '@/services/auth.service';
 import { useSearchParams } from 'next/navigation';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
+import { setUserData } from '@/store/userSlice';
 
 export default function VerifyOTP() {
     const { showToast } = useToast();
@@ -20,6 +23,8 @@ export default function VerifyOTP() {
         }, 1000);
         return () => clearInterval(interval);
     }, []);
+
+    const dispatch = useDispatch<AppDispatch>()
 
     const searchParams = useSearchParams();
 
@@ -67,11 +72,11 @@ export default function VerifyOTP() {
 
             setIsLoading(true);
 
-            await verifyOTP({
+            const result = await verifyOTP({
                 email,
                 otp: fullOtp, // ✅ Send string instead of array
             });
-
+            dispatch(setUserData(result.data))
             showToast(
                 "Identity verification successful. Session authenticated.",
                 "success",

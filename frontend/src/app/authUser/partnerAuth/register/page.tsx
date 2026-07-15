@@ -1,13 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
-  Building2, ShieldCheck, Scale, TrendingUp, UploadCloud, 
-  ChevronDown, Headphones
+  Building2, ShieldCheck, Scale, TrendingUp, ChevronDown, Headphones
 } from 'lucide-react';
 
 export default function SignUpPartnerPortal() {
-
   const complianceFeatures = [
     { label: 'Government Authorized RVSF Platform', icon: Building2 },
     { label: '100% Legal & Compliant Process', icon: Scale },
@@ -26,7 +24,7 @@ export default function SignUpPartnerPortal() {
     <div className="min-h-screen bg-white flex w-full text-sm text-gray-700 font-medium antialiased">
       <div className="w-full flex flex-col lg:flex-row items-stretch">
         
-        {/* LEFT COLUMN: BRAND MARKETING SIDEBAR (Fluid Width) */}
+        {/* LEFT COLUMN: BRAND MARKETING SIDEBAR */}
         <div className="w-full lg:w-[30%] xl:w-[25%] bg-gradient-to-b from-gray-50 to-gray-100 p-8 sm:p-12 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-gray-200 shrink-0">
           <div className="space-y-8">
             <div className="space-y-1">
@@ -69,7 +67,7 @@ export default function SignUpPartnerPortal() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: DETAILED STEPPED SHEET SIGN UP CONFIGURATION (Spans remainder of window) */}
+        {/* RIGHT COLUMN: DETAILED STEPPED SHEET SIGN UP CONFIGURATION */}
         <div className="flex-1 p-6 sm:p-12 md:p-16 flex flex-col justify-between space-y-12 bg-white">
           <div className="text-right hidden sm:block self-end">
             <span className="text-xs font-black text-gray-900 block tracking-tight uppercase">India's Digital Platform</span>
@@ -90,27 +88,27 @@ export default function SignUpPartnerPortal() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Name <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Enter company name" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="text" placeholder="Enter company name" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">GST Number <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Enter GST number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="text" placeholder="Enter GST number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">PAN Number <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Enter PAN number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="text" placeholder="Enter PAN number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Registration Number <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Enter registration number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="text" placeholder="Enter registration number" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Registered Address <span className="text-red-500">*</span></label>
-                    <textarea rows={2.5} placeholder="Enter complete registered address" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 resize-none shadow-2xs" />
+                    <textarea rows={2.5} placeholder="Enter complete registered address" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 resize-none shadow-2xs" required />
                   </div>
                 </div>
               </div>
@@ -121,69 +119,29 @@ export default function SignUpPartnerPortal() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Authorized Person Name <span className="text-red-500">*</span></label>
-                    <input type="text" placeholder="Enter authorized person name" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="text" placeholder="Enter authorized person name" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Email Address <span className="text-red-500">*</span></label>
-                    <input type="email" placeholder="Enter email address" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" />
+                    <input type="email" placeholder="Enter email address" className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden focus:ring-2 focus:ring-emerald-700 shadow-2xs" required />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Phone Number <span className="text-red-500">*</span></label>
                     <div className="flex rounded-xl overflow-hidden border border-gray-200 bg-gray-50/50 shadow-2xs focus-within:ring-2 focus-within:ring-emerald-700">
                       <div className="px-4 bg-gray-100 border-r border-gray-200 text-gray-700 font-black flex items-center gap-1 text-sm">
                         <span>+91</span>
                         <ChevronDown size={14} className="text-gray-400" />
                       </div>
-                      <input type="tel" placeholder="Enter phone number" className="w-full bg-transparent px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden" />
+                      <input type="tel" placeholder="Enter phone number" className="w-full bg-transparent px-4 py-2.5 text-base text-gray-900 font-bold focus:outline-hidden" required />
                     </div>
                   </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Authorized Signatory ID Proof <span className="text-red-500">*</span></label>
-                    <div className="border border-dashed border-gray-300 rounded-xl p-4 bg-gray-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
-                      <div className="flex items-start gap-3">
-                        <UploadCloud size={22} className="text-gray-400 mt-0.5 shrink-0" />
-                        <div className="space-y-0.5">
-                          <span className="font-bold text-sm text-gray-700 block">Upload ID Proof Document</span>
-                          <span className="text-xs text-gray-400 block font-semibold">(Aadhaar Card, PAN Card, Voter ID, or Driving License)</span>
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-400 font-bold shrink-0 bg-white px-3 py-1 border border-gray-100 rounded-lg">Max. 5MB (JPG, PNG, PDF)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* CATEGORY 3: MANDATORY LEGAL COMPLIANCE DOCUMENTS FILE BOXES */}
-              <div className="space-y-4">
-                <h4 className="font-black text-[#0B5B32] text-xs border-b border-gray-200 pb-2 uppercase tracking-widest">3. RVSF Documents (Upload)</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    { label: 'RVSF Authorization Certificate' },
-                    { label: 'GST Certificate' },
-                    { label: 'PAN Card' },
-                    { label: 'Company Registration Certificate' },
-                    { label: 'Bank Account Details', extra: '(Cancelled Cheque / Bank Statement)' },
-                  ].map((doc, idx) => (
-                    <div key={idx} className="border border-gray-200 bg-gray-50/20 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-2xs">
-                      <div className="space-y-1 min-w-0">
-                        <label className="text-sm text-gray-800 font-black block truncate">{doc.label} <span className="text-red-500">*</span></label>
-                        {doc.extra && <span className="text-xs text-gray-400 block font-semibold leading-none">{doc.extra}</span>}
-                      </div>
-                      <button type="button" className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs cursor-pointer w-full mt-2 transition-all">
-                        <UploadCloud size={14} className="text-gray-400" />
-                        <span>Upload File</span>
-                      </button>
-                      <span className="text-[10px] text-gray-400 font-semibold block text-center pt-1 border-t border-gray-100">PDF, JPG, PNG — Max. 5MB</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5 pt-2">
-                <input type="checkbox" id="signup-consent" className="mt-0.5 rounded-sm border-gray-300 text-emerald-700 focus:ring-emerald-700 h-4 w-4 cursor-pointer" />
+                <input type="checkbox" id="signup-consent" className="mt-0.5 rounded-sm border-gray-300 text-emerald-700 focus:ring-emerald-700 h-4 w-4 cursor-pointer" required />
                 <label htmlFor="signup-consent" className="text-xs text-gray-500 font-bold leading-relaxed select-none cursor-pointer">
                   I confirm that all the information provided above is true and correct under standard authorized RVSF compliance declarations.
                 </label>
