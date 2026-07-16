@@ -31,8 +31,17 @@ class AuthRepository {
     });
   }
 
-  async createPartner(data: Partial<IUser>) {
-    return await User.create(data);
+  async updatePartner(userId: string, data: Partial<IUser>) {
+    return User.findByIdAndUpdate(
+      userId,
+      {
+        $set: data,
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
   }
 
   async findByIdAndUpdate(userId: string, data: Partial<IUser>) {
@@ -43,10 +52,10 @@ class AuthRepository {
   }
 
   async findAdmin() {
-  return User.findOne({
-    role: UserRole.ADMIN,
-  });
-}
+    return User.findOne({
+      role: UserRole.ADMIN,
+    });
+  }
 }
 
 export default new AuthRepository();

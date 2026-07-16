@@ -13,7 +13,7 @@ export const partnerRegister = async (data: {
 }) => {
   try {
     const result = await api.post("/api/auth/partner/signup",data);
-    // console.log(data)
+    return result;
   } catch (error) {
     console.log(error);
   }

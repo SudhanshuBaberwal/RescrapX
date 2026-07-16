@@ -8,6 +8,9 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import api from '@/utils/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
+import { setUserData } from '@/store/userSlice';
 
 // Define expected document structures
 interface UploadedFileState {
@@ -20,6 +23,8 @@ export default function PartnerDocumentsPage() {
   const { showToast } = useToast()
   const router = useRouter();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const dispatch = useDispatch<AppDispatch>()
+  const { userData } = useSelector((state: RootState) => state.user)
 
   // Document states matching form input keys
   const [documents, setDocuments] = useState<Record<string, UploadedFileState>>({
@@ -134,9 +139,17 @@ export default function PartnerDocumentsPage() {
           },
         }
       );
+      dispatch(
+        setUserData({
+          ...userData,
+          partnerStatus: "UNDER_REVIEW",
+          partnerNextStep: "WAIT_APPROVAL",
+        })
+      );
 
+      router.replace("/partner/waiting-approval");
       showToast('RVSF Verification Documents Submitted Successfully!', 'success');
-      router.push('/');
+
     } catch (err: any) {
       console.error(err);
       showToast(

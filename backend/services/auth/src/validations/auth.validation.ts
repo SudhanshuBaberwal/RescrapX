@@ -73,7 +73,6 @@ export const googleLoginSchema = z.object({
 });
 
 export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
-
 export type ResendVerificationDto = z.infer<typeof resendVerificationSchema>;
 export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;

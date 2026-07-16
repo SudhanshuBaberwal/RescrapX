@@ -8,8 +8,8 @@ import axios from 'axios'; // Ensure axios is installed or replace with your pre
 import { getCurrentUser, setRole } from '@/services/auth.service';
 import { setUserData } from '@/store/userSlice';
 import { getPartnerStatus } from '@/services/partner.service';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
 
 function GatewayContent() {
     const { showToast } = useToast();
@@ -18,7 +18,7 @@ function GatewayContent() {
     const dispatch = useDispatch<AppDispatch>()
     // Context variables configuration
     const email = searchParams.get("email") || "";
-
+    const {userData} = useSelector((state:RootState) => state.user)
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
 
@@ -52,9 +52,15 @@ function GatewayContent() {
     // Backend Role Setting API Handler
     const updateRoleInBackend = async (role: string) => {
         try {
-            const data = await setRole({ role })
-            console.log(data)
-            return data;
+            const result = await setRole({ role })
+            //  dispatch(
+            //         setUserData({
+            //           ...userData,
+            //           partnerStatus: "PENDING",
+            //           partnerNextStep: "UPLOAD_DOCUMENTS",
+            //         })
+            //       );
+            return result;
         } catch (error: any) {
             console.error("Backend Role Provisioning Failed:", error);
             showToast(
@@ -71,52 +77,43 @@ function GatewayContent() {
                 showToast("Please select an identity layer to initialize provisioning.", "warning");
                 return;
             }
-    
+
             const activeRole = roles.find(r => r.id === selectedRole);
             if (activeRole) {
                 setIsNavigating(true);
                 showToast(`Provisioning workspace for ${activeRole.title}...`, "success", 2000);
-    
+
                 // Invoke backend system API to set state/role profile
-                const data = await updateRoleInBackend(activeRole.id.toUpperCase());
-                if (!data) return;
-    
-                // Fetch updated user after role change
-                const user = await getCurrentUser();
-                dispatch(setUserData(user.data));
-    
-                // Partner specific flow
-                if (user.data.role === "PARTNER") {
-                    const status = await getPartnerStatus();
-    
-                    switch (status.nextStep) {
-                        case "UPLOAD_DOCUMENTS":
-                            router.replace("/partner/verify-documents");
-                            break;
-    
-                        case "WAIT_APPROVAL":
-                            router.replace("/partner/waiting-approval");
-                            break;
-    
-                        case "DASHBOARD":
-                            router.replace("/");
-                            break;
-    
-                        case "REUPLOAD_DOCUMENTS":
-                            router.replace("/partner/verify-documents");
-                            break;
-                    }
-                } else {
-                    router.replace("/");
+                const result = await updateRoleInBackend(activeRole.id.toUpperCase());
+
+                if (!result) {
+                    setIsNavigating(false);
+                    return;
                 }
-    
-                setTimeout(() => {
-                    if (activeRole.id === 'partner' && email) {
-                        router.push(`${activeRole.route}?email=${encodeURIComponent(email)}`);
-                    } else {
-                        router.push(activeRole.route);
-                    }
-                }, 800);
+
+                dispatch(setUserData(result.data));
+
+                switch (activeRole.id) {
+                    case "partner":
+                        router.replace("/partner/register");
+                        break;
+
+                    case "admin":
+                        router.replace("/admin");
+                        break;
+
+                    default:
+                        router.replace("/reject-approval");
+                        break;
+                }
+
+                // setTimeout(() => {
+                //     if (activeRole.id === 'partner' && email) {
+                //         router.push(`${activeRole.route}?email=${encodeURIComponent(email)}`);
+                //     } else {
+                //         router.push(activeRole.route);
+                //     }
+                // }, 800);
             }
         } catch (error) {
             console.log(error)

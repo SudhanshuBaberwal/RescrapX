@@ -3,18 +3,6 @@ import ApiError from "../lib/ApiError.js";
 
 export const partnerSignupSchema = z
   .object({
-    fullName: z
-      .string()
-      .trim()
-      .min(3, "Full name must be at least 3 characters")
-      .max(50, "Full name cannot exceed 50 characters"),
-
-    email: z.string().trim().email("Invalid email address"),
-
-    password: z.string().min(8, "Password must be at least 8 characters"),
-
-    confirmPassword: z.string(),
-
     phoneNumber: z
       .string()
       .trim()
@@ -48,11 +36,6 @@ export const partnerSignupSchema = z
 
     pincode: z.string().trim().length(6, "Pincode must be exactly 6 digits"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    path: ["confirmPassword"],
-    message: "Passwords do not match",
-  });
-
 export type PartnerSignupDto = z.infer<typeof partnerSignupSchema>;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

@@ -136,7 +136,7 @@ export const googleLoginController = asyncHandler(
 );
 
 export const partnerSignupController = asyncHandler(async (req, res) => {
-  const result = await authService.partnerSignup(req.body);
+  const result = await authService.partnerSignup(req.body, req.user.id);
 
   return ApiResponse.success(
     res,

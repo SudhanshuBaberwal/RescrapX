@@ -79,6 +79,7 @@ authrouter.patch("/set-role", protect, validate(roleSchema), setRoleController);
 
 authrouter.post(
   "/partner/signup",
+  protect,
   validate(partnerSignupSchema),
   partnerSignupController,
 );

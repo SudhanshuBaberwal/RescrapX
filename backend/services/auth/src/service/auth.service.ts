@@ -14,7 +14,7 @@ import {
   SignupDto,
   VerifyOtpDto,
 } from "../validations/auth.validation.js";
-import User, { IUser, PartnerStatus, UserRole } from "../models/user.model.js";
+import User, { IUser, PartnerNextStep, PartnerStatus, UserRole } from "../models/user.model.js";
 import notificationClient from "../clients/notification.client.js";
 // import googleClient from "../providers/google.js";
 import { GoogleLoginDto } from "../validations/auth.validation.js";
@@ -453,37 +453,16 @@ class AuthService {
     return this.createAuthSession(user);
   }
 
-  async partnerSignup(data: PartnerSignupDto) {
-    const email = data.email.trim().toLowerCase();
-
-    const existingUser = await authRepository.findByEmail(email);
+  async partnerSignup(data: PartnerSignupDto, usreId: string) {
+    const existingUser = await authRepository.findById(usreId);
 
     if (existingUser) {
       throw new ApiError(409, "User already exists");
     }
-
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    await notificationClient.post("/email/verification", {
-      email,
-      fullName: data.fullName,
-      otp,
-    });
-
-    const user = await authRepository.createPartner({
-      fullName: data.fullName,
-      email,
-
-      password: hashedPassword,
-
+    const user = await authRepository.updatePartner(usreId,{
       phoneNumber: data.phoneNumber,
-
-      role: UserRole.PARTNER,
-
-      partnerStatus: PartnerStatus.PENDING,
-
+      partnerStatus: PartnerStatus.UNDER_REVIEW,
+      partnerNextStep:PartnerNextStep.UPLOAD_DOCUMENTS,
       company: {
         companyName: data.companyName,
         gstNumber: data.gstNumber,
@@ -494,15 +473,8 @@ class AuthService {
         state: data.state,
         pincode: data.pincode,
       },
-
-      verificationToken: otp,
-
-      verificationTokenExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
-
-    authRepository.save(user);
-
-    return user.toObject();
+    return user;
   }
 
   async setRole(userId: string, data: RoleDto) {

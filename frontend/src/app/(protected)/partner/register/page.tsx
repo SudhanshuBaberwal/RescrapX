@@ -7,11 +7,17 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { partnerRegister } from '@/services/partner.service';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
+import { setUserData } from '@/store/userSlice';
+import { getCurrentUser } from '@/services/auth.service';
 
 export default function SignUpPartnerPortal() {
   const router = useRouter();
   const { showToast } = useToast();
-  
+
+  const { userData } = useSelector((state: RootState) => state.user)
+  const dispatch = useDispatch<AppDispatch>()
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Aligned form states (Excluding basic user signup fields)
@@ -47,7 +53,7 @@ export default function SignUpPartnerPortal() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
+
     // Clear error on change
     if (errors[name]) {
       setErrors(prev => {
@@ -114,13 +120,14 @@ export default function SignUpPartnerPortal() {
         state: formData.state,
         pincode: formData.pincode,
       };
-
-      await partnerRegister(payload);
-
-      showToast('Profile registered! Redirecting to upload verification documents...', 'success');
-      
-      // Navigate to documents upload flow
-      router.push('/partner/verify-documents');
+      const result = await partnerRegister(payload);
+      console.log(result)
+      dispatch(setUserData(result?.data));
+      showToast(
+        "Profile registered successfully",
+        "success"
+      );
+      router.replace("/partner/verify-documents");
     } catch (err: any) {
       console.error(err);
       showToast(
@@ -198,7 +205,7 @@ export default function SignUpPartnerPortal() {
               <div className="space-y-4">
                 <h4 className="font-black text-[#0B5B32] text-xs border-b border-gray-150 pb-2.5 uppercase tracking-widest">1. Contact Verification</h4>
                 <div className="grid grid-cols-1 gap-4">
-                  
+
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Phone Number <span className="text-red-500">*</span></label>
                     <div className={`flex rounded-xl overflow-hidden border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} bg-gray-50/50 shadow-3xs focus-within:ring-2 focus-within:ring-emerald-700/20 focus-within:border-emerald-700 transition-all`}>
@@ -206,14 +213,14 @@ export default function SignUpPartnerPortal() {
                         <span>+91</span>
                         <ChevronDown size={14} className="text-gray-400" />
                       </div>
-                      <input 
-                        type="tel" 
+                      <input
+                        type="tel"
                         name="phoneNumber"
                         value={formData.phoneNumber}
                         onChange={handleChange}
-                        placeholder="Enter 10-digit phone number" 
-                        className="w-full bg-transparent px-4 py-3 text-base text-gray-900 font-bold focus:outline-none" 
-                        required 
+                        placeholder="Enter 10-digit phone number"
+                        className="w-full bg-transparent px-4 py-3 text-base text-gray-900 font-bold focus:outline-none"
+                        required
                       />
                     </div>
                     {errors.phoneNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.phoneNumber}</p>}
@@ -226,118 +233,118 @@ export default function SignUpPartnerPortal() {
               <div className="space-y-5">
                 <h4 className="font-black text-[#0B5B32] text-xs border-b border-gray-150 pb-2.5 uppercase tracking-widest">2. RVSF / Company Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                  
+
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Name <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="companyName"
                       value={formData.companyName}
                       onChange={handleChange}
-                      placeholder="Enter company legal name" 
+                      placeholder="Enter company legal name"
                       className={`w-full bg-gray-50/50 border ${errors.companyName ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.companyName && <p className="text-xs text-red-500 font-bold mt-1">{errors.companyName}</p>}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">GST Number <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="gstNumber"
                       value={formData.gstNumber}
                       onChange={handleChange}
                       maxLength={15}
-                      placeholder="15-character GSTIN" 
+                      placeholder="15-character GSTIN"
                       className={`w-full bg-gray-50/50 border ${errors.gstNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs uppercase`}
-                      required 
+                      required
                     />
                     {errors.gstNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.gstNumber}</p>}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">PAN Number <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="panNumber"
                       value={formData.panNumber}
                       onChange={handleChange}
                       maxLength={10}
-                      placeholder="10-character PAN" 
+                      placeholder="10-character PAN"
                       className={`w-full bg-gray-50/50 border ${errors.panNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs uppercase`}
-                      required 
+                      required
                     />
                     {errors.panNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.panNumber}</p>}
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Registration Number <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="registrationNumber"
                       value={formData.registrationNumber}
                       onChange={handleChange}
-                      placeholder="Enter registration or CIN number" 
+                      placeholder="Enter registration or CIN number"
                       className={`w-full bg-gray-50/50 border ${errors.registrationNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.registrationNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.registrationNumber}</p>}
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Registered Address <span className="text-red-500">*</span></label>
-                    <textarea 
-                      rows={3} 
+                    <textarea
+                      rows={3}
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
-                      placeholder="Enter office / RVSF site address" 
+                      placeholder="Enter office / RVSF site address"
                       className={`w-full bg-gray-50/50 border ${errors.address ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 resize-none transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.address && <p className="text-xs text-red-500 font-bold mt-1">{errors.address}</p>}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">City <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="city"
                       value={formData.city}
                       onChange={handleChange}
-                      placeholder="Enter City" 
+                      placeholder="Enter City"
                       className={`w-full bg-gray-50/50 border ${errors.city ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.city && <p className="text-xs text-red-500 font-bold mt-1">{errors.city}</p>}
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">State <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="state"
                       value={formData.state}
                       onChange={handleChange}
-                      placeholder="Enter State" 
+                      placeholder="Enter State"
                       className={`w-full bg-gray-50/50 border ${errors.state ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.state && <p className="text-xs text-red-500 font-bold mt-1">{errors.state}</p>}
                   </div>
 
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Pincode <span className="text-red-500">*</span></label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       name="pincode"
                       value={formData.pincode}
                       onChange={handleChange}
                       maxLength={6}
-                      placeholder="6-digit postal code" 
+                      placeholder="6-digit postal code"
                       className={`w-full bg-gray-50/50 border ${errors.pincode ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required 
+                      required
                     />
                     {errors.pincode && <p className="text-xs text-red-500 font-bold mt-1">{errors.pincode}</p>}
                   </div>
@@ -347,14 +354,14 @@ export default function SignUpPartnerPortal() {
 
               {/* Consent and Action Buttons */}
               <div className="flex items-start gap-3 pt-2">
-                <input 
-                  type="checkbox" 
-                  id="signup-consent" 
+                <input
+                  type="checkbox"
+                  id="signup-consent"
                   name="consent"
                   checked={formData.consent}
                   onChange={handleChange}
-                  className="mt-1 rounded-sm border-gray-300 text-emerald-700 focus:ring-emerald-700 h-4 w-4 cursor-pointer" 
-                  required 
+                  className="mt-1 rounded-sm border-gray-300 text-emerald-700 focus:ring-emerald-700 h-4 w-4 cursor-pointer"
+                  required
                 />
                 <label htmlFor="signup-consent" className="text-xs text-gray-500 font-bold leading-relaxed select-none cursor-pointer">
                   I confirm that all the information provided above is true and correct under standard authorized RVSF compliance declarations.
@@ -362,8 +369,8 @@ export default function SignUpPartnerPortal() {
               </div>
 
               <div className="space-y-4 pt-2">
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isLoading}
                   className="w-full bg-[#0B5B32] hover:bg-[#073d21] text-white font-black py-4 rounded-xl shadow-xs transition-all text-center text-sm uppercase tracking-wide cursor-pointer disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >

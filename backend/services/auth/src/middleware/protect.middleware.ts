@@ -6,19 +6,13 @@ import ApiError from "../lib/ApiError.js";
 import { UserRole } from "../models/user.model.js";
 import { AuthRequest } from "../types/auth-request.js";
 const protect = (req: AuthRequest, _res: Response, next: NextFunction) => {
-  console.log("==================================");
-  console.log("URL:", req.method, req.originalUrl);
-  console.log("Cookies:", req.cookies);
 
   try {
     const token = req.cookies?.accessToken;
 
     if (!token) {
-      console.log("❌ No Access Token");
       return next(new ApiError(401, "Unauthorized"));
     }
-
-    console.log("✅ Access Token Found");
 
     const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload & {
       userId: string;
