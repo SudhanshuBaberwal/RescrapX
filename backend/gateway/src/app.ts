@@ -15,7 +15,19 @@ app.use(
   })
 );
 
-app.use("/api/auth", proxy(env.AUTH_SERVICE_URL));
+app.use(
+  "/api/auth",
+  proxy(env.AUTH_SERVICE_URL, {
+    parseReqBody: false,
+  })
+);
+
+app.use(
+  "/api/notification",
+  proxy(env.NOTIFICATION_SERVICE_URL, {
+    parseReqBody: false,
+  })
+);
 app.use("/api/notification", proxy(env.NOTIFICATION_SERVICE_URL));
 
 export default app;

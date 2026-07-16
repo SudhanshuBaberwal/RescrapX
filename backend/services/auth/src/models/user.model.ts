@@ -26,6 +26,7 @@ export interface IUser extends Document {
   avatar: string;
 
   role: UserRole;
+  roleSelected: boolean;
   provider: AuthProvider;
 
   googleId?: string;
@@ -64,7 +65,6 @@ export interface IUser extends Document {
     registrationCertificate: string;
     bankDetails: string;
     rvsfCertificate: string;
-
     uploadedAt?: Date;
   };
 
@@ -88,7 +88,6 @@ const companySchema = new Schema(
       type: String,
       trim: true,
     },
-
     pincode: {
       type: String,
       trim: true,
@@ -160,6 +159,11 @@ const userSchema = new Schema<IUser>(
       default: null,
       minlength: 8,
       select: false,
+    },
+
+    roleSelected: {
+      type: Boolean,
+      default: false,
     },
 
     avatar: {

@@ -10,7 +10,6 @@ import { googleLogin, signup } from '@/services/auth.service';
 import {
   GoogleLogin,
 } from "@react-oauth/google";
-import { useQueryClient } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import { clearUser, setUserData } from "@/store/userSlice";
@@ -79,7 +78,7 @@ export default function SignUpPage() {
         "success"
       );
       router.push(
-        `/authUser/userAuth/verify-otp?email=${encodeURIComponent(
+        `/verify-otp?email=${encodeURIComponent(
           formData.email
         )}`
       );
@@ -284,7 +283,7 @@ export default function SignUpPage() {
           {/* Core redirection linking */}
           <div className="text-center mt-6 text-sm text-gray-500 font-medium">
             Already registered an account?{' '}
-            <a href="/authUser/userAuth/login" className="text-[#10B981] font-extrabold hover:underline">
+            <a href="/login" className="text-[#10B981] font-extrabold hover:underline">
               Login here
             </a>
           </div>

@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  UploadCloud, FileText, CheckCircle2, AlertCircle, 
-  ArrowLeft, ArrowRight, Loader2, Trash2 
+import {
+  UploadCloud, FileText, CheckCircle2,
+  ArrowLeft, ArrowRight, Loader2, Trash2
 } from 'lucide-react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
+import api from '@/utils/api';
 
 // Define expected document structures
 interface UploadedFileState {
@@ -16,11 +17,11 @@ interface UploadedFileState {
 }
 
 export default function PartnerDocumentsPage() {
-  const { showToast } = useToast();
+  const { showToast } = useToast()
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Document states
+  // Document states matching form input keys
   const [documents, setDocuments] = useState<Record<string, UploadedFileState>>({
     rvsf_auth: { file: null, status: 'idle', progress: 0 },
     gst_cert: { file: null, status: 'idle', progress: 0 },
@@ -37,7 +38,7 @@ export default function PartnerDocumentsPage() {
     { key: 'bank_details', label: 'Bank Account Details', extra: 'Cancelled Cheque / Bank Statement' },
   ];
 
-  // Dummy progressive uploader for simulation
+  // Progressive uploader simulation
   const simulateUpload = (key: string, file: File) => {
     setDocuments((prev) => ({
       ...prev,
@@ -60,7 +61,7 @@ export default function PartnerDocumentsPage() {
           [key]: { ...prev[key], progress },
         }));
       }
-    }, 200);
+    }, 150);
   };
 
   const handleFileChange = (key: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,7 +72,7 @@ export default function PartnerDocumentsPage() {
     const maxSizeBytes = 5 * 1024 * 1024; // 5MB
 
     // Format & Size validation
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
       showToast('Only PDF, JPG, and PNG formats are accepted.', 'error');
       return;
@@ -93,12 +94,13 @@ export default function PartnerDocumentsPage() {
     showToast('Document removed.', 'info');
   };
 
+  // Unified Form Data Submission Logic
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check if all files are uploaded successfully
+    // Verify if all required elements are active
     const missingDocs = requiredDocuments.filter(
-      (doc) => documents[doc.key].status !== 'success'
+      (doc) => documents[doc.key].status !== 'success' || !documents[doc.key].file
     );
 
     if (missingDocs.length > 0) {
@@ -111,29 +113,52 @@ export default function PartnerDocumentsPage() {
 
     try {
       setIsLoading(true);
-      // Perfect place to append your Form Data submission payload
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulating api processing loop
+
+      // Instantiating standard dynamic multipart wrapper
+      const formData = new FormData();
+
+      // Appending all the backend required file objects
+      formData.append("rvsfCertificate", documents.rvsf_auth.file as File);
+      formData.append("gstCertificate", documents.gst_cert.file as File);
+      formData.append("panCard", documents.pan_card.file as File);
+      formData.append("registrationCertificate", documents.company_reg.file as File);
+      formData.append("bankDetails", documents.bank_details.file as File);
+
+      // API Pipeline call
+      await api.post(
+        "/api/auth/partner/upload-documents",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
       showToast('RVSF Verification Documents Submitted Successfully!', 'success');
-      router.push('/dashboard');
-    } catch (err) {
-      showToast('Something went wrong. Please try again.', 'error');
+      router.push('/');
+    } catch (err: any) {
+      console.error(err);
+      showToast(
+        err?.response?.data?.message ||
+        'Document submission pipeline failed. Please check files and try again.',
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const [isLoading, setIsLoading] = useState(false);
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-between p-4 md:p-8 font-sans text-gray-800">
-      
+
       {/* Header Container */}
       <div className="w-full max-w-5xl mx-auto my-auto bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-10 md:p-12 space-y-8">
-        
+
         {/* Navigation & Header Info */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-6">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => router.back()}
             className="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-gray-800 transition-colors"
           >
@@ -165,15 +190,14 @@ export default function PartnerDocumentsPage() {
             {requiredDocuments.map((doc) => {
               const currentDoc = documents[doc.key];
               return (
-                <div 
-                  key={doc.key} 
-                  className={`border rounded-2xl p-5 transition-all flex flex-col justify-between min-h-[170px] ${
-                    currentDoc.status === 'success' 
-                      ? 'border-emerald-200 bg-emerald-50/10' 
-                      : currentDoc.status === 'error'
+                <div
+                  key={doc.key}
+                  className={`border rounded-2xl p-5 transition-all flex flex-col justify-between min-h-[170px] ${currentDoc.status === 'success'
+                    ? 'border-emerald-200 bg-emerald-50/10'
+                    : currentDoc.status === 'error'
                       ? 'border-red-200 bg-red-50/10'
                       : 'border-gray-200 bg-gray-50/30'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
@@ -189,9 +213,9 @@ export default function PartnerDocumentsPage() {
                       <label className="bg-white border border-gray-200 hover:border-emerald-600 hover:bg-emerald-50/10 text-gray-700 font-black py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-2xs cursor-pointer transition-all w-full">
                         <UploadCloud size={16} className="text-gray-400" />
                         <span>Choose and Upload Document</span>
-                        <input 
-                          type="file" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          className="hidden"
                           accept=".pdf, .jpg, .jpeg, .png"
                           onChange={(e) => handleFileChange(doc.key, e)}
                         />
@@ -209,8 +233,8 @@ export default function PartnerDocumentsPage() {
                         <span>{currentDoc.progress}%</span>
                       </div>
                       <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div 
-                          className="bg-emerald-600 h-full transition-all duration-150" 
+                        <div
+                          className="bg-emerald-600 h-full transition-all duration-150"
                           style={{ width: `${currentDoc.progress}%` }}
                         />
                       </div>
@@ -226,7 +250,7 @@ export default function PartnerDocumentsPage() {
                           <span className="text-[10px] text-emerald-600 font-bold block">Securely Stored</span>
                         </div>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => handleDeleteFile(doc.key)}
                         className="text-gray-400 hover:text-red-600 p-1 rounded-lg transition-colors"

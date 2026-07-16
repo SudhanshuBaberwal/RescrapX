@@ -1,4 +1,5 @@
 import { email, z } from "zod";
+import { UserRole } from "../models/user.model.js";
 
 export const signupSchema = z
   .object({
@@ -23,6 +24,11 @@ export const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(8).max(50),
 });
+
+export const roleSchema = z.object({
+  role: z.nativeEnum(UserRole),
+});
+
 
 export const VerifyOtpSchema = z.object({
   email: z.email(),
@@ -75,3 +81,4 @@ export type VerifyOtpDto = z.infer<typeof VerifyOtpSchema>;
 export type SignupDto = z.infer<typeof signupSchema>;
 export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
+export type RoleDto = z.infer<typeof roleSchema>;

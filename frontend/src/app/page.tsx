@@ -30,9 +30,10 @@ export default function Page() {
                 const result = await getCurrentUser();
 
                 dispatch(setUserData(result.data));
+                dispatch(setLoading(false))
             } catch (error) {
                 dispatch(clearUser());
-                router.replace("/authUser");
+                router.replace("/register");
             }
         };
 

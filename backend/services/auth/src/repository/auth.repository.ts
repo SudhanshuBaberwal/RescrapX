@@ -1,4 +1,4 @@
-import User, { IUser } from "../models/user.model.js";
+import User, { IUser, UserRole } from "../models/user.model.js";
 
 class AuthRepository {
   async findByEmail(email: string) {
@@ -34,6 +34,19 @@ class AuthRepository {
   async createPartner(data: Partial<IUser>) {
     return await User.create(data);
   }
+
+  async findByIdAndUpdate(userId: string, data: Partial<IUser>) {
+    return User.findByIdAndUpdate(userId, data, {
+      new: true,
+      runValidators: true,
+    });
+  }
+
+  async findAdmin() {
+  return User.findOne({
+    role: UserRole.ADMIN,
+  });
+}
 }
 
 export default new AuthRepository();

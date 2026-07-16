@@ -12,15 +12,19 @@ const InitUser = () => {
   useEffect(() => {
     console.log("InitUser Mounted");
     const init = async () => {
-      console.log("Calling /me");
+      try {
+        console.log("Calling /me");
 
-      const result = await getCurrentUser();
+        const result = await getCurrentUser();
 
-      console.log(result);
+        console.log(result);
 
-      dispatch(setUserData(result.data));
+        dispatch(setUserData(result.data));
 
-      console.log("Dispatched");
+        console.log("Dispatched");
+      } catch (error) {
+        console.log(error)
+      }
     };
 
     init();

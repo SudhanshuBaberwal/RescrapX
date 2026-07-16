@@ -4,6 +4,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import authrouter from "./routes/auth.route.js";
 import errorHandler from "./middleware/error.middleware.js";
+import partnerRoutes from "./routes/partner.route.js";
 
 const app: Application = express();
 
@@ -14,7 +15,7 @@ app.use(
   cors({
     origin: ["http://localhost:3000"],
     credentials: true,
-  })
+  }),
 );
 app.use(errorHandler);
 app.use(express.json({ limit: "10mb" }));
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(compression());
 app.use("/", authrouter);
+app.use("/partner", partnerRoutes);
 /**
  * Health Check
  */
@@ -34,6 +36,5 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
 
 export default app;

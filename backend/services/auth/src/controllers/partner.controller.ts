@@ -1,0 +1,31 @@
+import { Request, Response } from "express";
+import partnerService from "../service/partner.service.js";
+import ApiResponse from "../lib/ApiResponse.js";
+import asyncHandler from "../lib/asyncHandler.js";
+import { UploadedFiles } from "../validations/partner.validation.js";
+
+class PartnerController {
+  uploadDocuments = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const files = (req as any).files as UploadedFiles;
+
+    const partner = await partnerService.uploadDocuments(
+      userId,
+      files,
+    );
+
+    return ApiResponse.success(
+      res,
+      200,
+      "Documents uploaded successfully. Your account is now under review.",
+      partner,
+    );
+  });
+}
+
+export default new PartnerController();

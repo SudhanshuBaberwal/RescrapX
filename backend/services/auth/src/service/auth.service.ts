@@ -10,6 +10,7 @@ import {
   LoginDto,
   ResendVerificationDto,
   ResetPasswordDto,
+  RoleDto,
   SignupDto,
   VerifyOtpDto,
 } from "../validations/auth.validation.js";
@@ -504,8 +505,53 @@ class AuthService {
     return user.toObject();
   }
 
-  
-  
+  async setRole(userId: string, data: RoleDto) {
+    if (!userId) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (!data?.role) {
+      throw new ApiError(400, "Role is required");
+    }
+
+    const user = await authRepository.findById(userId);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // ✅ Check roleSelected instead of role
+    if (user.roleSelected) {
+      throw new ApiError(
+        400,
+        "Role has already been selected and cannot be changed.",
+      );
+    }
+
+    // Only one admin allowed
+    if (data.role === UserRole.ADMIN) {
+      const existingAdmin = await authRepository.findAdmin();
+
+      if (existingAdmin) {
+        throw new ApiError(400, "Admin account already exists.");
+      }
+    }
+
+    console.log("Incoming Role:", data.role);
+
+    const updatedUser = await authRepository.findByIdAndUpdate(userId, {
+      role: data.role,
+      roleSelected: true,
+    });
+
+    console.log("Updated User:", updatedUser);
+
+    if (!updatedUser) {
+      throw new ApiError(500, "failed to update user");
+    }
+    console.log(updatedUser);
+    return updatedUser;
+  }
 }
 
 export default new AuthService();

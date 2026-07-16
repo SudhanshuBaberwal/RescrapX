@@ -1,8 +1,12 @@
 import api from "@/utils/api";
 
 export const getCurrentUser = async () => {
-  const res = await api.get("/api/auth/me");
-  return res.data;
+  try {
+    const res = await api.get("/api/auth/me");
+    return res.data;
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const logout = async () => {
@@ -46,6 +50,12 @@ export const resetPassword = async (data: {
 };
 
 export const googleLogin = async (token: string) => {
-    const res = await api.post("/api/auth/google", { token });
-    return res.data;
+  const res = await api.post("/api/auth/google", { token });
+  return res.data;
+};
+
+export const setRole = async (data: { role: string }) => {
+  try {
+    const result = await api.patch("/api/auth/set-role", data);
+  } catch (error) {}
 };

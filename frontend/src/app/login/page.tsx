@@ -5,11 +5,7 @@ import { Eye, EyeOff, ArrowRight, ShieldCheck, Mail, Loader2 } from 'lucide-reac
 import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/ui/toast/ToastContext';
-import { useQueryClient } from '@tanstack/react-query';
-import { googleLogin, login } from '@/services/auth.service';
-import { GoogleLogin } from "@react-oauth/google";
-import { useAuth } from "@/context/AuthProvider";
-
+import { login } from '@/services/auth.service';
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { showToast } = useToast();
@@ -18,9 +14,6 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { refetchUser } = useAuth();
-
   // Input Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { type, value } = e.target;
@@ -39,9 +32,6 @@ export default function LoginPage() {
       const result = await login({
         email: formData.email,
         password: formData.password,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ["current-user"],
       });
       setSuccessMessage("Authentication successful! Redirecting...");
       showToast("Welcome back! Authentication successful.", "success");
@@ -214,7 +204,7 @@ export default function LoginPage() {
             {/* Centered Single Google Login Wrapper */}
             <div className="w-full flex justify-center">
               <div className="w-full max-w-sm flex justify-center [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full">
-                <GoogleLogin
+                {/* <GoogleLogin
                   onSuccess={async (credentialResponse) => {
                     if (!credentialResponse.credential) return;
 
@@ -235,7 +225,7 @@ export default function LoginPage() {
                     console.log("Google Login Failed");
                   }}
                   width="100%"
-                />
+                /> */}
               </div>
             </div>
 
@@ -251,7 +241,7 @@ export default function LoginPage() {
           {/* Toggle Redirection */}
           <div className="text-center mt-8 text-sm text-gray-500 font-medium">
             Don't have a secure account?{' '}
-            <a href="/signup" className="text-[#10B981] font-extrabold hover:underline transition">
+            <a href="/register" className="text-[#10B981] font-extrabold hover:underline transition">
               Create Account
             </a>
           </div>

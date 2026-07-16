@@ -11,6 +11,7 @@ import {
   refreshTokenController,
   resendVerificationController,
   resetPasswordController,
+  setRoleController,
   signup,
   verifyOtpController,
 } from "../controllers/auth.controller.js";
@@ -21,6 +22,7 @@ import {
   loginSchema,
   resendVerificationSchema,
   resetPasswordSchema,
+  roleSchema,
   signupSchema,
   VerifyOtpSchema,
 } from "../validations/auth.validation.js";
@@ -73,11 +75,12 @@ authrouter.post("/google", validate(googleLoginSchema), googleLoginController);
 
 authrouter.post("/logout-all", protect, logoutAllController);
 
+authrouter.patch("/set-role", protect, validate(roleSchema), setRoleController);
 
 authrouter.post(
   "/partner/signup",
   validate(partnerSignupSchema),
-  partnerSignupController
+  partnerSignupController,
 );
 
 export default authrouter;

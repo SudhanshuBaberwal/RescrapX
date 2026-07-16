@@ -40,7 +40,7 @@ const protect = (
 
     next();
   } catch (error) {
-    next(new ApiError(401, "Unauthorized"));
+    next(new ApiError(401, `${error}`));
   }
 };
 

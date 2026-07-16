@@ -5,6 +5,7 @@ import authService from "../service/auth.service.js";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/cookies.js";
 import { AuthRequest } from "../types/auth-request.js";
 import ApiError from "../lib/ApiError.js";
+import authRepository from "../repository/auth.repository.js";
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.signup(req.body);
@@ -16,7 +17,11 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 export const verifyOtpController = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await authService.verifyOTP(req.body);
+
+    res.cookie("accessToken", result.accessToken, accessCookieOptions);
+
     res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
+
     return ApiResponse.success(
       res,
       201,
@@ -140,3 +145,10 @@ export const partnerSignupController = asyncHandler(async (req, res) => {
     result,
   );
 });
+export const setRoleController = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const user = await authService.setRole(req.user.id, req.body);
+
+    return ApiResponse.success(res, 200, "Role updated successfully", user);
+  },
+);
