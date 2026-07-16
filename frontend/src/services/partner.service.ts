@@ -13,8 +13,17 @@ export const partnerRegister = async (data: {
 }) => {
   try {
     const result = await api.post("/api/auth/partner/signup",data);
-    console.log(data)
+    // console.log(data)
   } catch (error) {
     console.log(error);
   }
 };
+
+export const getPartnerStatus = async () => {
+  try {
+    const data= await api.get("/api/auth/partner/status")
+    return data.data;
+  } catch (error) {
+    console.log(error)
+  }
+}

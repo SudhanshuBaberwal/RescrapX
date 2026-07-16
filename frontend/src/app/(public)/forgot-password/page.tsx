@@ -25,7 +25,7 @@ export default function ForgotPassword() {
             showToast("Decryption key and recovery link dispatched successfully.", "success", 4000);
         }, 1500);
         router.push(
-            `/authUser/userAuth/reset-password?email=${encodeURIComponent(email)}`
+            `/reset-password?email=${encodeURIComponent(email)}`
         );
     };
 

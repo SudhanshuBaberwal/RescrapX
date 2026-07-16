@@ -170,7 +170,7 @@ export default function LoginPage() {
                   </button>
                 </div>
                 <div className="text-right mt-2">
-                  <a href="/authUser/userAuth/forgot-password" className="text-[#10B981] text-xs font-bold hover:underline tracking-wide">Forgot Password?</a>
+                  <a href="/forgot-password" className="text-[#10B981] text-xs font-bold hover:underline tracking-wide">Forgot Password?</a>
                 </div>
               </div>
 

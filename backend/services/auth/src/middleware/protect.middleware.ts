@@ -5,32 +5,26 @@ import { env } from "../config/env.js";
 import ApiError from "../lib/ApiError.js";
 import { UserRole } from "../models/user.model.js";
 import { AuthRequest } from "../types/auth-request.js";
+const protect = (req: AuthRequest, _res: Response, next: NextFunction) => {
+  console.log("==================================");
+  console.log("URL:", req.method, req.originalUrl);
+  console.log("Cookies:", req.cookies);
 
-const protect = (
-  req: AuthRequest,
-  _res: Response,
-  next: NextFunction
-) => {
   try {
-    // Access token from cookies
     const token = req.cookies?.accessToken;
 
     if (!token) {
-      throw new ApiError(401, "Access token not found");
+      console.log("❌ No Access Token");
+      return next(new ApiError(401, "Unauthorized"));
     }
 
-    const decoded = jwt.verify(
-      token,
-      env.JWT_ACCESS_SECRET
-    ) as JwtPayload & {
+    console.log("✅ Access Token Found");
+
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload & {
       userId: string;
       role: UserRole;
       sessionId: string;
     };
-
-    if (!decoded.userId || !decoded.sessionId) {
-      throw new ApiError(401, "Invalid access token");
-    }
 
     req.user = {
       id: decoded.userId,
@@ -39,9 +33,10 @@ const protect = (
     };
 
     next();
-  } catch (error) {
-    next(new ApiError(401, `${error}`));
+  } catch (err) {
+    console.log("JWT ERROR:", err);
+    next(new ApiError(401, "Unauthorized"));
   }
 };
 
-export default protect;
+export default protect

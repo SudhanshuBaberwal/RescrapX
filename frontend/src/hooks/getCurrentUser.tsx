@@ -21,7 +21,7 @@ export const useCurrentUser = () => {
         dispatch(clearUser());
 
         if (err.response?.status === 401) {
-          window.location.replace("/authUser");
+          window.location.replace("/register");
           return;
         }
       }

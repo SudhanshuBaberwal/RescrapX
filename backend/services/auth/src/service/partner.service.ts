@@ -1,4 +1,10 @@
 import ApiError from "../lib/ApiError.js";
+import {
+  PartnerNextStep,
+  PartnerStatus,
+  UserRole,
+} from "../models/user.model.js";
+import authRepository from "../repository/auth.repository.js";
 import partnerRepository from "../repository/partner.repository.js";
 import { uploadOnCloudinary } from "../utils/uploadOnCloudinary.js";
 import {
@@ -69,6 +75,45 @@ class PartnerService {
     } catch (error) {
       console.log(error);
     }
+  }
+
+  async getPartnertStatus(userId: string) {
+    const user = await authRepository.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (user.role !== UserRole.PARTNER) {
+      throw new ApiError(403, "Only partners can access this resources");
+    }
+
+    let nextStep = "";
+    switch (user.partnerStatus) {
+      case PartnerStatus.PENDING:
+        nextStep = PartnerNextStep.UPLOAD_DOCUMENTS;
+        break;
+
+      case PartnerStatus.UNDER_REVIEW:
+        nextStep = PartnerNextStep.WAIT_APPROVAL;
+        break;
+
+      case PartnerStatus.APPROVED:
+        nextStep = PartnerNextStep.DASHBOARD;
+        break;
+
+      case PartnerStatus.REJECTED:
+        nextStep = PartnerNextStep.REUPLOAD_DOCUMENTS;
+        break;
+
+      default:
+        nextStep = PartnerNextStep.WAIT_APPROVAL;
+    }
+
+    return {
+      role: user.role,
+      partnerStatus: user.partnerStatus,
+      PartnerNextStep: nextStep,
+    };
   }
 }
 

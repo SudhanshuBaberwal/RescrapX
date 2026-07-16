@@ -5,16 +5,20 @@ import { useToast } from '@/lib/ui/toast/ToastContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import axios from 'axios'; // Ensure axios is installed or replace with your preferred fetch wrapper
-import { setRole } from '@/services/auth.service';
+import { getCurrentUser, setRole } from '@/services/auth.service';
+import { setUserData } from '@/store/userSlice';
+import { getPartnerStatus } from '@/services/partner.service';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
 
 function GatewayContent() {
     const { showToast } = useToast();
     const router = useRouter();
     const searchParams = useSearchParams();
-    
+    const dispatch = useDispatch<AppDispatch>()
     // Context variables configuration
     const email = searchParams.get("email") || "";
-    
+
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [isNavigating, setIsNavigating] = useState<boolean>(false);
 
@@ -33,7 +37,7 @@ function GatewayContent() {
             icon: '🛡️',
             badge: 'Authorized Only',
             desc: 'Register your certified recycling facility to stream global biddings and scale high-volume inventory.',
-            route: '/partner/verify-documents' 
+            route: '/partner/verify-documents'
         },
         {
             id: 'admin',
@@ -48,13 +52,13 @@ function GatewayContent() {
     // Backend Role Setting API Handler
     const updateRoleInBackend = async (role: string) => {
         try {
-            // Replace '/api/auth/set-role' with your exact backend dynamic role route
-            await setRole({role})
-            return true;
+            const data = await setRole({ role })
+            console.log(data)
+            return data;
         } catch (error: any) {
             console.error("Backend Role Provisioning Failed:", error);
             showToast(
-                error?.response?.data?.message || "Could not map selected identity profile layer to backend secure context.", 
+                error?.response?.data?.message || "Could not map selected identity profile layer to backend secure context.",
                 "error"
             );
             return false;
@@ -62,31 +66,60 @@ function GatewayContent() {
     };
 
     const handleNavigation = async () => {
-        if (!selectedRole) {
-            showToast("Please select an identity layer to initialize provisioning.", "warning");
-            return;
-        }
-        
-        const activeRole = roles.find(r => r.id === selectedRole);
-        if (activeRole) {
-            setIsNavigating(true);
-            showToast(`Provisioning workspace for ${activeRole.title}...`, "success", 2000);
-            
-            // Invoke backend system API to set state/role profile
-            const isSuccess = await updateRoleInBackend(activeRole.id.toUpperCase());
-            
-            if (!isSuccess) {
-                setIsNavigating(false);
-                return; // Stop flow if API registration breaks
+        try {
+            if (!selectedRole) {
+                showToast("Please select an identity layer to initialize provisioning.", "warning");
+                return;
             }
-
-            setTimeout(() => {
-                if (activeRole.id === 'partner' && email) {
-                    router.push(`${activeRole.route}?email=${encodeURIComponent(email)}`);
+    
+            const activeRole = roles.find(r => r.id === selectedRole);
+            if (activeRole) {
+                setIsNavigating(true);
+                showToast(`Provisioning workspace for ${activeRole.title}...`, "success", 2000);
+    
+                // Invoke backend system API to set state/role profile
+                const data = await updateRoleInBackend(activeRole.id.toUpperCase());
+                if (!data) return;
+    
+                // Fetch updated user after role change
+                const user = await getCurrentUser();
+                dispatch(setUserData(user.data));
+    
+                // Partner specific flow
+                if (user.data.role === "PARTNER") {
+                    const status = await getPartnerStatus();
+    
+                    switch (status.nextStep) {
+                        case "UPLOAD_DOCUMENTS":
+                            router.replace("/partner/verify-documents");
+                            break;
+    
+                        case "WAIT_APPROVAL":
+                            router.replace("/partner/waiting-approval");
+                            break;
+    
+                        case "DASHBOARD":
+                            router.replace("/");
+                            break;
+    
+                        case "REUPLOAD_DOCUMENTS":
+                            router.replace("/partner/verify-documents");
+                            break;
+                    }
                 } else {
-                    router.push(activeRole.route);
+                    router.replace("/");
                 }
-            }, 800);
+    
+                setTimeout(() => {
+                    if (activeRole.id === 'partner' && email) {
+                        router.push(`${activeRole.route}?email=${encodeURIComponent(email)}`);
+                    } else {
+                        router.push(activeRole.route);
+                    }
+                }, 800);
+            }
+        } catch (error) {
+            console.log(error)
         }
     };
 
@@ -108,32 +141,28 @@ function GatewayContent() {
                             disabled={isNavigating}
                             onClick={() => setSelectedRole(role.id)}
                             style={{ transformStyle: 'preserve-3d' }}
-                            className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between space-y-4 relative min-h-[145px] group [perspective:1000px] disabled:opacity-50 disabled:cursor-not-allowed ${
-                                isSelected
-                                    ? 'border-emerald-500/60 bg-emerald-950/25 shadow-[0_0_30px_-5px_rgba(16,185,129,0.25)] -translate-y-1'
-                                    : 'border-white/[0.05] bg-[#111625]/50 hover:border-white/[0.15] hover:bg-[#151b2e]/70 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]'
-                            }`}
+                            className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between space-y-4 relative min-h-[145px] group [perspective:1000px] disabled:opacity-50 disabled:cursor-not-allowed ${isSelected
+                                ? 'border-emerald-500/60 bg-emerald-950/25 shadow-[0_0_30px_-5px_rgba(16,185,129,0.25)] -translate-y-1'
+                                : 'border-white/[0.05] bg-[#111625]/50 hover:border-white/[0.15] hover:bg-[#151b2e]/70 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]'
+                                }`}
                         >
                             <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
 
                             <div className="space-y-2.5 w-full relative z-10">
                                 <div className="flex items-center justify-between">
-                                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-md border transition-colors ${
-                                        isSelected ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/[0.03] text-slate-300 border-white/[0.05]'
-                                    }`}>
+                                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-md border transition-colors ${isSelected ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/[0.03] text-slate-300 border-white/[0.05]'
+                                        }`}>
                                         {role.icon}
                                     </div>
-                                    <span className={`text-[8px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full border ${
-                                        isSelected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
-                                    }`}>
+                                    <span className={`text-[8px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full border ${isSelected ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-white/[0.02] text-slate-400 border-white/[0.05]'
+                                        }`}>
                                         {role.badge}
                                     </span>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <h3 className={`text-xs font-semibold transition-colors duration-300 ${
-                                        isSelected ? 'text-emerald-400' : 'text-white'
-                                    }`}>
+                                    <h3 className={`text-xs font-semibold transition-colors duration-300 ${isSelected ? 'text-emerald-400' : 'text-white'
+                                        }`}>
                                         {role.title}
                                     </h3>
                                     <p className="text-[10px] text-slate-400 leading-relaxed font-normal opacity-85">
@@ -143,9 +172,8 @@ function GatewayContent() {
                             </div>
 
                             <div className="w-full flex justify-end pt-1 relative z-10">
-                                <div className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center transition-all duration-300 ${
-                                    isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-white/[0.15] bg-transparent'
-                                }`}>
+                                <div className={`h-4.5 w-4.5 rounded-full border flex items-center justify-center transition-all duration-300 ${isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-white/[0.15] bg-transparent'
+                                    }`}>
                                     {isSelected && (
                                         <svg className="w-2.5 h-2.5 text-black font-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4.5}>
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -163,11 +191,10 @@ function GatewayContent() {
                 <button
                     onClick={handleNavigation}
                     disabled={isNavigating || !selectedRole}
-                    className={`w-full md:w-64 font-semibold text-[11px] py-3.5 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase relative overflow-hidden group ${
-                        selectedRole && !isNavigating
-                            ? 'bg-white text-black hover:bg-slate-100 cursor-pointer active:scale-[0.98] drop-shadow-[0_0_25px_rgba(255,255,255,0.15)]'
-                            : 'bg-white/[0.02] text-slate-500 border border-white/[0.05] cursor-not-allowed'
-                    }`}
+                    className={`w-full md:w-64 font-semibold text-[11px] py-3.5 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase relative overflow-hidden group ${selectedRole && !isNavigating
+                        ? 'bg-white text-black hover:bg-slate-100 cursor-pointer active:scale-[0.98] drop-shadow-[0_0_25px_rgba(255,255,255,0.15)]'
+                        : 'bg-white/[0.02] text-slate-500 border border-white/[0.05] cursor-not-allowed'
+                        }`}
                 >
                     {selectedRole && !isNavigating && (
                         <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 via-transparent to-indigo-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -196,7 +223,7 @@ function GatewayContent() {
 export default function SignUpGateway() {
     return (
         <div className="h-screen w-screen bg-[#030712] text-slate-200 selection:bg-emerald-500/30 selection:text-emerald-300 font-sans antialiased flex flex-col justify-between relative isolate overflow-hidden">
-            
+
             {/* Ambient Background Structure */}
             <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             <div className="absolute top-[-10%] left-[-10%] w-125 h-125 rounded-full bg-emerald-500/10 blur-[120px] mix-blend-screen pointer-events-none animate-[pulse_8s_infinite_ease-in-out]" />

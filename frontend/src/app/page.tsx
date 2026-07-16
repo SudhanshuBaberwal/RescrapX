@@ -1,11 +1,7 @@
 "use client";
+import { useSelector } from "react-redux";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useSelector, useDispatch } from "react-redux";
-
-import { RootState, AppDispatch } from "@/store/store";
-import { setUserData, clearUser, setLoading } from "@/store/userSlice";
+import { RootState } from "@/store/store";
 
 import { getCurrentUser } from "@/services/auth.service";
 
@@ -14,33 +10,10 @@ import VendorPage from "@/components/vendor/VendorPage";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function Page() {
-    getCurrentUser()
-    const router = useRouter();
-    const dispatch = useDispatch<AppDispatch>();
-
+    // getCurrentUser()
     const { userData, loading } = useSelector(
         (state: RootState) => state.user
     );
-
-    useEffect(() => {
-        const checkUser = async () => {
-            dispatch(setLoading(true));
-
-            try {
-                const result = await getCurrentUser();
-
-                dispatch(setUserData(result.data));
-                dispatch(setLoading(false))
-            } catch (error) {
-                dispatch(clearUser());
-                router.replace("/register");
-            }
-        };
-
-        if (!userData) {
-            checkUser();
-        }
-    }, [dispatch, router, userData]);
 
     if (loading) {
         return (

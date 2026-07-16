@@ -33,7 +33,7 @@ export default function Sidebar() {
     try {
       await logout()
       queryClient.removeQueries({ queryKey: ["current-user"] });
-      window.location.href = "/authUser"
+      window.location.href = "/register"
     } catch (error: any) {
       showToast(error?.message || "Login failed. Please try again.", "error");
     }

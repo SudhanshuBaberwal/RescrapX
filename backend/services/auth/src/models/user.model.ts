@@ -11,6 +11,13 @@ export enum AuthProvider {
   GOOGLE = "GOOGLE",
 }
 
+export enum PartnerNextStep {
+  UPLOAD_DOCUMENTS = "UPLOAD_DOCUMENTS",
+  WAIT_APPROVAL = "WAIT_APPROVAL",
+  DASHBOARD = "DASHBOARD",
+  REUPLOAD_DOCUMENTS = "REUPLOAD_DOCUMENTS",
+}
+
 export enum PartnerStatus {
   PENDING = "PENDING",
   UNDER_REVIEW = "UNDER_REVIEW",
@@ -46,6 +53,7 @@ export interface IUser extends Document {
   lastLogin?: Date;
 
   partnerStatus?: PartnerStatus;
+  partnerNextStep?:PartnerNextStep
 
   company?: {
     companyName: string;
@@ -214,7 +222,6 @@ const userSchema = new Schema<IUser>(
 
     googleId: {
       type: String,
-      default: null,
       unique: true,
       sparse: true,
     },

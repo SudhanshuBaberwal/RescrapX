@@ -13,4 +13,10 @@ router.post(
   partnerController.uploadDocuments,
 );
 
+router.get(
+    "/status",
+    protect,
+    partnerController.getPartnerStatusController
+);
+
 export default router;

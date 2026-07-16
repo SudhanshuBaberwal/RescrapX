@@ -14,16 +14,24 @@ class PartnerController {
 
     const files = (req as any).files as UploadedFiles;
 
-    const partner = await partnerService.uploadDocuments(
-      userId,
-      files,
-    );
+    const partner = await partnerService.uploadDocuments(userId, files);
 
     return ApiResponse.success(
       res,
       200,
       "Documents uploaded successfully. Your account is now under review.",
       partner,
+    );
+  });
+
+  getPartnerStatusController = asyncHandler(async (req, res) => {
+    const data = await partnerService.getPartnertStatus(req.user.id);
+
+    return ApiResponse.success(
+      res,
+      200,
+      "Partner status fetched successfully",
+      data,
     );
   });
 }

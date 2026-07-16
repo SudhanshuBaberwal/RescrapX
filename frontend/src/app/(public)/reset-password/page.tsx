@@ -63,7 +63,7 @@ export default function ResetPassword() {
                 "success"
             );
 
-            router.replace("/authUser/userAuth/login");
+            router.replace("/login");
         } catch (error: any) {
             showToast(
                 error?.response?.data?.message ||

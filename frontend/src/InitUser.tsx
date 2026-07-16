@@ -1,35 +1,50 @@
-'use client'
+"use client";
 
 import { useEffect } from "react";
-import { getCurrentUser } from "./services/auth.service";
-import { setUserData } from "./store/userSlice";
 import { useDispatch } from "react-redux";
-import { AppDispatch } from "./store/store";
+
+import { AppDispatch } from "@/store/store";
+import {
+  setLoading,
+  setUserData,
+  clearUser,
+} from "@/store/userSlice";
+
+import { getCurrentUser } from "@/services/auth.service";
 
 const InitUser = () => {
 
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useDispatch<AppDispatch>();
+  console.log("Init User Mounted")
   useEffect(() => {
-    console.log("InitUser Mounted");
+
     const init = async () => {
+
+      dispatch(setLoading(true));
+
       try {
-        console.log("Calling /me");
 
-        const result = await getCurrentUser();
+        const res = await getCurrentUser();
 
-        console.log(result);
+        dispatch(setUserData(res.data));
 
-        dispatch(setUserData(result.data));
+      } catch {
 
-        console.log("Dispatched");
-      } catch (error) {
-        console.log(error)
+        dispatch(clearUser());
+
+      } finally {
+
+        dispatch(setLoading(false));
+
       }
+
     };
 
     init();
-  }, []);
 
-}
+  }, [dispatch]);
+
+  return null;
+};
 
 export default InitUser;

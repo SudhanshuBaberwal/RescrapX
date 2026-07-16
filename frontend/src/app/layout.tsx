@@ -14,7 +14,7 @@ export default function RootLayout({
       <body>
         <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
           <StoreProvider>
-            <InitUser />
+            {/* <InitUser /> */}
             <ToastProvider>
               {children}
             </ToastProvider>

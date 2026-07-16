@@ -542,6 +542,9 @@ class AuthService {
     const updatedUser = await authRepository.findByIdAndUpdate(userId, {
       role: data.role,
       roleSelected: true,
+      ...(data.role === UserRole.PARTNER && {
+        partnerStatus: PartnerStatus.PENDING,
+      }),
     });
 
     console.log("Updated User:", updatedUser);

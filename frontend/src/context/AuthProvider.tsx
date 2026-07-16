@@ -16,6 +16,13 @@ export enum PartnerStatus {
     APPROVED = "APPROVED",
     REJECTED = "REJECTED",
 }
+
+export enum PartnerNextStep {
+    UPLOAD_DOCUMENTS = "UPLOAD_DOCUMENTS",
+    WAIT_APPROVAL = "WAIT_APPROVAL",
+    DASHBOARD = "DASHBOARD",
+    REUPLOAD_DOCUMENTS = "REUPLOAD_DOCUMENTS",
+}
 export interface User {
     _id: string
     fullName: string;
@@ -45,7 +52,7 @@ export interface User {
     lastLogin?: Date;
 
     partnerStatus?: PartnerStatus;
-
+    partnerNextStep?: PartnerNextStep
     company?: {
         companyName: string;
         gstNumber: string;

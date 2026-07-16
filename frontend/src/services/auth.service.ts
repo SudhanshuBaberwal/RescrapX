@@ -57,5 +57,8 @@ export const googleLogin = async (token: string) => {
 export const setRole = async (data: { role: string }) => {
   try {
     const result = await api.patch("/api/auth/set-role", data);
-  } catch (error) {}
+    return result.data
+  } catch (error) {
+    console.log(error)
+  }
 };
