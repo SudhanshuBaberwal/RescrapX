@@ -14,7 +14,12 @@ import {
   SignupDto,
   VerifyOtpDto,
 } from "../validations/auth.validation.js";
-import User, { IUser, PartnerNextStep, PartnerStatus, UserRole } from "../models/user.model.js";
+import User, {
+  IUser,
+  PartnerNextStep,
+  PartnerStatus,
+  UserRole,
+} from "../models/user.model.js";
 import notificationClient from "../clients/notification.client.js";
 // import googleClient from "../providers/google.js";
 import { GoogleLoginDto } from "../validations/auth.validation.js";
@@ -456,13 +461,17 @@ class AuthService {
   async partnerSignup(data: PartnerSignupDto, usreId: string) {
     const existingUser = await authRepository.findById(usreId);
 
-    if (existingUser) {
-      throw new ApiError(409, "User already exists");
+    if (!existingUser) {
+      throw new ApiError(409, "User Not Found");
     }
-    const user = await authRepository.updatePartner(usreId,{
+
+    if (existingUser.company) {
+      throw new ApiError(400, "Partner Profile Already Completed");
+    }
+    const user = await authRepository.updatePartner(usreId, {
       phoneNumber: data.phoneNumber,
       partnerStatus: PartnerStatus.UNDER_REVIEW,
-      partnerNextStep:PartnerNextStep.UPLOAD_DOCUMENTS,
+      partnerNextStep: PartnerNextStep.UPLOAD_DOCUMENTS,
       company: {
         companyName: data.companyName,
         gstNumber: data.gstNumber,
@@ -509,8 +518,6 @@ class AuthService {
       }
     }
 
-    console.log("Incoming Role:", data.role);
-
     const updatedUser = await authRepository.findByIdAndUpdate(userId, {
       role: data.role,
       roleSelected: true,
@@ -519,12 +526,9 @@ class AuthService {
       }),
     });
 
-    console.log("Updated User:", updatedUser);
-
     if (!updatedUser) {
       throw new ApiError(500, "failed to update user");
     }
-    console.log(updatedUser);
     return updatedUser;
   }
 }

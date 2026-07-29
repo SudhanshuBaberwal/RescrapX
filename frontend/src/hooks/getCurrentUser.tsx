@@ -5,6 +5,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import { clearUser, setLoading, setUserData } from "@/store/userSlice";
 import api from "@/utils/api";
+import { getCurrentUser } from "@/services/auth.service";
 
 export const useCurrentUser = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -14,9 +15,8 @@ export const useCurrentUser = () => {
       dispatch(setLoading(true));
 
       try {
-        const res = await api.get("/api/auth/me");
-
-        dispatch(setUserData(res.data.data));
+        const res = await getCurrentUser()
+        return res.data.data;
       } catch (err: any) {
         dispatch(clearUser());
 
@@ -24,6 +24,9 @@ export const useCurrentUser = () => {
           window.location.replace("/register");
           return;
         }
+      }
+      finally {
+        dispatch(setLoading(false))
       }
     };
 

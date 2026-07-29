@@ -2,8 +2,6 @@ import { ToastProvider } from "@/lib/ui/toast/ToastContext";
 import "./globals.css"
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import StoreProvider from "@/store/StoreProvider";
-import InitUser from "@/InitUser";
-
 export default function RootLayout({
   children,
 }: {

@@ -3,14 +3,11 @@ import { useSelector } from "react-redux";
 
 import { RootState } from "@/store/store";
 
-import { getCurrentUser } from "@/services/auth.service";
-
 import HomePage from "@/components/user/HomePage";
 import VendorPage from "@/components/vendor/VendorPage";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function Page() {
-    // getCurrentUser()
     const { userData, loading } = useSelector(
         (state: RootState) => state.user
     );
@@ -24,7 +21,7 @@ export default function Page() {
     }
 
     if (!userData) {
-        return null;
+        return <div>No User</div>;
     }
 
     switch (userData.role) {

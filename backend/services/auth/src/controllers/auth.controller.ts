@@ -5,7 +5,6 @@ import authService from "../service/auth.service.js";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/cookies.js";
 import { AuthRequest } from "../types/auth-request.js";
 import ApiError from "../lib/ApiError.js";
-import authRepository from "../repository/auth.repository.js";
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
   const result = await authService.signup(req.body);

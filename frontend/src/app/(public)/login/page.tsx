@@ -6,6 +6,7 @@ import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { login } from '@/services/auth.service';
+import { setLoading } from '@/store/userSlice';
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { showToast } = useToast();
@@ -36,7 +37,7 @@ export default function LoginPage() {
       setSuccessMessage("Authentication successful! Redirecting...");
       showToast("Welcome back! Authentication successful.", "success");
       router.replace("/");
-
+      
     } catch (error: any) {
       console.error(error);
       setErrorMessage(
@@ -47,6 +48,7 @@ export default function LoginPage() {
       showToast(error?.message || "Login failed. Please try again.", "error");
     } finally {
       setIsLoading(false);
+      setLoading(false)
     }
   };
 

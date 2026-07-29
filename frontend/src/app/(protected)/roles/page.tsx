@@ -99,9 +99,13 @@ function GatewayContent() {
                         break;
 
                     case "admin":
-                        router.replace("/admin");
+                        router.replace("/");
                         break;
 
+                    case "user":
+                        router.replace("/")
+                        break;
+                        
                     default:
                         router.replace("/reject-approval");
                         break;
