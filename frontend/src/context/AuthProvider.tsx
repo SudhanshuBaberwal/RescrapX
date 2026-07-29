@@ -78,3 +78,62 @@ export interface User {
     createdAt?: Date;
     updatedAt?: Date;
 }
+export interface Company {
+  companyName: string;
+  gstNumber: string;
+  panNumber: string;
+  registrationNumber: string;
+  address: string;
+
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
+export interface Documents {
+//   idProof: string;
+  gstCertificate: string;
+  panCard: string;
+  registrationCertificate: string;
+  bankDetails: string;
+  rvsfCertificate: string;
+  uploadedAt?: string;
+}
+export interface Partner {
+  _id: string;
+
+  fullName: string;
+  userName?: string;
+
+  email: string;
+  phoneNumber: string;
+  avatar: string;
+
+  role: UserRole;
+  roleSelected: boolean;
+
+  provider: AuthProvider;
+  googleId?: string;
+  PartnerStatus:PartnerStatus
+  isVerified: boolean;
+  isActive: boolean;
+
+  verificationToken?: string;
+  verificationTokenExpiresAt?: string;
+  verificationOtpSentAt?: string;
+
+  resetPasswordToken?: string;
+  resetPasswordExpires?: string;
+
+  lastLogin?: string;
+
+  partnerStatus?: PartnerStatus;
+  partnerNextStep?: PartnerNextStep;
+
+  company?: Company;
+
+  documents?: Documents;
+
+  createdAt?: string;
+  updatedAt?: string;
+}

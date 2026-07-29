@@ -3,6 +3,7 @@ import express from "express";
 import protect from "../middleware/protect.middleware.js";
 import uploadPartnerDocuments from "../middleware/uploadPartnerDocuments.js";
 import partnerController from "../controllers/partner.controller.js";
+import adminOnly from "../middleware/adminOnly.js";
 
 const router = express.Router();
 
@@ -13,10 +14,13 @@ router.post(
   partnerController.uploadDocuments,
 );
 
+router.get("/status", protect, partnerController.getPartnerStatusController);
+
 router.get(
-    "/status",
-    protect,
-    partnerController.getPartnerStatusController
+  "/all-partners",
+  protect,
+  adminOnly,
+  partnerController.getAllPartnersController,
 );
 
 export default router;

@@ -9,10 +9,7 @@ class PartnerRepository {
     });
   }
 
-  async updatePartnerDocuments(
-    userId: string,
-    documents: any,
-  ) {
+  async updatePartnerDocuments(userId: string, documents: any) {
     return User.findByIdAndUpdate(
       userId,
       {
@@ -23,6 +20,13 @@ class PartnerRepository {
         new: true,
       },
     );
+  }
+
+  async findByPartnerRole() {
+    const partners = await User.find({
+      role: UserRole.PARTNER,
+    });
+    return partners;
   }
 }
 

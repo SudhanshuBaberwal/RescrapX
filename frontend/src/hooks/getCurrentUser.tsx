@@ -13,13 +13,11 @@ export const useCurrentUser = () => {
   useEffect(() => {
     const fetchCurrentUser = async (dispatch: AppDispatch) => {
       dispatch(setLoading(true));
-
       try {
         const res = await getCurrentUser()
         return res.data.data;
       } catch (err: any) {
         dispatch(clearUser());
-
         if (err.response?.status === 401) {
           window.location.replace("/register");
           return;

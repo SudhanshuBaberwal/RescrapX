@@ -115,6 +115,14 @@ class PartnerService {
       PartnerNextStep: nextStep,
     };
   }
+
+  async getAllPartners() {
+  const partners = await partnerRepository.findByPartnerRole();
+
+  console.log("Partners:", partners);
+
+  return partners;
+}
 }
 
 export default new PartnerService();

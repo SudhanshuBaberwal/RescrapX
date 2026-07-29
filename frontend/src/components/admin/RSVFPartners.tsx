@@ -1,37 +1,40 @@
 'use client'
 
 import React, { useState } from 'react';
-import Sidebar  from './AdminSidebar';
+import Sidebar from './AdminSidebar';
 import { Navbar } from '../navbar/AdminNavbar';
+import { getAllPartners } from '@/hooks/getAllPartners';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export const RVSFPartners: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedPartner, setSelectedPartner] = useState<string>('Green Auto RVSF');
+  getAllPartners()
+
+  const { allPartnersData } = useSelector((state: RootState) => state.admin)
+  console.log(allPartnersData)
+
+  // Set selectedPartner to null by default so panel stays closed initially
+  const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
+
+  const activePartner = allPartnersData.filter((partner) => partner.partnerStatus === "APPROVED")
+  const onHoldPartner = allPartnersData.filter((partner) => partner.partnerStatus === "UNDER_REVIEW")
+  const pendingPartner = allPartnersData.filter((partner) => partner.partnerStatus === "PENDING")
 
   const partnerKPIs = [
-    { title: 'Total Partners', value: '86', trend: '+10% vs last month', color: 'text-emerald-600 bg-emerald-50' },
-    { title: 'Active Partners', value: '68', trend: '+12% vs last month', color: 'text-emerald-600 bg-emerald-50' },
-    { title: 'On Hold', value: '7', trend: '-7% vs last month', color: 'text-red-600 bg-red-50' },
-    { title: 'Pending Applications', value: '11', trend: '+22% vs last month', color: 'text-purple-600 bg-purple-50' },
+    { title: 'Total Partners', value: `${allPartnersData.length}`, trend: '+10% vs last month', color: 'text-emerald-600 bg-emerald-50' },
+    { title: 'Active Partners', value: `${activePartner.length}`, trend: '+12% vs last month', color: 'text-emerald-600 bg-emerald-50' },
+    { title: 'On Hold', value: `${onHoldPartner.length}`, trend: '-7% vs last month', color: 'text-red-600 bg-red-50' },
+    { title: 'Pending Applications', value: `${pendingPartner.length}`, trend: '+22% vs last month', color: 'text-purple-600 bg-purple-50' },
     { title: 'Total Completed Jobs', value: '1,248', trend: '+18% vs last month', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Total Payouts (MTD)', value: '₹2,46,85,340', trend: '+16% vs last month', color: 'text-emerald-600 bg-emerald-50' },
   ];
 
-  const partnersList = [
-    { name: 'Green Auto RVSF', manager: 'Rakesh Verma', phone: '9876543210', gst: '07ABCG1234E1Z5', state: 'Delhi', city: 'Delhi, DL', status: 'Active', verification: 'Verified', jobs: 248, rating: '4.6', success: '96%', payout: '₹18,75,000', date: '01 Jun 2025' },
-    { name: 'EcoScrap Pvt. Ltd.', manager: 'Amit Singh', phone: '9811122334', gst: '06AAHCE2345F1Z8', state: 'Haryana', city: 'Gurgaon, HR', status: 'Active', verification: 'Verified', jobs: 186, rating: '4.3', success: '94%', payout: '₹14,20,000', date: '31 May 2025' },
-    { name: 'MetalPro RVSF', manager: 'Neha Malhotra', phone: '9712345678', gst: '09AAKFM3456G1Z2', state: 'Uttar Pradesh', city: 'Noida, UP', status: 'Active', verification: 'Verified', jobs: 157, rating: '4.5', success: '92%', payout: '₹11,80,000', date: '31 May 2025' },
-    { name: 'Prime Recycling', manager: 'Vikram Patel', phone: '9822334455', gst: '27AAICP4567H1Z9', state: 'Maharashtra', city: 'Mumbai, MH', status: 'On Hold', verification: 'Verified', jobs: 98, rating: '4.2', success: '90%', payout: '₹8,45,000', date: '28 May 2025' },
-    { name: 'Shakti RVSF', manager: 'Suresh Yadav', phone: '9670011223', gst: '24AALFSS6781L24', state: 'Rajasthan', city: 'Jaipur, RJ', status: 'Active', verification: 'Pending', jobs: 72, rating: '4.0', success: '88%', payout: '₹6,25,000', date: '27 May 2025' },
-  ];
-
   return (
-    // Outer responsive layout offsets removed
     <div className="w-full flex flex-col justify-between">
 
       {/* Dynamic Canvas Container View area */}
       <main className="flex-1 p-4 md:p-6 space-y-6 w-full mx-auto">
-        
+
         {/* Action Ribbon Area */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
           <div>
@@ -68,9 +71,9 @@ export const RVSFPartners: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
             <div className="relative lg:col-span-2">
               <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
-              <input 
-                type="text" 
-                placeholder="Search by name, GST, city, state..." 
+              <input
+                type="text"
+                placeholder="Search by name, GST, city, state..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-slate-300"
               />
             </div>
@@ -86,11 +89,11 @@ export const RVSFPartners: React.FC = () => {
 
         {/* Split Screen Master-Detail Workspace Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          
-          {/* Left Ledger Master View Grid Table */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm xl:col-span-8 space-y-4">
+
+          {/* Left Ledger Master View Grid Table (Expands to 12 cols when no partner selected) */}
+          <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4 transition-all duration-300 ${selectedPartner ? 'xl:col-span-8' : 'xl:col-span-12'}`}>
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">All Partners <span className="text-slate-400 font-normal">(86)</span></h3>
+              <h3 className="text-sm font-bold text-slate-900">All Partners <span className="text-slate-400 font-normal">({allPartnersData.length})</span></h3>
             </div>
 
             {/* Data Table Scroll View Enclosure Mask */}
@@ -103,117 +106,131 @@ export const RVSFPartners: React.FC = () => {
                     <th className="p-3">GST Number</th>
                     <th className="p-3">State / City</th>
                     <th className="p-3">Status</th>
-                    <th className="p-3">Verification</th>
-                    <th className="p-3 text-center">Jobs</th>
-                    <th className="p-3 text-center">Rating</th>
+                    <th className="p-3">Registration Number</th>
                     <th className="p-3 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {partnersList.map((partner, index) => (
-                    <tr 
-                      key={index} 
-                      onClick={() => setSelectedPartner(partner.name)}
-                      className={`hover:bg-slate-50/70 transition-colors cursor-pointer ${selectedPartner === partner.name ? 'bg-emerald-50/30' : ''}`}
-                    >
-                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" className="rounded" />
-                      </td>
-                      <td className="p-3">
-                        <div className="font-bold text-slate-800">{partner.name}</div>
-                        <div className="text-[10px] text-slate-400">{partner.manager} • {partner.phone}</div>
-                      </td>
-                      <td className="p-3 font-mono text-slate-500">{partner.gst}</td>
-                      <td className="p-3">
-                        <div className="font-medium text-slate-700">{partner.state}</div>
-                        <span className="text-[10px] text-slate-400">{partner.city}</span>
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${partner.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {partner.status}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${partner.verification === 'Verified' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                          {partner.verification === 'Verified' ? '✓ Verified' : '◷ Pending'}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center font-semibold text-slate-700">{partner.jobs}</td>
-                      <td className="p-3 text-center font-bold text-slate-900">⭐ {partner.rating}</td>
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button className="border border-slate-200 bg-white rounded px-2.5 py-1 text-[11px] font-semibold hover:bg-slate-50">
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {allPartnersData.map((partner, index) => {
+                    const isSelected = selectedPartner && selectedPartner._id === partner._id;
+                    return (
+                      <tr
+                        key={partner._id || index}
+                        onClick={() => setSelectedPartner(partner)}
+                        className={`hover:bg-slate-50/70 transition-colors cursor-pointer ${isSelected ? 'bg-emerald-50/30' : ''}`}
+                      >
+                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" className="rounded" />
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-slate-800">{partner.fullName}</div>
+                          <div className="text-[10px] text-slate-400">{partner.company?.companyName} • {partner.phoneNumber}</div>
+                        </td>
+                        <td className="p-3 font-mono text-slate-500">{partner.company?.gstNumber || 'N/A'}</td>
+                        <td className="p-3">
+                          <div className="font-medium text-slate-700">{partner.company?.state || 'N/A'}</div>
+                          <span className="text-[10px] text-slate-400">{partner.company?.city || 'N/A'}</span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${partner.partnerStatus === "APPROVED" ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {partner.partnerStatus}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-600 font-mono">
+                            {partner.company?.registrationNumber || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            onClick={() => setSelectedPartner(partner)}
+                            className="border border-slate-200 bg-white rounded px-2.5 py-1 text-[11px] font-semibold hover:bg-slate-50"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Right Detailed Panel View Context Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm xl:col-span-4 space-y-5">
-            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-slate-900">{selectedPartner}</h3>
-                  <span className="bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded">Active</span>
+          {/* Right Detailed Panel View Context Card (Only opens when selectedPartner is active) */}
+          {selectedPartner && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm xl:col-span-4 space-y-5 sticky top-6">
+              <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">{selectedPartner.fullName}</h3>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${selectedPartner.partnerStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {selectedPartner.partnerStatus}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                    {selectedPartner.company?.registrationNumber || 'RVSF-NODE'} • {selectedPartner.company?.companyName || 'RVSF Partner'}
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 block mt-0.5">RVSF0012 • Partner since Jan 2024</span>
+                {/* Cross button closes the panel by setting state to null */}
+                <button 
+                  onClick={() => setSelectedPartner(null)} 
+                  className="text-slate-400 hover:text-slate-600 font-bold text-sm p-1 rounded-md hover:bg-slate-100 transition-colors"
+                >
+                  ✕
+                </button>
               </div>
-              <button className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
-            </div>
 
-            {/* Dynamic Metrics Panel Rows */}
-            <div className="grid grid-cols-2 gap-3.5 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-xs">
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Completed Jobs</span>
-                <span className="font-bold text-slate-900 text-sm">26</span>
+              {/* Dynamic Metrics Panel Rows */}
+              <div className="grid grid-cols-2 gap-3.5 bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 text-xs">
+                <div>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Completed Jobs</span>
+                  <span className="font-bold text-slate-900 text-sm">26</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Success Rate</span>
+                  <span className="font-bold text-slate-900 text-sm">96%</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Total Payout</span>
+                  <span className="font-bold text-emerald-600 text-sm">₹72,115</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Avg Rating</span>
+                  <span className="font-bold text-slate-900 text-sm">⭐ 4.6</span>
+                </div>
               </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Success Rate</span>
-                <span className="font-bold text-slate-900 text-sm">96%</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Total Payout</span>
-                <span className="font-bold text-emerald-600 text-sm">₹72,115</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Avg Rating</span>
-                <span className="font-bold text-slate-900 text-sm">⭐ 4.6</span>
-              </div>
-            </div>
 
-            {/* Compliance & Authorization Checklist Status Module */}
-            <div className="space-y-3">
-              <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Compliance Checklist</h4>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                  <span className="text-slate-600">RVSF Authorization Certificate</span>
-                  <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                  <span className="text-slate-600">GST Registration Status</span>
-                  <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                  <span className="text-slate-600">Pollution Clearance License</span>
-                  <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
+              {/* Compliance & Authorization Checklist Status Module */}
+              <div className="space-y-3">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Compliance Checklist</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+                    <span className="text-slate-600">RVSF Authorization Certificate</span>
+                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+                    <span className="text-slate-600">GST Registration Status</span>
+                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+                    <span className="text-slate-600">Pollution Clearance License</span>
+                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Ledger Action Ribbon Panel */}
-            <div className="pt-3 border-t border-slate-100 flex gap-2">
-              <button className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors">
-                Edit Partner
-              </button>
-              <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
-                More Actions
-              </button>
+              {/* Ledger Action Ribbon Panel */}
+              <div className="pt-3 border-t border-slate-100 flex gap-2">
+                <button className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors">
+                  Edit Partner
+                </button>
+                <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
+                  More Actions
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
@@ -226,7 +243,7 @@ export const RVSFPartners: React.FC = () => {
           <select className="bg-slate-50 border border-slate-200 rounded p-1 text-xs outline-none text-slate-600"><option>Bulk Actions</option></select>
           <button className="bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold text-[11px] px-3 py-1.5 rounded transition-colors">Apply</button>
         </div>
-        <p className="text-[11px] text-slate-400">© 2025 RescrapX. All rights reserved.</p>
+        <p className="text-[11px] text-slate-400">© 2026 RescrapX. All rights reserved.</p>
       </footer>
 
     </div>

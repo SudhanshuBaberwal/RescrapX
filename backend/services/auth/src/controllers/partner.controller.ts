@@ -34,6 +34,14 @@ class PartnerController {
       data,
     );
   });
+
+  getAllPartnersController = asyncHandler(async (req, res) => {
+    const partners = await partnerService.getAllPartners();
+
+    console.log(partners);
+
+    ApiResponse.success(res, 200, "Get partner data", partners);
+  });
 }
 
 export default new PartnerController();
