@@ -1,5 +1,6 @@
 'use client'
 
+import axios from "axios";
 import React, { useState } from 'react';
 import Sidebar from './AdminSidebar';
 import { Navbar } from '../navbar/AdminNavbar';
@@ -11,8 +12,7 @@ export const RVSFPartners: React.FC = () => {
   getAllPartners()
 
   const { allPartnersData } = useSelector((state: RootState) => state.admin)
-  console.log(allPartnersData)
-
+  // console.log(allPartnersData)
   // Set selectedPartner to null by default so panel stays closed initially
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
 
@@ -27,6 +27,53 @@ export const RVSFPartners: React.FC = () => {
     { title: 'Pending Applications', value: `${pendingPartner.length}`, trend: '+22% vs last month', color: 'text-purple-600 bg-purple-50' },
     { title: 'Total Completed Jobs', value: '1,248', trend: '+18% vs last month', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Total Payouts (MTD)', value: '₹2,46,85,340', trend: '+16% vs last month', color: 'text-emerald-600 bg-emerald-50' },
+  ];
+
+  // Helper function to handle opening PDF documents in a new browser tab
+
+  const handleViewPDF = async (path: string) => {
+    try {
+      const { data } = await axios.post(
+        "http://localhost:8000/api/auth/admin/document/view",
+        {
+          path,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+      window.open(data.data, "_blank");
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // List mapping all 6 partner verification documents
+  const getPartnerDocuments = (docsObj: any) => [
+    {
+      name: "RVSF",
+      url: docsObj?.rvsfCertificate,
+    },
+    {
+      name: "GST",
+      url: docsObj?.gstCertificate,
+    },
+    {
+      name: "Pollution",
+      url: docsObj?.pollutionLicense,
+    },
+    {
+      name: "PAN",
+      url: docsObj?.panCard,
+    },
+    {
+      name: "Aadhar",
+      url: docsObj?.aadharCard,
+    },
+    {
+      name: "Bank",
+      url: docsObj?.cancelledCheque,
+    },
   ];
 
   return (
@@ -90,7 +137,7 @@ export const RVSFPartners: React.FC = () => {
         {/* Split Screen Master-Detail Workspace Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-          {/* Left Ledger Master View Grid Table (Expands to 12 cols when no partner selected) */}
+          {/* Left Ledger Master View Grid Table */}
           <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4 transition-all duration-300 ${selectedPartner ? 'xl:col-span-8' : 'xl:col-span-12'}`}>
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">All Partners <span className="text-slate-400 font-normal">({allPartnersData.length})</span></h3>
@@ -132,7 +179,12 @@ export const RVSFPartners: React.FC = () => {
                           <span className="text-[10px] text-slate-400">{partner.company?.city || 'N/A'}</span>
                         </td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${partner.partnerStatus === "APPROVED" ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${partner.partnerStatus === "APPROVED"
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : partner.partnerStatus === "UNDER_REVIEW"
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-rose-100 text-rose-700'
+                            }`}>
                             {partner.partnerStatus}
                           </span>
                         </td>
@@ -142,7 +194,7 @@ export const RVSFPartners: React.FC = () => {
                           </span>
                         </td>
                         <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button 
+                          <button
                             onClick={() => setSelectedPartner(partner)}
                             className="border border-slate-200 bg-white rounded px-2.5 py-1 text-[11px] font-semibold hover:bg-slate-50"
                           >
@@ -157,14 +209,15 @@ export const RVSFPartners: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Detailed Panel View Context Card (Only opens when selectedPartner is active) */}
+          {/* Right Detailed Panel View Context Card */}
           {selectedPartner && (
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm xl:col-span-4 space-y-5 sticky top-6">
               <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-900">{selectedPartner.fullName}</h3>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${selectedPartner.partnerStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${selectedPartner.partnerStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
                       {selectedPartner.partnerStatus}
                     </span>
                   </div>
@@ -172,9 +225,8 @@ export const RVSFPartners: React.FC = () => {
                     {selectedPartner.company?.registrationNumber || 'RVSF-NODE'} • {selectedPartner.company?.companyName || 'RVSF Partner'}
                   </span>
                 </div>
-                {/* Cross button closes the panel by setting state to null */}
-                <button 
-                  onClick={() => setSelectedPartner(null)} 
+                <button
+                  onClick={() => setSelectedPartner(null)}
                   className="text-slate-400 hover:text-slate-600 font-bold text-sm p-1 rounded-md hover:bg-slate-100 transition-colors"
                 >
                   ✕
@@ -201,33 +253,73 @@ export const RVSFPartners: React.FC = () => {
                 </div>
               </div>
 
-              {/* Compliance & Authorization Checklist Status Module */}
+              {/* 6 MANDATORY PDF DOCUMENTS VERIFICATION CHECKLIST */}
               <div className="space-y-3">
-                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Compliance Checklist</h4>
+                <div className="flex justify-between items-center">
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Verification Documents (6 PDFs)
+                  </h4>
+                  <span className="text-[10px] font-medium text-slate-400">Click to preview</span>
+                </div>
+
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                    <span className="text-slate-600">RVSF Authorization Certificate</span>
-                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                    <span className="text-slate-600">GST Registration Status</span>
-                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                  </div>
-                  <div className="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                    <span className="text-slate-600">Pollution Clearance License</span>
-                    <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[10px]">Verified</span>
-                  </div>
+                  {getPartnerDocuments(selectedPartner.documents).map((doc, idx) => (
+                    <div
+                      key={idx}
+                      className="flex justify-between items-center bg-slate-50 p-2.5 rounded-lg border border-slate-100 hover:border-slate-300 transition-all cursor-pointer group"
+                      onClick={() => {
+                        if (doc.url?.path) {
+                          handleViewPDF(doc.url.path);
+                        } else {
+                          alert("Document not uploaded");
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 font-bold text-xs">📄</span>
+                        <span className="text-slate-700 font-medium group-hover:text-emerald-700 transition-colors">
+                          {doc.name}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {selectedPartner.partnerStatus === "APPROVED" ? (
+                          <span className="text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded text-[10px]">
+                            Verified
+                          </span>
+                        ) : (
+                          <button className="text-emerald-600 hover:text-emerald-700 font-bold text-[10px] bg-white border border-slate-200 group-hover:border-emerald-500 px-2 py-0.5 rounded shadow-2xs transition-colors flex items-center gap-1">
+                            <span>Open PDF</span>
+                            <span className="text-[8px]">↗</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Ledger Action Ribbon Panel */}
+              {/* Action Buttons: If UNDER_REVIEW, show Approve / Reject controls */}
               <div className="pt-3 border-t border-slate-100 flex gap-2">
-                <button className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors">
-                  Edit Partner
-                </button>
-                <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
-                  More Actions
-                </button>
+                {selectedPartner.partnerStatus === "UNDER_REVIEW" || selectedPartner.partnerStatus === "PENDING" ? (
+                  <>
+                    <button className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs py-2 rounded-lg transition-colors">
+                      Reject Partner
+                    </button>
+                    <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
+                      Approve & Verify
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors">
+                      Edit Partner
+                    </button>
+                    <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
+                      More Actions
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -236,7 +328,7 @@ export const RVSFPartners: React.FC = () => {
 
       </main>
 
-      {/* Global Batch Update Footer System Row bar component context layer */}
+      {/* Global Batch Update Footer System Row bar */}
       <footer className="mt-auto border-t border-slate-200 bg-white px-6 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-3 w-full shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-400 font-medium">0 Selected</span>

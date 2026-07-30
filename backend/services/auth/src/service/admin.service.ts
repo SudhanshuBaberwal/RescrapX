@@ -1,3 +1,4 @@
+import { supabase } from "../config/supabase.js";
 import ApiError from "../lib/ApiError.js";
 import { PartnerStatus, UserRole } from "../models/user.model.js";
 import adminRepository from "../repository/admin.repository.js";
@@ -31,6 +32,18 @@ class AdminService {
     }
 
     return await adminRepository.approvePartner(partnerId);
+  }
+
+  async generateDocumentUrl(path: string) {
+    const { data, error } = await supabase.storage
+      .from("partner-documents")
+      .createSignedUrl(path, 60);
+
+    if (error) {
+      throw new ApiError(500, error.message);
+    }
+
+    return data.signedUrl;
   }
 }
 

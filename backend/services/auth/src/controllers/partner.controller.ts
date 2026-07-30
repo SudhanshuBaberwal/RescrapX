@@ -37,7 +37,7 @@ class PartnerController {
   getAllPartnersController = asyncHandler(async (req, res) => {
     const partners = await partnerService.getAllPartners();
 
-    console.log(partners);
+    // console.log(partners);
 
     ApiResponse.success(res, 200, "Get partner data", partners);
   });
