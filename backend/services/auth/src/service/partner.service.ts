@@ -6,74 +6,54 @@ import {
 } from "../models/user.model.js";
 import authRepository from "../repository/auth.repository.js";
 import partnerRepository from "../repository/partner.repository.js";
-import { uploadOnCloudinary } from "../utils/uploadOnCloudinary.js";
 import {
   UploadedFiles,
   validatePartnerDocuments,
 } from "../validations/partner.validation.js";
+import { uploadToSupabase } from "../utils/uploadToSupabase.js";
 
 class PartnerService {
   async uploadDocuments(userId: string, files: UploadedFiles) {
     try {
       validatePartnerDocuments(files);
 
-      // Check partner
       const partner = await partnerRepository.findPartnerById(userId);
 
       if (!partner) {
         throw new ApiError(404, "Partner not found");
       }
 
-      // Prevent duplicate upload
       if (partner.documents?.uploadedAt) {
         throw new ApiError(400, "Documents have already been uploaded");
       }
 
-      // Upload all documents simultaneously
-      const [
-        rvsfCertificate,
-        gstCertificate,
-        panCard,
-        registrationCertificate,
-        bankDetails,
-      ] = await Promise.all([
-        uploadOnCloudinary(
-          files.rvsfCertificate[0],
-          "RescrapX/Partners/Documents",
-        ),
+      const folder = `partners/${userId}/documents`;
 
-        uploadOnCloudinary(
-          files.gstCertificate[0],
-          "RescrapX/Partners/Documents",
-        ),
-
-        uploadOnCloudinary(files.panCard[0], "RescrapX/Partners/Documents"),
-
-        uploadOnCloudinary(
+      const [rvsf, gst, pan, reg, bank] = await Promise.all([
+        uploadToSupabase(files.rvsfCertificate[0], folder, "rvsf"),
+        uploadToSupabase(files.gstCertificate[0], folder, "gst"),
+        uploadToSupabase(files.panCard[0], folder, "pan"),
+        uploadToSupabase(
           files.registrationCertificate[0],
-          "RescrapX/Partners/Documents",
+          folder,
+          "registration",
         ),
-
-        uploadOnCloudinary(files.bankDetails[0], "RescrapX/Partners/Documents"),
+        uploadToSupabase(files.bankDetails[0], folder, "bank"),
       ]);
 
       const documents = {
-        rvsfCertificate,
-        gstCertificate,
-        panCard,
-        registrationCertificate,
-        bankDetails,
+        rvsfCertificate: { path: rvsf.path },
+        gstCertificate: { path: gst.path },
+        panCard: { path: pan.path },
+        registrationCertificate: { path: reg.path },
+        bankDetails: { path: bank.path },
         uploadedAt: new Date(),
       };
 
-      const updatedPartner = await partnerRepository.updatePartnerDocuments(
-        userId,
-        documents,
-      );
-
-      return updatedPartner;
+      return await partnerRepository.updatePartnerDocuments(userId, documents);
     } catch (error) {
-      console.log(error);
+      console.error("Upload Documents Error:", error);
+      throw error;
     }
   }
 
@@ -117,12 +97,12 @@ class PartnerService {
   }
 
   async getAllPartners() {
-  const partners = await partnerRepository.findByPartnerRole();
+    const partners = await partnerRepository.findByPartnerRole();
 
-  console.log("Partners:", partners);
+    console.log("Partners:", partners);
 
-  return partners;
-}
+    return partners;
+  }
 }
 
 export default new PartnerService();

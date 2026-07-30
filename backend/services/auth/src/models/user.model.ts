@@ -53,7 +53,7 @@ export interface IUser extends Document {
   lastLogin?: Date;
 
   partnerStatus?: PartnerStatus;
-  partnerNextStep?:PartnerNextStep
+  partnerNextStep?: PartnerNextStep;
 
   company?: {
     companyName: string;
@@ -195,10 +195,40 @@ const userSchema = new Schema<IUser>(
       type: companySchema,
       default: null,
     },
-
     documents: {
-      type: documentsSchema,
-      default: null,
+      rvsfCertificate: {
+        path: {
+          type: String,
+        },
+      },
+
+      gstCertificate: {
+        path: {
+          type: String,
+        },
+      },
+
+      panCard: {
+        path: {
+          type: String,
+        },
+      },
+
+      registrationCertificate: {
+        path: {
+          type: String,
+        },
+      },
+
+      bankDetails: {
+        path: {
+          type: String,
+        },
+      },
+
+      uploadedAt: {
+        type: Date,
+      },
     },
 
     isVerified: {

@@ -13,7 +13,6 @@ class PartnerController {
     }
 
     const files = (req as any).files as UploadedFiles;
-
     const partner = await partnerService.uploadDocuments(userId, files);
 
     return ApiResponse.success(

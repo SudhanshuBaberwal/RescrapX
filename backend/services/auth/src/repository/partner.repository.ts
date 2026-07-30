@@ -1,4 +1,4 @@
-import User from "../models/user.model.js";
+import User, { PartnerNextStep } from "../models/user.model.js";
 import { PartnerStatus, UserRole } from "../models/user.model.js";
 
 class PartnerRepository {
@@ -10,16 +10,17 @@ class PartnerRepository {
   }
 
   async updatePartnerDocuments(userId: string, documents: any) {
-    return User.findByIdAndUpdate(
-      userId,
-      {
+   return User.findByIdAndUpdate(
+    userId,
+    {
         documents,
         partnerStatus: PartnerStatus.UNDER_REVIEW,
-      },
-      {
-        new: true,
-      },
-    );
+        partnerNextStep: PartnerNextStep.WAIT_APPROVAL,
+    },
+    {
+        returnDocument: "after",
+    }
+);
   }
 
   async findByPartnerRole() {
