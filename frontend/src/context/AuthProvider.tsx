@@ -53,6 +53,7 @@ export interface User {
 
     partnerStatus?: PartnerStatus;
     partnerNextStep?: PartnerNextStep
+    rejectionReason: string;
     company?: {
         companyName: string;
         gstNumber: string;
@@ -71,7 +72,6 @@ export interface User {
         registrationCertificate: string;
         bankDetails: string;
         rvsfCertificate: string;
-
         uploadedAt?: Date;
     };
 
@@ -79,61 +79,61 @@ export interface User {
     updatedAt?: Date;
 }
 export interface Company {
-  companyName: string;
-  gstNumber: string;
-  panNumber: string;
-  registrationNumber: string;
-  address: string;
+    companyName: string;
+    gstNumber: string;
+    panNumber: string;
+    registrationNumber: string;
+    address: string;
 
-  city?: string;
-  state?: string;
-  pincode?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
 }
 
 export interface Documents {
-//   idProof: string;
-  gstCertificate: string;
-  panCard: string;
-  registrationCertificate: string;
-  bankDetails: string;
-  rvsfCertificate: string;
-  uploadedAt?: string;
+    //   idProof: string;
+    gstCertificate: string;
+    panCard: string;
+    registrationCertificate: string;
+    bankDetails: string;
+    rvsfCertificate: string;
+    uploadedAt?: string;
 }
 export interface Partner {
-  _id: string;
+    _id: string;
 
-  fullName: string;
-  userName?: string;
+    fullName: string;
+    userName?: string;
 
-  email: string;
-  phoneNumber: string;
-  avatar: string;
+    email: string;
+    phoneNumber: string;
+    avatar: string;
 
-  role: UserRole;
-  roleSelected: boolean;
+    role: UserRole;
+    roleSelected: boolean;
 
-  provider: AuthProvider;
-  googleId?: string;
-  PartnerStatus:PartnerStatus
-  isVerified: boolean;
-  isActive: boolean;
+    provider: AuthProvider;
+    googleId?: string;
+    PartnerStatus: PartnerStatus
+    isVerified: boolean;
+    isActive: boolean;
 
-  verificationToken?: string;
-  verificationTokenExpiresAt?: string;
-  verificationOtpSentAt?: string;
+    verificationToken?: string;
+    verificationTokenExpiresAt?: string;
+    verificationOtpSentAt?: string;
 
-  resetPasswordToken?: string;
-  resetPasswordExpires?: string;
+    resetPasswordToken?: string;
+    resetPasswordExpires?: string;
 
-  lastLogin?: string;
+    lastLogin?: string;
 
-  partnerStatus?: PartnerStatus;
-  partnerNextStep?: PartnerNextStep;
+    partnerStatus?: PartnerStatus;
+    partnerNextStep?: PartnerNextStep;
 
-  company?: Company;
+    company?: Company;
 
-  documents?: Documents;
+    documents?: Documents;
 
-  createdAt?: string;
-  updatedAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }

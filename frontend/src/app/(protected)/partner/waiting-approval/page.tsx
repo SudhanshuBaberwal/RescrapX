@@ -1,39 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ShieldAlert, Loader2, RefreshCw, Clock, ExternalLink } from 'lucide-react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
-import axios from 'axios';
+import { getCurrentUser } from '@/services/auth.service';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
 
 export default function PendingApprovalGateway() {
+    // getCurrentUser()
     const { showToast } = useToast();
     const router = useRouter();
-    const searchParams = useSearchParams();
-    
-    const email = searchParams.get("email") || "";
+    const { userData } = useSelector((state: RootState) => state.user)
     const [isChecking, setIsChecking] = useState<boolean>(false);
 
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            try {
+                await getCurrentUser();
+            } catch (err) {
+                console.error(err);
+            }
+        }, 10000); // every 10 sec
+
+        return () => clearInterval(interval);
+
+    }, []);
     // Dynamic Server Polling Execution to check verification status update
     const checkVerificationStatus = async () => {
-        if (!email) {
-            showToast("Context parameters missing. Please authenticate via portal entry.", "error");
-            return;
-        }
 
         try {
             setIsChecking(true);
-            
-            // Replace with your actual partner verification check endpoint
-            const response = await axios.get(`/api/partner/status?email=${encodeURIComponent(email)}`);
-            const { status, nextRoute } = response.data; // e.g., status: 'APPROVED' | 'PENDING' | 'REJECTED'
-
-            if (status === 'APPROVED') {
+            console.log(userData)
+            const status = userData?.partnerStatus
+            const nextStep = userData?.partnerNextStep
+            if (status === 'APPROVED' && nextStep === "DASHBOARD") {
                 showToast("Account validation complete. Provisioning RVSF terminal node...", "success");
-                router.push(nextRoute || '/partner/dashboard');
+                router.push('/');
             } else if (status === 'REJECTED') {
                 showToast("Verification compliance failed. Redirecting to validation corrections.", "error");
-                router.push(`/partner/verify-documents?email=${encodeURIComponent(email)}&re-upload=true`);
+                router.push(`/partner/reject-approval`);
             } else {
                 showToast("Security audit ongoing. Node remains in verification queue.", "warning");
             }
@@ -50,7 +57,7 @@ export default function PendingApprovalGateway() {
 
     return (
         <div className="h-screen w-screen bg-[#030712] text-slate-200 selection:bg-emerald-500/30 selection:text-emerald-300 font-sans antialiased flex flex-col justify-between relative isolate overflow-hidden">
-            
+
             {/* Ambient Nebula Space Glares */}
             <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#1f293710_1px,transparent_1px),linear-gradient(to_bottom,#1f293710_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             <div className="absolute top-[-10%] left-[-10%] w-125 h-125 rounded-full bg-amber-500/5 blur-[120px] mix-blend-screen pointer-events-none animate-[pulse_8s_infinite_ease-in-out]" />
@@ -58,9 +65,9 @@ export default function PendingApprovalGateway() {
 
             {/* Main Component Block Wrapper */}
             <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 w-full max-w-xl mx-auto my-auto">
-                
-                <div className="w-full bg-[#0b0f19]/75 border border-white/[0.08] backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_32px_70px_-20px_rgba(0,0,0,0.9)] space-y-6 text-center relative overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-b before:from-white/[0.03] before:to-transparent animate-in fade-in zoom-in duration-300">
-                    
+
+                <div className="w-full bg-[#0b0f19]/75 border border-white/8 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_32px_70px_-20px_rgba(0,0,0,0.9)] space-y-6 text-center relative overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-b before:from-white/[0.03] before:to-transparent animate-in fade-in zoom-in duration-300">
+
                     {/* Pulsing Compliance Radial Ring Display */}
                     <div className="flex justify-center pt-2 relative">
                         <div className="absolute w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 animate-ping opacity-60 duration-1000" />
@@ -82,10 +89,10 @@ export default function PendingApprovalGateway() {
                     </div>
 
                     {/* Operational Parameter Logs Check */}
-                    <div className="bg-[#111625]/60 border border-white/[0.04] rounded-2xl p-4 text-left space-y-2.5">
-                        <div className="flex items-center justify-between border-b border-white/[0.04] pb-2">
+                    <div className="bg-[#111625]/60 border border-white/4 rounded-2xl p-4 text-left space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-white/4 pb-2">
                             <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 font-mono">Registry Target:</span>
-                            <span className="text-[11px] font-bold text-slate-300 truncate max-w-[200px] font-mono">{email || 'anonymous-node'}</span>
+                            <span className="text-[11px] font-bold text-slate-300 truncate max-w-50 font-mono">{'anonymous-node'}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 font-mono">ETA Window:</span>
@@ -100,11 +107,10 @@ export default function PendingApprovalGateway() {
                         <button
                             onClick={checkVerificationStatus}
                             disabled={isChecking}
-                            className={`w-full font-semibold text-[11px] py-3.5 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase flex items-center justify-center gap-2 group active:scale-[0.98] ${
-                                isChecking 
-                                    ? 'bg-white/[0.02] text-slate-500 border border-white/[0.05] cursor-not-allowed'
-                                    : 'bg-white text-black hover:bg-slate-100 cursor-pointer drop-shadow-[0_0_25px_rgba(255,255,255,0.15)]'
-                            }`}
+                            className={`w-full font-semibold text-[11px] py-3.5 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase flex items-center justify-center gap-2 group active:scale-[0.98] ${isChecking
+                                ? 'bg-white/2 text-slate-500 border border-white/5 cursor-not-allowed'
+                                : 'bg-white text-black hover:bg-slate-100 cursor-pointer drop-shadow-[0_0_25px_rgba(255,255,255,0.15)]'
+                                }`}
                         >
                             {isChecking ? (
                                 <>
@@ -119,8 +125,8 @@ export default function PendingApprovalGateway() {
                             )}
                         </button>
 
-                        <a 
-                            href="mailto:support@rescrapx.com" 
+                        <a
+                            href="mailto:support@rescrapx.com"
                             className="text-[10px] text-slate-400 font-medium hover:text-emerald-400 transition-colors flex items-center gap-1.5 pt-1 group"
                         >
                             Contact compliance operational desk

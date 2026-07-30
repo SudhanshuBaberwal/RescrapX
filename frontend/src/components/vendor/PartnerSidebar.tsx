@@ -9,6 +9,7 @@ import {
 import { File } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { logout } from '@/services/auth.service';
 interface SidebarProps {
   onClose?: () => void;
 }
@@ -84,6 +85,15 @@ export default function PartnerSidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push("/login")
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   const activeTab = searchParams.get("tab") || "dashboard";
   return (
     <aside className="w-64 h-full bg-[#062614] text-white flex flex-col justify-between p-4 shrink-0 text-xs tracking-tight overflow-y-auto">
@@ -158,6 +168,84 @@ export default function PartnerSidebar({ onClose }: SidebarProps) {
             );
           })}
         </nav>
+        <button
+          type="button"
+          onClick={handleLogout} // Replace with your actual logout function logic
+          className="
+    relative
+    overflow-hidden
+    w-full
+    flex
+    items-center
+    justify-between
+    rounded-xl
+    px-4
+    py-3
+    text-sm
+    font-semibold
+    transition-all
+    duration-300
+    ease-out
+    group
+    text-rose-600
+    hover:bg-rose-50/80
+    hover:text-rose-700
+    hover:translate-x-1
+  "
+        >
+          {/* Left Border Indicator on Hover */}
+          <span
+            className="
+      absolute
+      left-0
+      top-2
+      bottom-2
+      w-1
+      rounded-r-full
+      bg-rose-600
+      transition-all
+      duration-300
+      opacity-0
+      group-hover:opacity-100
+    "
+          />
+
+          {/* Hover Gradient Background */}
+          <div
+            className="
+      absolute
+      inset-0
+      rounded-xl
+      transition-opacity
+      duration-500
+      opacity-0
+      group-hover:opacity-100
+      bg-gradient-to-r
+      from-rose-500/10
+      to-transparent
+    "
+          />
+
+          {/* Icon and Label */}
+          <div className="relative z-10 flex items-center gap-3">
+            {/* LogOut Icon (e.g., from lucide-react) */}
+            <LogOut
+              size={18}
+              className="
+        text-rose-500
+        transition-all
+        duration-300
+        group-hover:text-rose-600
+        group-hover:scale-110
+        group-hover:-rotate-6
+      "
+            />
+
+            <span className="transition-transform duration-300 group-hover:translate-x-1">
+              Logout
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* Support Box widget footer section */}

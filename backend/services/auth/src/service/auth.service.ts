@@ -470,7 +470,7 @@ class AuthService {
     }
     const user = await authRepository.updatePartner(usreId, {
       phoneNumber: data.phoneNumber,
-      partnerStatus: PartnerStatus.UNDER_REVIEW,
+      partnerStatus: PartnerStatus.PENDING,
       partnerNextStep: PartnerNextStep.UPLOAD_DOCUMENTS,
       company: {
         companyName: data.companyName,

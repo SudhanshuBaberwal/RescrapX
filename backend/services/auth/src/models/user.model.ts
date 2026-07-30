@@ -67,14 +67,30 @@ export interface IUser extends Document {
     pincode?: string;
   };
   documents?: {
-    idProof: string;
-    gstCertificate: string;
-    panCard: string;
-    registrationCertificate: string;
-    bankDetails: string;
-    rvsfCertificate: string;
+    gstCertificate?: {
+      path: string;
+    };
+
+    panCard?: {
+      path: string;
+    };
+
+    registrationCertificate?: {
+      path: string;
+    };
+
+    bankDetails?: {
+      path: string;
+    };
+
+    rvsfCertificate?: {
+      path: string;
+    };
+
     uploadedAt?: Date;
   };
+
+  rejectionReason: string;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -116,20 +132,6 @@ const companySchema = new Schema(
       type: String,
       trim: true,
     },
-  },
-  {
-    _id: false,
-  },
-);
-
-const documentsSchema = new Schema(
-  {
-    idProof: String,
-    gstCertificate: String,
-    panCard: String,
-    registrationCertificate: String,
-    bankDetails: String,
-    rvsfCertificate: String,
   },
   {
     _id: false,
@@ -188,6 +190,10 @@ const userSchema = new Schema<IUser>(
     partnerStatus: {
       type: String,
       enum: Object.values(PartnerStatus),
+      default: null,
+    },
+    rejectionReason: {
+      type: String,
       default: null,
     },
 
@@ -283,6 +289,12 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    partnerNextStep: {
+      type: String,
+      enum: Object.values(PartnerNextStep),
+      default: null,
     },
 
     lastLogin: {

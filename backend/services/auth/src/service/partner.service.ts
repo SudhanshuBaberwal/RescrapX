@@ -11,6 +11,7 @@ import {
   validatePartnerDocuments,
 } from "../validations/partner.validation.js";
 import { uploadToSupabase } from "../utils/uploadToSupabase.js";
+import adminRepository from "../repository/admin.repository.js";
 
 class PartnerService {
   async uploadDocuments(userId: string, files: UploadedFiles) {
@@ -98,8 +99,6 @@ class PartnerService {
 
   async getAllPartners() {
     const partners = await partnerRepository.findByPartnerRole();
-
-    console.log("Partners:", partners);
 
     return partners;
   }

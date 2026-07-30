@@ -2,24 +2,29 @@
 
 import axios from "axios";
 import React, { useState } from 'react';
-import Sidebar from './AdminSidebar';
-import { Navbar } from '../navbar/AdminNavbar';
 import { getAllPartners } from '@/hooks/getAllPartners';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
+import { approvePartner } from "@/services/admin.service";
+import { setUserData } from "@/store/userSlice";
+import { PartnerNextStep, PartnerStatus } from "@/context/AuthProvider";
+import { useToast } from "@/lib/ui/toast/ToastContext";
+import { Loader } from "lucide-react";
+import { rejectPartner } from "@/services/admin.service";
+import { useRouter } from "next/navigation";
 
 export const RVSFPartners: React.FC = () => {
   getAllPartners()
-
+  const dispatch = useDispatch<AppDispatch>()
   const { allPartnersData } = useSelector((state: RootState) => state.admin)
-  // console.log(allPartnersData)
-  // Set selectedPartner to null by default so panel stays closed initially
+  const { userData } = useSelector((state: RootState) => state.user)
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
-
+  const [loading, setLoading] = useState(false)
   const activePartner = allPartnersData.filter((partner) => partner.partnerStatus === "APPROVED")
   const onHoldPartner = allPartnersData.filter((partner) => partner.partnerStatus === "UNDER_REVIEW")
   const pendingPartner = allPartnersData.filter((partner) => partner.partnerStatus === "PENDING")
-
+  const { showToast } = useToast()
+  const router = useRouter()
   const partnerKPIs = [
     { title: 'Total Partners', value: `${allPartnersData.length}`, trend: '+10% vs last month', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Active Partners', value: `${activePartner.length}`, trend: '+12% vs last month', color: 'text-emerald-600 bg-emerald-50' },
@@ -29,7 +34,34 @@ export const RVSFPartners: React.FC = () => {
     { title: 'Total Payouts (MTD)', value: '₹2,46,85,340', trend: '+16% vs last month', color: 'text-emerald-600 bg-emerald-50' },
   ];
 
-  // Helper function to handle opening PDF documents in a new browser tab
+  const [showRejectModal, setShowRejectModal] = useState<boolean>(false);
+  const [rejectReason, setRejectReason] = useState<string>('');
+
+  const handleConfirmReject = async () => {
+    if (!rejectReason.trim()) {
+      alert("Please enter a valid reason for rejection.");
+      return;
+    }
+
+    try {
+      const result = await rejectPartner(
+        selectedPartner._id,
+        rejectReason
+      ); // ya result.data.data, response ke according
+
+      showToast(
+        `Partner ${selectedPartner.fullName} rejected successfully.`,
+        "success"
+      );
+      console.log(result)
+      dispatch(setUserData({...userData,partnerStatus:"REJECTED" , rejectionReason:rejectReason}))
+      setRejectReason("");
+      setShowRejectModal(false);
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to reject partner.", "error");
+    }
+  };
 
   const handleViewPDF = async (path: string) => {
     try {
@@ -59,12 +91,12 @@ export const RVSFPartners: React.FC = () => {
       url: docsObj?.gstCertificate,
     },
     {
-      name: "Pollution",
-      url: docsObj?.pollutionLicense,
+      name: "PanCard",
+      url: docsObj?.panCard,
     },
     {
-      name: "PAN",
-      url: docsObj?.panCard,
+      name: "RegistationCertificate",
+      url: docsObj?.registrationCertificate,
     },
     {
       name: "Aadhar",
@@ -72,9 +104,27 @@ export const RVSFPartners: React.FC = () => {
     },
     {
       name: "Bank",
-      url: docsObj?.cancelledCheque,
+      url: docsObj?.bankDetails,
     },
   ];
+
+  const approvedPartner = async (partnerId: string) => {
+    setLoading(true)
+    try {
+      await approvePartner(partnerId)
+      dispatch(setUserData({
+        ...userData, partnerStatus: PartnerStatus.APPROVED,
+        partnerNextStep: PartnerNextStep.DASHBOARD,
+      }))
+      showToast("Partner Status Updated Successfully!", 'success')
+      console.log(userData)
+    } catch (error: any) {
+      showToast(error.message, 'error')
+      console.log(error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="w-full flex flex-col justify-between">
@@ -299,15 +349,78 @@ export const RVSFPartners: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action Buttons: If UNDER_REVIEW, show Approve / Reject controls */}
               <div className="pt-3 border-t border-slate-100 flex gap-2">
                 {selectedPartner.partnerStatus === "UNDER_REVIEW" || selectedPartner.partnerStatus === "PENDING" ? (
                   <>
-                    <button className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs py-2 rounded-lg transition-colors">
+                    <button
+                      onClick={() => setShowRejectModal(true)}
+                      className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs py-2 rounded-lg transition-colors"
+                    >
                       Reject Partner
                     </button>
-                    <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
-                      Approve & Verify
+
+
+                    {/* REJECTION REASON INPUT DIALOG / MODAL DIV */}
+                    {showRejectModal && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-fadeIn">
+                        <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
+
+                          {/* Modal Header */}
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                              <h3 className="text-sm font-bold text-slate-900">Reject Application</h3>
+                              <p className="text-[11px] text-slate-400">
+                                Provide a reason for rejecting <span className="font-semibold text-slate-700">{selectedPartner?.fullName}</span>
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setShowRejectModal(false)}
+                              className="text-slate-400 hover:text-slate-600 font-bold text-sm rounded-md p-1 hover:bg-slate-100 transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {/* Input Reason Area */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-slate-700 block">
+                              Rejection Reason <span className="text-rose-500">*</span>
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={rejectReason}
+                              onChange={(e) => setRejectReason(e.target.value)}
+                              placeholder="e.g. Invalid GST Certificate, Expired RVSF license document..."
+                              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all text-slate-800 placeholder:text-slate-400 resize-none"
+                            />
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-end gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowRejectModal(false);
+                                setRejectReason('');
+                              }}
+                              className="border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs px-4 py-2 rounded-lg transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleConfirmReject}
+                              className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm shadow-rose-600/10"
+                            >
+                              Confirm Rejection
+                            </button>
+                          </div>
+
+                        </div>
+                      </div>
+                    )}
+                    <button onClick={() => approvedPartner(selectedPartner._id)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 rounded-lg transition-colors shadow-sm shadow-emerald-600/10">
+                      {loading ? <Loader /> : "Approve & Verify"}
                     </button>
                   </>
                 ) : (

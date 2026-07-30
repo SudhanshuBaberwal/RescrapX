@@ -16,7 +16,9 @@ import {
   MessageCircleWarning,
   BarChart3,
   Bell,
+  LogOut,
 } from 'lucide-react';
+import { logout } from '@/services/auth.service';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -66,6 +68,15 @@ const AdminSidebar: React.FC<SidebarProps> = ({
 
     onClose();
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push("/login")
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   return (
     <>
@@ -141,10 +152,9 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                   duration-300
                   ease-out
                   group
-                  ${
-                    isActive
-                      ? 'bg-emerald-50 text-emerald-700 shadow-md border border-emerald-100'
-                      : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900 hover:translate-x-2'
+                  ${isActive
+                    ? 'bg-emerald-50 text-emerald-700 shadow-md border border-emerald-100'
+                    : 'hover:bg-slate-50 text-slate-600 hover:text-slate-900 hover:translate-x-2'
                   }
                 `}
               >
@@ -160,10 +170,9 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                     bg-emerald-600
                     transition-all
                     duration-300
-                    ${
-                      isActive
-                        ? 'opacity-100'
-                        : 'opacity-0 group-hover:opacity-100'
+                    ${isActive
+                      ? 'opacity-100'
+                      : 'opacity-0 group-hover:opacity-100'
                     }
                   `}
                 />
@@ -176,10 +185,9 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                     rounded-xl
                     transition-opacity
                     duration-500
-                    ${
-                      isActive
-                        ? 'bg-gradient-to-r from-emerald-500/10 to-transparent'
-                        : 'opacity-0 group-hover:opacity-100 bg-gradient-to-r from-slate-100 to-transparent'
+                    ${isActive
+                      ? 'bg-gradient-to-r from-emerald-500/10 to-transparent'
+                      : 'opacity-0 group-hover:opacity-100 bg-gradient-to-r from-slate-100 to-transparent'
                     }
                   `}
                 />
@@ -191,10 +199,9 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                     className={`
                       transition-all
                       duration-300
-                      ${
-                        isActive
-                          ? 'text-emerald-600 scale-110'
-                          : 'text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 group-hover:-rotate-6'
+                      ${isActive
+                        ? 'text-emerald-600 scale-110'
+                        : 'text-slate-400 group-hover:text-emerald-600 group-hover:scale-110 group-hover:-rotate-6'
                       }
                     `}
                   />
@@ -216,10 +223,9 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                       font-bold
                       transition-all
                       duration-300
-                      ${
-                        isActive
-                          ? 'bg-emerald-600 text-white scale-105'
-                          : 'bg-slate-200 text-slate-700 group-hover:scale-110'
+                      ${isActive
+                        ? 'bg-emerald-600 text-white scale-105'
+                        : 'bg-slate-200 text-slate-700 group-hover:scale-110'
                       }
                     `}
                   >
@@ -227,8 +233,87 @@ const AdminSidebar: React.FC<SidebarProps> = ({
                   </span>
                 )}
               </button>
+
             );
           })}
+          <button
+            type="button"
+            onClick={handleLogout} // Replace with your actual logout function logic
+            className="
+    relative
+    overflow-hidden
+    w-full
+    flex
+    items-center
+    justify-between
+    rounded-xl
+    px-4
+    py-3
+    text-sm
+    font-semibold
+    transition-all
+    duration-300
+    ease-out
+    group
+    text-rose-600
+    hover:bg-rose-50/80
+    hover:text-rose-700
+    hover:translate-x-1
+  "
+          >
+            {/* Left Border Indicator on Hover */}
+            <span
+              className="
+      absolute
+      left-0
+      top-2
+      bottom-2
+      w-1
+      rounded-r-full
+      bg-rose-600
+      transition-all
+      duration-300
+      opacity-0
+      group-hover:opacity-100
+    "
+            />
+
+            {/* Hover Gradient Background */}
+            <div
+              className="
+      absolute
+      inset-0
+      rounded-xl
+      transition-opacity
+      duration-500
+      opacity-0
+      group-hover:opacity-100
+      bg-gradient-to-r
+      from-rose-500/10
+      to-transparent
+    "
+            />
+
+            {/* Icon and Label */}
+            <div className="relative z-10 flex items-center gap-3">
+              {/* LogOut Icon (e.g., from lucide-react) */}
+              <LogOut
+                size={18}
+                className="
+        text-rose-500
+        transition-all
+        duration-300
+        group-hover:text-rose-600
+        group-hover:scale-110
+        group-hover:-rotate-6
+      "
+              />
+
+              <span className="transition-transform duration-300 group-hover:translate-x-1">
+                Logout
+              </span>
+            </div>
+          </button>
         </nav>
 
         {/* Bottom Card */}

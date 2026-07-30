@@ -13,21 +13,29 @@ export default function PartnerLayout({
   const router = useRouter();
 
   const { userData } = useSelector((state: RootState) => state.user);
-
+  const partnerStatus = userData?.partnerStatus
   useEffect(() => {
     if (!userData) return;
 
-    switch (userData.partnerNextStep) {
-      case "UPLOAD_DOCUMENTS":
+    if (!userData.partnerNextStep){
+      router.replace("/partner/register")
+      return;
+    }
+
+    switch (partnerStatus) {
+      case "PENDING":
         router.replace("/partner/verify-documents");
         break;
 
-      case "WAIT_APPROVAL":
+      case "UNDER_REVIEW":
         router.replace("/partner/waiting-approval");
         break;
 
-      case "REUPLOAD_DOCUMENTS":
-        router.replace("/partner/reupload");
+      case "APPROVED":
+        router.replace("/");
+        break;
+      case "REJECTED":
+        router.replace("/partner/reject-approval")
         break;
     }
   }, [userData, router]);
