@@ -1,3 +1,4 @@
+
 import { createClient } from "redis";
 import { env } from "./env.js";
 
@@ -9,7 +10,7 @@ redis.on("connect", () => {
   console.log("🟢 Redis Connected");
 });
 
-redis.on("error", (err) => {
+redis.on("error", (err: any) => {
   console.error("🔴 Redis Error:", err);
 });
 

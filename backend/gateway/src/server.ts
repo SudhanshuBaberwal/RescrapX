@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import app from "./app.ts";
-import { env } from "./config/env.ts";
+import env  from "./config/env.ts";
 dotenv.config();
 
 app.listen(env.PORT, () => {

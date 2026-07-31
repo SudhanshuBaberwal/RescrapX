@@ -16,12 +16,12 @@ export default function RegistrationStepper({ currentStep }: RegistrationStepper
     { id: 5, label: "Photos" },
     { id: 6, label: "Pickup & Location" },
     { id: 7, label: "Review & Confirm" },
-     { id: 8, label: "Instant Offer" }
+    { id: 8, label: "Instant Offer" }
   ];
 
   return (
     <div className="w-full bg-white p-4 md:py-5 rounded-2xl border border-gray-100 shadow-3xs">
-      
+
       {/* 1. DESKTOP VIEW: Horizontal Line Progress Track */}
       <div className="hidden md:flex w-full mx-auto px-6 relative items-center justify-between">
         <div className="absolute top-[18px] left-10 right-10 h-[2px] bg-gray-100 z-0" />
@@ -32,12 +32,11 @@ export default function RegistrationStepper({ currentStep }: RegistrationStepper
 
           return (
             <div key={step.id} className="flex flex-col items-center space-y-1.5 z-10 relative flex-1">
-              <div 
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border transition-all duration-300 ${
-                  isCompleted ? 'bg-[#E6F4EA] border-[#A7F3D0] text-[#0B5B32]' : 
-                  isActive ? 'bg-[#0B5B32] border-[#0B5B32] text-white' : 
-                  'bg-gray-50 border-gray-200 text-gray-400'
-                }`}
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border transition-all duration-300 ${isCompleted ? 'bg-[#E6F4EA] border-[#A7F3D0] text-[#0B5B32]' :
+                    isActive ? 'bg-[#0B5B32] border-[#0B5B32] text-white' :
+                      'bg-gray-50 border-gray-200 text-gray-400'
+                  }`}
               >
                 {isCompleted ? <Check size={14} strokeWidth={3} /> : <span>{step.id}</span>}
               </div>
@@ -63,12 +62,11 @@ export default function RegistrationStepper({ currentStep }: RegistrationStepper
 
           return (
             <div key={step.id} className="flex items-center gap-4 z-10 relative">
-              <div 
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0 transition-all ${
-                  isCompleted ? 'bg-[#E6F4EA] border-[#A7F3D0] text-[#0B5B32]' : 
-                  isActive ? 'bg-[#0B5B32] border-[#0B5B32] text-white' : 
-                  'bg-gray-50 border-gray-200 text-gray-400'
-                }`}
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border shrink-0 transition-all ${isCompleted ? 'bg-[#E6F4EA] border-[#A7F3D0] text-[#0B5B32]' :
+                    isActive ? 'bg-[#0B5B32] border-[#0B5B32] text-white' :
+                      'bg-gray-50 border-gray-200 text-gray-400'
+                  }`}
               >
                 {isCompleted ? <Check size={10} strokeWidth={3} /> : <span>{step.id}</span>}
               </div>
