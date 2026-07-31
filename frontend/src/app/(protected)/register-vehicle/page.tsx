@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 
 export default function Page() {
   const TOTAL_PAGES = 8;
-  const [currentPage, setCurrentPage] = useState(7);
+  const [currentPage, setCurrentPage] = useState(8);
 
   const handleContinue = () => {
     if (currentPage < TOTAL_PAGES) {
