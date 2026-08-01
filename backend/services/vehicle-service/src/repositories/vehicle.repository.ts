@@ -13,7 +13,7 @@ class VehicleRepository {
   }
   async createDraftCar(userId: string): Promise<IVehicle | null> {
     return Vehicle.create({
-      userId,
+      owner:userId,
       status: VehicleStatus.DRAFT,
       currentStep: RegistrationStep.VEHICLE_DETAILS,
       timeline: [
@@ -24,6 +24,14 @@ class VehicleRepository {
         },
       ],
     });
+  }
+
+  async findByVehicleId(vehicleId:string){
+    return Vehicle.findById(vehicleId)
+  }
+
+  async saveVehicle(vehicle :IVehicle){
+    return vehicle.save()
   }
 }
 

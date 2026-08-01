@@ -4,3 +4,4 @@ interface AuthenticatedRequest extends Request {
     role: string;
   };
 }
+export default AuthenticatedRequest;

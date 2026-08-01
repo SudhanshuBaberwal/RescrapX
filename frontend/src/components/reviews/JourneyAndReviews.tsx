@@ -1,18 +1,23 @@
 'use client'
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import {  useRouter } from 'next/navigation';
 import { ArrowRight, Star, PlusCircle, Loader } from 'lucide-react';
 import { createDraftVehicle } from '@/services/vehicle.service';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store/store';
 import { setVehicleData } from '@/store/vehicleSlice';
 
 export default function JourneyAndReviews() {
   const router = useRouter();
   const [loading, setLoading] = useState(false)
   const dispatch = useDispatch<AppDispatch>()
+
+  const { vehicleData } = useSelector((state: RootState) => state.vehicle)
   const handleRegister = async () => {
+    if (vehicleData != null){
+      router.push(`/register-vehicle/${vehicleData.currentStep}`)
+    }
     setLoading(true)
     try {
       const data = await createDraftVehicle()

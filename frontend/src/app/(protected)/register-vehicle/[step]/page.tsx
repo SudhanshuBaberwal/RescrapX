@@ -3,11 +3,19 @@
 import Footer from '@/components/footer/Footer';
 import Navbar from '@/components/navbar/UserNavbar';
 import VehicleRegistrationDetails from '@/components/user/vehicleRegistraion/VehicleRegistationDetails';
+import { RootState } from '@/store/store';
+import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 
 export default function Page() {
+
+  const { vehicleData } = useSelector((state: RootState) => state.vehicle)
+  console.log(vehicleData)
+  const { step } = useParams<{ step: string }>();
+  const PageStep = Number(step);
   const TOTAL_PAGES = 8;
-  const [currentPage, setCurrentPage] = useState(8);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleContinue = () => {
     if (currentPage < TOTAL_PAGES) {
@@ -29,16 +37,16 @@ export default function Page() {
           <Navbar />
         </div>
         <VehicleRegistrationDetails
-          currentPage={currentPage}
-          currentNumber={currentPage}
+          currentPage={PageStep}
+          currentNumber={PageStep}
           onContinue={handleContinue}
           onPrevious={handlePrevious}
-          isFirstStep={currentPage === 1}
-          isLastStep={currentPage === TOTAL_PAGES}
+          isFirstStep={PageStep === 1}
+          isLastStep={PageStep === TOTAL_PAGES}
           totalSteps={TOTAL_PAGES}
         />
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 }

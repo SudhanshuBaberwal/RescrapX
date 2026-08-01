@@ -38,13 +38,31 @@ export enum EngineCondition {
   NOT_WORKING = "NOT_WORKING",
 }
 
+export enum ComponentCondition {
+  GOOD = "GOOD",
+  NOT_WORKING = "NOT_WORKING",
+  MISSING = "MISSING",
+}
+
+export enum accidentType {
+  NO_ACCIDENT = "NO_ACCIDENT",
+  ACCIDENTAL_DAMAGE = "ACCIDENTAL_DAMAGE",
+  BURNT = "BURNT",
+  FLOODED = "FLOODED",
+  OTHER = "OTHER",
+}
+
+export enum structuralDamage {
+  NO_DAMAGE = "NO_DAMAGE",
+  MINOR_DAMAGE = "MINOR_DAMAGE",
+  MAJOR_DAMAGE = "MAJOR_DAMAGE",
+}
 export interface IVehicle extends Document {
-  userId: mongoose.Types.ObjectId;
+  owner: mongoose.Types.ObjectId;
 
   status: VehicleStatus;
-
+  isRegistered?: boolean;
   currentStep: RegistrationStep;
-
   vehicleDetails: {
     registrationNumber: string;
     manufacturer: string;
@@ -55,29 +73,30 @@ export interface IVehicle extends Document {
     manufacturingYear: number;
     ownership: number;
     kmsDriven: number;
-    color: string;
-    city: string;
   };
 
   vehicleCondition: {
-    runningCondition: boolean;
-    accidental: boolean;
-    floodAffected: boolean;
-    engineCondition: EngineCondition;
-    transmissionCondition: TransmissionType;
+    accidentType: accidentType;
+    structure: structuralDamage;
+    airbagsDeployed: boolean;
+    description: string;
   };
 
   majorComponents: {
-    batteryAvailable: boolean;
-    batteryCondition: string;
-    tyreCondition: string;
-    alloyWheels: boolean;
-    musicSystem: boolean;
-    catalyticConverter: boolean;
-    ecuAvailable: boolean;
-    airbagsAvailable: boolean;
-    spareWheel: boolean;
-    toolkitAvailable: boolean;
+    engine: ComponentCondition;
+    radiator: ComponentCondition;
+    fuelSystem: ComponentCondition;
+    gearbox: ComponentCondition;
+    suspension: ComponentCondition;
+    steering: ComponentCondition;
+    electrical: ComponentCondition;
+    exhaust: ComponentCondition;
+    tyres: ComponentCondition;
+    ac: ComponentCondition;
+    bodyPanels: ComponentCondition;
+    glass: ComponentCondition;
+    lights: ComponentCondition;
+    interior: ComponentCondition;
   };
 
   documents: {
@@ -140,24 +159,28 @@ const vehicleDetailsSchema = new Schema(
     manufacturingYear: Number,
     ownership: Number,
     kmsDriven: Number,
-    color: String,
-    city: String,
   },
   { _id: false },
 );
 
 const vehicleConditionSchema = new Schema(
   {
-    runningCondition: Boolean,
-    accidental: Boolean,
-    floodAffected: Boolean,
-    engineCondition: {
+    accidentType: {
       type: String,
-      enum: Object.values(EngineCondition),
+      enum: Object.values(accidentType),
     },
-    transmissionCondition: {
+    structure: {
       type: String,
-      enum: Object.values(TransmissionType),
+      enum: Object.values(structuralDamage),
+    },
+    airbagsDeployed: {
+      type: Boolean,
+      default: false,
+    },
+
+    description: {
+      type: String,
+      default: "",
     },
   },
   { _id: false },
@@ -165,16 +188,89 @@ const vehicleConditionSchema = new Schema(
 
 const majorComponentsSchema = new Schema(
   {
-    batteryAvailable: Boolean,
-    batteryCondition: String,
-    tyreCondition: String,
-    alloyWheels: Boolean,
-    musicSystem: Boolean,
-    catalyticConverter: Boolean,
-    ecuAvailable: Boolean,
-    airbagsAvailable: Boolean,
-    spareWheel: Boolean,
-    toolkitAvailable: Boolean,
+    engine: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    radiator: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    fuelSystem: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    gearbox: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    suspension: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    steering: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    electrical: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    exhaust: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    tyres: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    ac: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    bodyPanels: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    glass: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    lights: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    interior: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
   },
   { _id: false },
 );
@@ -233,9 +329,12 @@ const timelineSchema = new Schema(
 
 const vehicleSchema = new Schema<IVehicle>(
   {
-    userId: {
+    owner: {
       type: Schema.Types.ObjectId,
       required: true,
+    },
+    isRegistered: {
+      type: Boolean,
     },
     status: {
       type: String,
@@ -263,7 +362,7 @@ const vehicleSchema = new Schema<IVehicle>(
     versionKey: false,
   },
 );
-vehicleSchema.index({ userId: 1 });
+vehicleSchema.index({ owner: 1 });
 vehicleSchema.index({ status: 1 });
 vehicleSchema.index({ "vehicleDetails.registrationNumber": 1 });
 
