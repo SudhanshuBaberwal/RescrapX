@@ -1,8 +1,10 @@
 import vehicleRepository from "../repositories/vehicle.repository.js";
-import { IVehicle, VehicleDocumentType } from "../models/vehicle.model.js";
+import { IVehicle, RegistrationStep } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import {
   UploadedFiles,
+  UploadedPhoto,
+  UploadedPhotos,
   vehicleBasicDto,
   vehicleConditionDto,
   vehicleDocumentSchema,
@@ -10,7 +12,17 @@ import {
 } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
 import supabaseService from "./supabase.service.js";
+const createPhoto = (upload: any, file: Express.Multer.File) => ({
+  path: upload.path,
 
+  originalName: file.originalname,
+
+  mimeType: file.mimetype,
+
+  size: file.size,
+
+  uploadedAt: new Date(),
+});
 class VehicleService {
   private validateStep(vehicle: IVehicle, requiredStep: number) {
     if (vehicle.currentStep < requiredStep) {
@@ -203,6 +215,67 @@ class VehicleService {
 
     await vehicle.save();
 
+    return vehicle;
+  }
+
+  async uploadPhotos(userId: string, vehicleId: string, files: UploadedPhotos) {
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+    if (!vehicle) {
+      throw new ApiError(400, "Vehicle Not Found");
+    }
+    if (vehicle.owner.toString() !== userId) {
+      throw new ApiError(403, "Unauthrorized");
+    }
+
+    if (vehicle.currentStep < RegistrationStep.DOCUMENTS) {
+      throw new ApiError(400, "Complete previous step first.");
+    }
+
+    const folder = `vehicles/${userId}/${vehicleId}/photos`;
+
+    const [front, rear, left, right, dashboard, interior, engine, odometer] =
+      await Promise.all([
+        supabaseService.uploadToSupabase(files.front[0], folder, "front"),
+        supabaseService.uploadToSupabase(files.rear[0], folder, "rear"),
+        supabaseService.uploadToSupabase(files.left[0], folder, "left"),
+        supabaseService.uploadToSupabase(files.right[0], folder, "right"),
+        supabaseService.uploadToSupabase(
+          files.dashboard[0],
+          folder,
+          "dashboard",
+        ),
+        supabaseService.uploadToSupabase(files.interior[0], folder, "interior"),
+        supabaseService.uploadToSupabase(files.engine[0], folder, "engine"),
+        supabaseService.uploadToSupabase(files.odometer[0], folder, "odometer"),
+      ]);
+
+    vehicle.photos = {
+      front: createPhoto(front, files.front[0]),
+      rear: createPhoto(rear, files.rear[0]),
+      left: createPhoto(left, files.left[0]),
+      right: createPhoto(right, files.right[0]),
+      dashboard: createPhoto(dashboard, files.dashboard[0]),
+      interior: createPhoto(interior, files.interior[0]),
+      engine: createPhoto(engine, files.engine[0]),
+      odometer: createPhoto(odometer, files.odometer[0]),
+    };
+
+    if (files.chassisNumber) {
+      const chassis = await supabaseService.uploadToSupabase(
+        files.chassisNumber[0],
+        folder,
+        "chassis",
+      );
+      vehicle.photos.chassisNumber = createPhoto(
+        chassis,
+        files.chassisNumber[0],
+      );
+    }
+    vehicle.currentStep = Math.max(
+      vehicle.currentStep,
+      RegistrationStep.PHOTOS,
+    );
+    await vehicle.save();
     return vehicle;
   }
 }

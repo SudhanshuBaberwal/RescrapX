@@ -5,6 +5,7 @@ import {
   majorComponents,
   registerBasicVehicleDetails,
   uploadVehicleDocumentController,
+  uploadVehiclePhotosController,
   vehicleCondition,
 } from "../controllers/vehicle.controller.js";
 import {
@@ -15,7 +16,9 @@ import {
 } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
-import uploadVehicleDocument from "../middlewares/uploadVehicleDocument.js";
+import uploadVehicleDocument, {
+  uploadVehiclePhotos,
+} from "../middlewares/uploadVehicleDocument.js";
 
 const router = Router();
 
@@ -46,6 +49,13 @@ router.put(
   attachUser,
   uploadVehicleDocument,
   uploadVehicleDocumentController,
+);
+
+router.put(
+  "/photos",
+  attachUser,
+  uploadVehiclePhotos,
+  uploadVehiclePhotosController,
 );
 
 export default router;

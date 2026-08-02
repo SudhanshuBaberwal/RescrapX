@@ -8,6 +8,14 @@ export interface IVehicleDocument {
   uploadedAt: Date;
 }
 
+export interface IUploadedPhoto {
+  path: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
 export enum VehicleStatus {
   DRAFT = "DRAFT",
   SUBMITTED = "SUBMITTED",
@@ -122,17 +130,17 @@ export interface IVehicle extends Document {
     loanClosure?: IVehicleDocument;
     other?: IVehicleDocument;
   };
-  photos: {
-    front: string;
-    rear: string;
-    left: string;
-    right: string;
-    interior: string;
-    dashboard: string;
-    engine: string;
-    odometer: string;
-    chassisNumber: string;
-  };
+ photos: {
+  front?: IUploadedPhoto;
+  rear?: IUploadedPhoto;
+  left?: IUploadedPhoto;
+  right?: IUploadedPhoto;
+  dashboard?: IUploadedPhoto;
+  interior?: IUploadedPhoto;
+  engine?: IUploadedPhoto;
+  odometer?: IUploadedPhoto;
+  chassisNumber?: IUploadedPhoto;
+};
 
   pickup: {
     address: string;
@@ -316,7 +324,7 @@ const vehicleDocumentSchema = new Schema(
   },
   {
     _id: false,
-  }
+  },
 );
 
 const documentsSchema = new Schema(
@@ -348,20 +356,31 @@ const documentsSchema = new Schema(
   },
   {
     _id: false,
-  }
+  },
+);
+
+const uploadedPhotoSchema = new Schema(
+  {
+    path: String,
+    originalName: String,
+    mimeType: String,
+    size: Number,
+    uploadedAt: Date,
+  },
+  { _id: false },
 );
 
 const photosSchema = new Schema(
   {
-    front: String,
-    rear: String,
-    left: String,
-    right: String,
-    interior: String,
-    dashboard: String,
-    engine: String,
-    odometer: String,
-    chassisNumber: String,
+    front: uploadedPhotoSchema,
+    rear: uploadedPhotoSchema,
+    left: uploadedPhotoSchema,
+    right: uploadedPhotoSchema,
+    dashboard: uploadedPhotoSchema,
+    interior: uploadedPhotoSchema,
+    engine: uploadedPhotoSchema,
+    odometer: uploadedPhotoSchema,
+    chassisNumber: uploadedPhotoSchema,
   },
   { _id: false },
 );

@@ -5,7 +5,10 @@ import asyncHandler from "../lib/asyncHandler.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import ApiError from "../lib/ApiError.js";
 import { VehicleDocumentType } from "../models/vehicle.model.js";
-import { UploadedFiles } from "../validations/vehicle.validation.js";
+import {
+  UploadedFiles,
+  UploadedPhotos,
+} from "../validations/vehicle.validation.js";
 export const createVehicleDraft = asyncHandler(async (req, res) => {
   // Gateway should inject this after authentication
   const userId = req.headers["x-user-id"] as string;
@@ -64,9 +67,9 @@ export const majorComponents = asyncHandler(async (req, res) => {
 
 export const uploadVehicleDocumentController = asyncHandler(
   async (req, res) => {
-    const vehicleId  = req.query.vehicleId as string;
+    const vehicleId = req.query.vehicleId as string;
 
-    const files = (req as any).files as UploadedFiles
+    const files = (req as any).files as UploadedFiles;
 
     const vehicle = await vehicleService.uploadDocument(
       req.user!.userId,
@@ -78,7 +81,21 @@ export const uploadVehicleDocumentController = asyncHandler(
       res,
       200,
       "Document uploaded successfully.",
-      vehicle
+      vehicle,
     );
-  }
+  },
 );
+
+export const uploadVehiclePhotosController = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+
+  const files = req.files as UploadedPhotos;
+
+  const vehicle = await vehicleService.uploadPhotos(
+    req.user!.userId,
+    vehicleId,
+    files,
+  );
+
+  ApiResponse.success(res, 200, "Photos uploaded successfully", vehicle);
+});

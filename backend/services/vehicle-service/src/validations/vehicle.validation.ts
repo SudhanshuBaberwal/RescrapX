@@ -104,6 +104,29 @@ export const vehicleDocumentSchema = (files: UploadedFiles): void => {
   }
 };
 
+export const REQUIRED_PHOTOS = [
+  "front",
+  "rear",
+  "left",
+  "right",
+  "dashboard",
+  "interior",
+  "engine",
+  "odometer",
+] as const;
+
+export type UploadedPhoto = Express.Multer.File;
+
+export type UploadedPhotos = Record<string, UploadedPhoto[]>;
+
+export function validateVehiclePhotos(files: UploadedPhotos) {
+  for (const field of REQUIRED_PHOTOS) {
+    if (!files[field] || files[field].length === 0) {
+      throw new ApiError(400, `${field} photo is required`);
+    }
+  }
+}
+
 export type vehicleBasicDto = z.infer<typeof vehicleBasicSchema>;
 export type vehicleConditionDto = z.infer<typeof vehicleConditionSchema>;
 export type vehicleMajorComponentsDto = z.infer<
