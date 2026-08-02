@@ -1,5 +1,13 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
+export interface IVehicleDocument {
+  path: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
 export enum VehicleStatus {
   DRAFT = "DRAFT",
   SUBMITTED = "SUBMITTED",
@@ -9,6 +17,14 @@ export enum VehicleStatus {
   READY_FOR_BIDDING = "READY_FOR_BIDDING",
   SOLD = "SOLD",
   CANCELLED = "CANCELLED",
+}
+
+export enum VehicleDocumentType {
+  RC_BOOK = "RC_BOOK",
+  INSURANCE = "INSURANCE",
+  PUC = "PUC",
+  LOAN_CLOSURE = "LOAN_CLOSURE",
+  OTHER = "OTHER",
 }
 
 export enum RegistrationStep {
@@ -100,16 +116,12 @@ export interface IVehicle extends Document {
   };
 
   documents: {
-    rc: string;
-    insurance: string;
-    puc: string;
-    ownerIdProof: string;
-    keysAvailable: boolean;
-    numberOfKeys: number;
-    loanStatus: boolean;
-    nocDocument: string;
+    rcbook?: IVehicleDocument;
+    insurance?: IVehicleDocument;
+    puc?: IVehicleDocument;
+    loanClosure?: IVehicleDocument;
+    other?: IVehicleDocument;
   };
-
   photos: {
     front: string;
     rear: string;
@@ -275,18 +287,68 @@ const majorComponentsSchema = new Schema(
   { _id: false },
 );
 
+const vehicleDocumentSchema = new Schema(
+  {
+    path: {
+      type: String,
+      required: true,
+    },
+
+    originalName: {
+      type: String,
+      required: true,
+    },
+
+    mimeType: {
+      type: String,
+      required: true,
+    },
+
+    size: {
+      type: Number,
+      required: true,
+    },
+
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const documentsSchema = new Schema(
   {
-    rc: String,
-    insurance: String,
-    puc: String,
-    ownerIdProof: String,
-    keysAvailable: Boolean,
-    numberOfKeys: Number,
-    loanStatus: Boolean,
-    nocDocument: String,
+    rcbook: {
+      type: vehicleDocumentSchema,
+      default: null,
+    },
+
+    insurance: {
+      type: vehicleDocumentSchema,
+      default: null,
+    },
+
+    puc: {
+      type: vehicleDocumentSchema,
+      default: null,
+    },
+
+    loanClosure: {
+      type: vehicleDocumentSchema,
+      default: null,
+    },
+
+    other: {
+      type: vehicleDocumentSchema,
+      default: null,
+    },
   },
-  { _id: false },
+  {
+    _id: false,
+  }
 );
 
 const photosSchema = new Schema(

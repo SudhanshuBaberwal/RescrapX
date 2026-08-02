@@ -1,12 +1,15 @@
 import vehicleRepository from "../repositories/vehicle.repository.js";
-import { IVehicle } from "../models/vehicle.model.js";
+import { IVehicle, VehicleDocumentType } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import {
+  UploadedFiles,
   vehicleBasicDto,
   vehicleConditionDto,
+  vehicleDocumentSchema,
   vehicleMajorComponentsDto,
 } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
+import supabaseService from "./supabase.service.js";
 
 class VehicleService {
   private validateStep(vehicle: IVehicle, requiredStep: number) {
@@ -102,6 +105,104 @@ class VehicleService {
     };
     vehicle.currentStep = Math.max(vehicle.currentStep, 3);
     await vehicleRepository.saveVehicle(vehicle);
+    return vehicle;
+  }
+
+  async uploadDocument(
+    userId: string,
+    vehicleId: string,
+    files: UploadedFiles,
+  ) {
+    vehicleDocumentSchema(files);
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    if (vehicle.owner.toString() !== userId) {
+      throw new ApiError(403, "Unauthorized");
+    }
+
+    // Step 3 must be completed first
+    if (vehicle.currentStep < 3) {
+      throw new ApiError(
+        400,
+        "Please complete previous registration steps first.",
+      );
+    }
+
+    // const extension = file.originalname.split(".").pop();
+
+    const filePath = `vehicles/${userId}/document${vehicleId}`;
+
+    const [rcbook, insurance, puc, loan_closure, other] = await Promise.all([
+      supabaseService.uploadToSupabase(files.rcbook[0], filePath, "rcbook"),
+      supabaseService.uploadToSupabase(
+        files.insurance[0],
+        filePath,
+        "insurance",
+      ),
+      supabaseService.uploadToSupabase(
+        files.loan_closure[0],
+        filePath,
+        "loan_closure",
+      ),
+      supabaseService.uploadToSupabase(files.puc[0], filePath, "puc"),
+      supabaseService.uploadToSupabase(files.other[0], filePath, "other"),
+    ]);
+
+    vehicle.documents = {
+      rcbook: {
+        path: rcbook.path,
+        originalName: files.rcbook[0].originalname,
+        mimeType: files.rcbook[0].mimetype,
+        size: files.rcbook[0].size,
+        uploadedAt: new Date(),
+      },
+
+      insurance: {
+        path: insurance.path,
+        originalName: files.insurance[0].originalname,
+        mimeType: files.insurance[0].mimetype,
+        size: files.insurance[0].size,
+        uploadedAt: new Date(),
+      },
+
+      puc: {
+        path: puc.path,
+        originalName: files.puc[0].originalname,
+        mimeType: files.puc[0].mimetype,
+        size: files.puc[0].size,
+        uploadedAt: new Date(),
+      },
+
+      loanClosure: {
+        path: loan_closure.path,
+        originalName: files.loan_closure[0].originalname,
+        mimeType: files.loan_closure[0].mimetype,
+        size: files.loan_closure[0].size,
+        uploadedAt: new Date(),
+      },
+
+      other: {
+        path: other.path,
+        originalName: files.other[0].originalname,
+        mimeType: files.other[0].mimetype,
+        size: files.other[0].size,
+        uploadedAt: new Date(),
+      },
+    };
+
+    // vehicle.documents = document as any;
+
+    // Move to next step only after mandatory RC upload
+    if (vehicle.documents.rcbook) {
+      vehicle.currentStep = Math.max(vehicle.currentStep, 4);
+    }
+
+    await vehicle.save();
+
     return vehicle;
   }
 }

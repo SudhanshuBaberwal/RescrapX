@@ -1,0 +1,35 @@
+import multer from "multer";
+
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
+
+const uploadVehicleDocument = upload.fields([
+  {
+    name: "rcbook",
+    maxCount: 1,
+  },
+  {
+    name: "loan_closure",
+    maxCount: 1,
+  },
+  {
+    name: "puc",
+    maxCount: 1,
+  },
+  {
+    name: "insurance",
+    maxCount: 1,
+  },
+  {
+    name: "other",
+    maxCount: 1,
+  },
+]);
+
+export default uploadVehicleDocument;

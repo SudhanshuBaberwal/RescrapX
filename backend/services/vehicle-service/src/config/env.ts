@@ -10,6 +10,8 @@ export const env = {
   MONGODB_URI:
     process.env.MONGODB_URI || "mongodb://localhost:27017/rescrapx-auth",
 
-  FRONTEND_URL:process.env.FRONTEND_URI
+  FRONTEND_URL: process.env.FRONTEND_URI,
 
+  SUPABASE_URL: process.env.SUPABASE_SERVICE_URI!,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
 };
