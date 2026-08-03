@@ -99,3 +99,13 @@ export const uploadVehiclePhotosController = asyncHandler(async (req, res) => {
 
   ApiResponse.success(res, 200, "Photos uploaded successfully", vehicle);
 });
+
+export const savePickupLocation = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+  const vehicle = await vehicleService.savePickupLocation(
+    req.user!.userId,
+    vehicleId,
+    req.body,
+  );
+  ApiResponse.success(res, 200, "Pickup location saved", vehicle);
+});

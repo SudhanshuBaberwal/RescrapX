@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState } from 'react';
-import { 
-  Car, Info, ArrowRight, ShieldCheck, ChevronDown, 
-  Flame, Settings2, Gauge, ArrowLeft 
+import {
+  Car, Info, ArrowRight, ShieldCheck, ChevronDown,
+  Flame, Settings2, Gauge, ArrowLeft
 } from 'lucide-react';
 
 interface StepComponentProps {
@@ -23,32 +23,89 @@ export default function VehicleDetailsPage({
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
-  
+
   const [formData, setFormData] = useState({
-    carModel: '',
-    regNumber: '',
-    mfgYear: '',
+    carName:'',
+    model: '',
+    registrationNumber: 0,
+    manufacturingYear: 1990,
     variant: '',
     fuelType: '',
     transmission: '',
-    odometer: ''
+    odometerReading: 0,
+    ownership: 1
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error for the field being edited
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // COMPLETE HANDLESUBMIT FUNCTION
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue(); // Call multi-step dynamic function progression handler
-  };
+    setErrors({});
+    const newErrors: Record<string, string> = {};
+    // 1. Check required empty fields
+    if (!formData.carName.trim()) newErrors.carName = 'Car Name is Required'
+    if (!formData.model.trim()) newErrors.carModel = 'Car model is required';
+    if (!formData.registrationNumber) newErrors.regNumber = 'Registration number is required';
+    if (!formData.manufacturingYear) newErrors.mfgYear = 'Manufacturing year is required';
+    if (!formData.fuelType) newErrors.fuelType = 'Please select a fuel type';
+    if (!formData.transmission) newErrors.transmission = 'Please select a transmission type';
+    if (!formData.ownership) newErrors.ownership = 'Please select ownership status';
+    // const cleanRegNo = formData.regNumber.replace(/[\s-]/g, '').toUpperCase();
+    const regNoRegex = /^[A-Z]{2}[0-9]{1,2}[A-Z]{0,3}[0-9]{4}$/;
 
+    const currentYear = new Date().getFullYear();
+    const yearNum = Number(formData.manufacturingYear);
+    if (formData.manufacturingYear && (isNaN(yearNum) || yearNum < 1980 || yearNum > currentYear)) {
+      newErrors.mfgYear = `Year must be between 1980 and ${currentYear}`;
+    }
+
+    if (formData.odometerReading && (isNaN(Number(formData.odometerReading)) || Number(formData.odometerReading) < 0)) {
+      newErrors.odometer = 'Please enter a valid kilometer reading';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Cleaned data ready for API request or state save
+      const payload = {
+        ...formData,
+        manufacturer:String(formData.model),
+        registrationNumber:Number(formData.registrationNumber),
+        manufacturingYear: Number(formData.manufacturingYear),
+        kmsDriven:Number(formData.odometerReading),
+      };
+
+      console.log('Validated Vehicle Data Payload:', payload);
+
+      // const data = basicDetails(payload);
+      onContinue();
+    } catch (error) {
+      console.error('Submission failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-      
+
       {/* LEFT PANEL: ACTIVE INFORMATION CARD CONTAINER */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-5 md:p-8 shadow-3xs space-y-6">
-        
+
         {/* Form Title Block Header */}
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-[#0B5B32] text-white rounded-xl flex items-center justify-center text-xl shadow-xs shrink-0">
@@ -67,14 +124,26 @@ export default function VehicleDetailsPage({
 
           {/* Form Input Matrix Element Stack */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            
+
             {/* Field: Car Model */}
             <div className="space-y-1.5">
-              <label className="font-extrabold text-gray-700">Car Name / Model</label>
-              <input 
-                type="text" 
+              <label className="font-extrabold text-gray-700">Car Name </label>
+              <input
+                type="text"
                 placeholder="e.g., Maruti Swift"
-                value={formData.carModel}
+                value={formData.carName}
+                onChange={(e) => handleInputChange('carName', e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
+                required
+              />
+            </div>
+
+             <div className="space-y-1.5">
+              <label className="font-extrabold text-gray-700">Model</label>
+              <input
+                type="text"
+                placeholder="e.g., VXI"
+                value={formData.model}
                 onChange={(e) => handleInputChange('carModel', e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
                 required
@@ -84,10 +153,10 @@ export default function VehicleDetailsPage({
             {/* Field: Registration Number */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-gray-700">Registration Number (RC No.)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="e.g., DL01AB1234 (Optional)"
-                value={formData.regNumber}
+                value={formData.registrationNumber}
                 onChange={(e) => handleInputChange('regNumber', e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
               />
@@ -96,10 +165,10 @@ export default function VehicleDetailsPage({
             {/* Field: Manufacturing Year */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-gray-700">Manufacturing Year</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="e.g., 2018"
-                value={formData.mfgYear}
+                value={formData.manufacturingYear}
                 onChange={(e) => handleInputChange('mfgYear', e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
                 required
@@ -109,9 +178,9 @@ export default function VehicleDetailsPage({
             {/* Field: Variant */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-gray-700">Variant</label>
-              <input 
-                type="text" 
-                placeholder="e.g., VXi"
+              <input
+                type="text"
+                placeholder="e.g., Base"
                 value={formData.variant}
                 onChange={(e) => handleInputChange('variant', e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
@@ -123,7 +192,7 @@ export default function VehicleDetailsPage({
             <div className="space-y-1.5 relative">
               <label className="font-extrabold text-gray-700">Fuel Type</label>
               <div className="relative">
-                <select 
+                <select
                   value={formData.fuelType}
                   onChange={(e) => handleInputChange('fuelType', e.target.value)}
                   className="w-full bg-white border border-gray-200 rounded-xl p-3 pr-10 font-bold text-gray-700 appearance-none focus:outline-none focus:border-[#0B5B32] shadow-3xs cursor-pointer"
@@ -134,6 +203,8 @@ export default function VehicleDetailsPage({
                   <option value="diesel">Diesel</option>
                   <option value="cng">CNG</option>
                   <option value="electric">Electric</option>
+                  <option value="hybrid">Hybrid</option>
+
                 </select>
                 <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
@@ -143,7 +214,7 @@ export default function VehicleDetailsPage({
             <div className="space-y-1.5 relative">
               <label className="font-extrabold text-gray-700">Transmission</label>
               <div className="relative">
-                <select 
+                <select
                   value={formData.transmission}
                   onChange={(e) => handleInputChange('transmission', e.target.value)}
                   className="w-full bg-white border border-gray-200 rounded-xl p-3 pr-10 font-bold text-gray-700 appearance-none focus:outline-none focus:border-[#0B5B32] shadow-3xs cursor-pointer"
@@ -152,6 +223,9 @@ export default function VehicleDetailsPage({
                   <option value="">Select</option>
                   <option value="manual">Manual</option>
                   <option value="automatic">Automatic</option>
+                  <option value="cvt">CVT</option>
+                  <option value="dct">DCT</option>
+                  <option value="amt">AMT</option>
                 </select>
                 <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
@@ -160,16 +234,27 @@ export default function VehicleDetailsPage({
             {/* Field: Odometer */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-gray-700">Odometer Reading (KM)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="e.g., 85000"
-                value={formData.odometer}
+                value={formData.odometerReading}
                 onChange={(e) => handleInputChange('odometer', e.target.value)}
                 className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
                 required
               />
             </div>
 
+            <div className="space-y-1.5">
+              <label className="font-extrabold text-gray-700">OwnerShip</label>
+              <input
+                type="text"
+                placeholder="e.g., 1"
+                value={formData.odometerReading}
+                onChange={(e) => handleInputChange('odometer', e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs"
+                required
+              />
+            </div>
           </div>
 
           {/* Informational Assistance Note Pill */}
@@ -182,10 +267,10 @@ export default function VehicleDetailsPage({
 
           {/* Secondary Bottom Actions Interface Layout Container */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
-            
+
             {/* Back button visible step > 1 */}
             {!isFirstStep ? (
-              <button 
+              <button
                 type="button"
                 onClick={onPrevious}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs px-5 py-3.5 rounded-xl flex items-center gap-2 transition-all"
@@ -202,8 +287,8 @@ export default function VehicleDetailsPage({
                 </div>
               </div>
             )}
-            
-            <button 
+
+            <button
               type="submit"
               className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] ml-auto"
             >
@@ -279,7 +364,7 @@ export default function VehicleDetailsPage({
                 </div>
               </div>
             </div>
-            
+
             <div className="absolute right-0 bottom-4 text-3xl select-none pointer-events-none filter drop-shadow-md z-20">
               🚗
             </div>

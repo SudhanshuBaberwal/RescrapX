@@ -17,16 +17,23 @@ export const RVSFPartners: React.FC = () => {
   getAllPartners()
   const dispatch = useDispatch<AppDispatch>()
   const { allPartnersData } = useSelector((state: RootState) => state.admin)
+  const partner = allPartnersData ?? [];
   const { userData } = useSelector((state: RootState) => state.user)
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
   const [loading, setLoading] = useState(false)
-  const activePartner = allPartnersData.filter((partner) => partner.partnerStatus === "APPROVED")
-  const onHoldPartner = allPartnersData.filter((partner) => partner.partnerStatus === "UNDER_REVIEW")
-  const pendingPartner = allPartnersData.filter((partner) => partner.partnerStatus === "PENDING")
+  const activePartner = Array.isArray(partner)
+    ? partner.filter(p => p.partnerStatus === "APPROVED")
+    : [];
+  const onHoldPartner = Array.isArray(partner)
+    ? partner.filter(p => p.partnerStatus === "UNDER_REVIEW")
+    : [];
+  const pendingPartner = Array.isArray(partner)
+    ? partner.filter(p => p.partnerStatus === "PENDING")
+    : [];
   const { showToast } = useToast()
   const router = useRouter()
   const partnerKPIs = [
-    { title: 'Total Partners', value: `${allPartnersData.length}`, trend: '+10% vs last month', color: 'text-emerald-600 bg-emerald-50' },
+    { title: 'Total Partners', value: `${partner.length}`, trend: '+10% vs last month', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Active Partners', value: `${activePartner.length}`, trend: '+12% vs last month', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'On Hold', value: `${onHoldPartner.length}`, trend: '-7% vs last month', color: 'text-red-600 bg-red-50' },
     { title: 'Pending Applications', value: `${pendingPartner.length}`, trend: '+22% vs last month', color: 'text-purple-600 bg-purple-50' },
@@ -54,7 +61,7 @@ export const RVSFPartners: React.FC = () => {
         "success"
       );
       console.log(result)
-      dispatch(setUserData({...userData,partnerStatus:"REJECTED" , rejectionReason:rejectReason}))
+      dispatch(setUserData({ ...userData, partnerStatus: "REJECTED", rejectionReason: rejectReason }))
       setRejectReason("");
       setShowRejectModal(false);
     } catch (error) {
@@ -190,7 +197,7 @@ export const RVSFPartners: React.FC = () => {
           {/* Left Ledger Master View Grid Table */}
           <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4 transition-all duration-300 ${selectedPartner ? 'xl:col-span-8' : 'xl:col-span-12'}`}>
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">All Partners <span className="text-slate-400 font-normal">({allPartnersData.length})</span></h3>
+              <h3 className="text-sm font-bold text-slate-900">All Partners <span className="text-slate-400 font-normal">({partner.length})</span></h3>
             </div>
 
             {/* Data Table Scroll View Enclosure Mask */}
@@ -208,7 +215,7 @@ export const RVSFPartners: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {allPartnersData.map((partner, index) => {
+                  {Array.isArray(partner) ? partner.map((partner, index) => {
                     const isSelected = selectedPartner && selectedPartner._id === partner._id;
                     return (
                       <tr
@@ -253,7 +260,7 @@ export const RVSFPartners: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  })}
+                  }) : []}
                 </tbody>
               </table>
             </div>

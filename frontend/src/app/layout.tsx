@@ -1,6 +1,7 @@
 import { ToastProvider } from "@/lib/ui/toast/ToastContext";
 import "./globals.css"
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import "leaflet/dist/leaflet.css";
 import StoreProvider from "@/store/StoreProvider";
 export default function RootLayout({
   children,

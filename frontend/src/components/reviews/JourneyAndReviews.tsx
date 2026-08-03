@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {  useRouter } from 'next/navigation';
 import { ArrowRight, Star, PlusCircle, Loader } from 'lucide-react';
-import { createDraftVehicle } from '@/services/vehicle.service';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
 import { setVehicleData } from '@/store/vehicleSlice';
@@ -17,12 +16,13 @@ export default function JourneyAndReviews() {
   const handleRegister = async () => {
     if (vehicleData != null){
       router.push(`/register-vehicle/${vehicleData.currentStep}`)
+      return;
     }
     setLoading(true)
     try {
       const data = await createDraftVehicle()
       dispatch(setVehicleData(data.data))
-      router.push("/register-vehicle")
+      router.push("/register-vehicle/1")
     } catch (error) {
       console.log(error)
     } finally {

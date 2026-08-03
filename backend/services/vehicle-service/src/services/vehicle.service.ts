@@ -8,6 +8,7 @@ import {
   vehicleBasicDto,
   vehicleConditionDto,
   vehicleDocumentSchema,
+  vehicleLocationDto,
   vehicleMajorComponentsDto,
 } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
@@ -208,9 +209,11 @@ class VehicleService {
 
     // vehicle.documents = document as any;
 
-    // Move to next step only after mandatory RC upload
     if (vehicle.documents.rcbook) {
-      vehicle.currentStep = Math.max(vehicle.currentStep, 4);
+      vehicle.currentStep = Math.max(
+        vehicle.currentStep,
+        RegistrationStep.PHOTOS,
+      );
     }
 
     await vehicle.save();
@@ -274,6 +277,31 @@ class VehicleService {
     vehicle.currentStep = Math.max(
       vehicle.currentStep,
       RegistrationStep.PHOTOS,
+    );
+    await vehicle.save();
+    return vehicle;
+  }
+
+  async savePickupLocation(
+    userId: string,
+    vehicleId: string,
+    payload: vehicleLocationDto,
+  ) {
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+    if (vehicle.owner.toString() != userId) {
+      throw new ApiError(403, "Unauthorized");
+    }
+    if (vehicle.currentStep < RegistrationStep.PHOTOS) {
+      throw new ApiError(400, "Complete previous steps first.");
+    }
+    vehicle.pickup = payload;
+    vehicle.currentStep = Math.max(
+      vehicle.currentStep,
+
+      RegistrationStep.PICKUP,
     );
     await vehicle.save();
     return vehicle;

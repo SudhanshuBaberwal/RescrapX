@@ -4,11 +4,13 @@ import {
   createVehicleDraft,
   majorComponents,
   registerBasicVehicleDetails,
+  savePickupLocation,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
 } from "../controllers/vehicle.controller.js";
 import {
+  pickupSchema,
   vehicleBasicSchema,
   vehicleConditionSchema,
   vehicleDocumentSchema,
@@ -56,6 +58,13 @@ router.put(
   attachUser,
   uploadVehiclePhotos,
   uploadVehiclePhotosController,
+);
+
+router.put(
+  "/pickup-location",
+  attachUser,
+  validate(pickupSchema),
+  savePickupLocation,
 );
 
 export default router;

@@ -130,29 +130,51 @@ export interface IVehicle extends Document {
     loanClosure?: IVehicleDocument;
     other?: IVehicleDocument;
   };
- photos: {
-  front?: IUploadedPhoto;
-  rear?: IUploadedPhoto;
-  left?: IUploadedPhoto;
-  right?: IUploadedPhoto;
-  dashboard?: IUploadedPhoto;
-  interior?: IUploadedPhoto;
-  engine?: IUploadedPhoto;
-  odometer?: IUploadedPhoto;
-  chassisNumber?: IUploadedPhoto;
-};
+  photos: {
+    front?: IUploadedPhoto;
+    rear?: IUploadedPhoto;
+    left?: IUploadedPhoto;
+    right?: IUploadedPhoto;
+    dashboard?: IUploadedPhoto;
+    interior?: IUploadedPhoto;
+    engine?: IUploadedPhoto;
+    odometer?: IUploadedPhoto;
+    chassisNumber?: IUploadedPhoto;
+  };
 
   pickup: {
-    address: string;
+    houseNumber: string;
+    street: string;
+    area: string;
+
+    landmark?: string;
+
     city: string;
     state: string;
     pincode: string;
+
     latitude: number;
     longitude: number;
-    preferredDate: Date;
-    preferredTime: string;
-  };
 
+    formattedAddress: string;
+    placeId: string;
+
+    contactName: string;
+    mobileNumber: string;
+
+    alternateNumber?: string;
+
+    vehicleLocation: "HOME" | "OFFICE" | "PARKING" | "WORKSHOP" | "OTHER";
+
+    towAccessibility: "YES" | "NO" | "NOT_SURE";
+
+    currentVehiclePosition:
+      | "ON_ROAD"
+      | "BASEMENT"
+      | "SOCIETY"
+      | "ROADSIDE"
+      | "GARAGE";
+  };
   timeline: {
     title: string;
     completed: boolean;
