@@ -13,7 +13,7 @@ class VehicleRepository {
   }
   async createDraftCar(userId: string): Promise<IVehicle | null> {
     return Vehicle.create({
-      owner:userId,
+      owner: userId,
       status: VehicleStatus.DRAFT,
       currentStep: RegistrationStep.VEHICLE_DETAILS,
       timeline: [
@@ -26,12 +26,29 @@ class VehicleRepository {
     });
   }
 
-  async findByVehicleId(vehicleId:string){
-    return Vehicle.findById(vehicleId)
+  async findByVehicleId(vehicleId: string) {
+    return Vehicle.findById(vehicleId);
   }
 
-  async saveVehicle(vehicle :IVehicle){
-    return vehicle.save()
+  async saveVehicle(vehicle: IVehicle) {
+    return vehicle.save();
+  }
+
+  async findVehicleByUserId(userId: string) {
+    return Vehicle.find({ owner: userId });
+  }
+
+  async findVehicleByVehicleId(userId: string, vehicleId: string) {
+    return await Vehicle.findOne({
+      _id: vehicleId,
+      owner: userId,
+    });
+  }
+
+  async confirmSaveVehicle(vehicleId: string) {
+    return await Vehicle.findByIdAndUpdate(vehicleId, {
+      isRegistered: true,
+    });
   }
 }
 

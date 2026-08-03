@@ -58,7 +58,7 @@ class VehicleService {
     }
     vehicle.vehicleDetails = {
       registrationNumber: data.registrationNumber,
-      manufacturer: data.carName,
+      carName: data.carName,
       model: data.model,
       variant: data.variant,
       fuelType: data.fuelType,
@@ -305,6 +305,11 @@ class VehicleService {
       RegistrationStep.PICKUP,
     );
     await vehicle.save();
+    return vehicle;
+  }
+
+  async reviewVehicleAndConfirm(vehicleId: string) {
+    const vehicle = await vehicleRepository.confirmSaveVehicle(vehicleId);
     return vehicle;
   }
 }

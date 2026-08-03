@@ -3,10 +3,12 @@ import { createSlice } from "@reduxjs/toolkit";
 
 interface VehicleState {
   vehicleData: IVehicle | null;
+  allVehiclesData:[];
 }
 
 const initialState: VehicleState = {
   vehicleData: null,
+  allVehiclesData:[]
 };
 const vehicleSlice = createSlice({
   name: "admin",
@@ -15,8 +17,11 @@ const vehicleSlice = createSlice({
     setVehicleData: (state, action) => {
       state.vehicleData = action.payload;
     },
+    setAllVehiclesData : (state,action)=> {
+      state.allVehiclesData = action.payload;
+    }
   },
 });
 
-export const { setVehicleData } = vehicleSlice.actions;
+export const { setVehicleData , setAllVehiclesData } = vehicleSlice.actions;
 export default vehicleSlice.reducer;

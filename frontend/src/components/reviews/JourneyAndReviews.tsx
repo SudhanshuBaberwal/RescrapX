@@ -6,6 +6,7 @@ import { ArrowRight, Star, PlusCircle, Loader } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
 import { setVehicleData } from '@/store/vehicleSlice';
+import { createDraftVehicle } from '@/services/vehicle.service';
 
 export default function JourneyAndReviews() {
   const router = useRouter();
@@ -21,8 +22,9 @@ export default function JourneyAndReviews() {
     setLoading(true)
     try {
       const data = await createDraftVehicle()
-      dispatch(setVehicleData(data.data))
-      router.push("/register-vehicle/1")
+      // dispatch(setVehicleData(data.data))
+      // // console.log(data.data._id)
+      router.push("/user/my-vehicles")
     } catch (error) {
       console.log(error)
     } finally {

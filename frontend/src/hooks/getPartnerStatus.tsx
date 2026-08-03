@@ -12,46 +12,29 @@ export const usePartnerStatus = () => {
     const dispatch = useDispatch<AppDispatch>();
 
     useEffect(() => {
-
         const fetchStatus = async () => {
-
             try {
-
                 const status = await getPartnerStatus();
-
                 dispatch(setUserData(status));
-
                 switch (status.nextStep) {
-
                     case "UPLOAD_DOCUMENTS":
                         router.replace("/partner/verify-documents");
                         break;
-
                     case "WAIT_APPROVAL":
                         router.replace("/partner/waiting-approval");
                         break;
-
                     case "DASHBOARD":
                         router.replace("/");
                         break;
-
                     case "REUPLOAD_DOCUMENTS":
                         router.replace("/partner/verify-documents");
                         break;
-
                 }
-
             } catch (err) {
-
                 console.error(err);
-
                 router.replace("/login");
-
             }
-
         };
-
         fetchStatus();
-
     }, [dispatch, router]);
 };

@@ -1,23 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ClipboardCheck, Edit2, Car, ShieldAlert, Settings, FileText, 
   Camera, ArrowLeft, ArrowRight, ShieldCheck, CheckCircle2, 
-  XCircle, Search, RefreshCw, Loader2, AlertCircle
+  XCircle, Search, RefreshCw, Loader2, AlertCircle, X, Maximize2
 } from 'lucide-react';
 
+import { getVehicle, reviewAndSubmit } from '@/services/vehicle.service';
+
 interface StepComponentProps {
+  vehicleId: string;
   onContinue: () => void;
   onPrevious: () => void;
-  isFirstStep: boolean;
-  isLastStep: boolean;
+  isFirstStep?: boolean;
+  isLastStep?: boolean;
   currentStepNumber: number;
   totalStepsCount: number;
   goToStep?: (stepNumber: number) => void; 
 }
 
 export default function VehicleReviewConfirmPage({
+  vehicleId,
   onContinue,
   onPrevious,
   currentStepNumber,
@@ -25,9 +29,48 @@ export default function VehicleReviewConfirmPage({
   goToStep
 }: StepComponentProps) {
   
+  const [vehicleData, setVehicleData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string>('');
+
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [registrationStatus, setRegistrationStatus] = useState<'idle' | 'submitting' | 'success' | 'failed'>('idle');
 
+  // State for image inspection modal (Lightbox)
+  const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
+
+  // ==========================================
+  // 1. FETCH VEHICLE DATA ON MOUNT
+  // ==========================================
+  useEffect(() => {
+    const fetchVehicleDetails = async () => {
+      if (!vehicleId) {
+        setFetchError("Vehicle ID is missing.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const res = await getVehicle(vehicleId);
+        const responseData = res?.data?.data || res?.data || res;
+        if (responseData) {
+          setVehicleData(responseData);
+        } else {
+          setFetchError("Failed to load vehicle details.");
+        }
+      } catch (error: any) {
+        console.error("Error fetching vehicle:", error);
+        setFetchError(error?.message || "Something went wrong while fetching vehicle data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVehicleDetails();
+  }, [vehicleId]);
+
+  // Handle Edit Action Step Navigation
   const handleEditClick = (stepNum: number) => {
     if (goToStep) {
       goToStep(stepNum);
@@ -36,6 +79,9 @@ export default function VehicleReviewConfirmPage({
     }
   };
 
+  // ==========================================
+  // 2. FINAL SUBMISSION API HANDLER
+  // ==========================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConfirmed) {
@@ -43,67 +89,53 @@ export default function VehicleReviewConfirmPage({
       return;
     }
 
-    // Begin processing submission state
     setRegistrationStatus('submitting');
 
     try {
-      // Simulating an API network request for vehicle registration
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          // Change to true to simulate a backend error state / catch block trigger
-          const simulateError = false; 
-          if (simulateError) reject(new Error("Server error"));
-          else resolve(true);
-        }, 2000);
-      });
-
-      setRegistrationStatus('success');
+      const response = await reviewAndSubmit(vehicleId);
+      if (response && (response.data?.success || response.data?.status === 200 || response.data)) {
+        setRegistrationStatus('success');
+      } else {
+        setRegistrationStatus('failed');
+      }
     } catch (error) {
+      console.error("Submission error:", error);
       setRegistrationStatus('failed');
     }
   };
 
-  // Mocked state array mirroring the values rendered in your visual layout
-  const summaryData = {
-    details: [
-      { label: 'Car / Model', value: 'Maruti Swift VXi' },
-      { label: 'Registration No.', value: 'DL01AB1234' },
-      { label: 'Manufacturing Year', value: '2018' },
-      { label: 'Fuel Type', value: 'Petrol' },
-      { label: 'Odometer Reading', value: '45,000 km' },
-    ],
-    condition: [
-      { label: 'Accident / Damage', value: 'No Accident', status: true },
-      { label: 'Structural Damage', value: 'No Damage', status: true },
-      { label: 'Airbags Deployed', value: 'No', status: true },
-      { label: 'Brief Description', value: 'No additional remarks', status: true },
-    ],
-    components: [
-      { name: 'Engine', status: 'Good' },
-      { name: 'Radiator', status: 'Good' },
-      { name: 'Gearbox', status: 'Good' },
-      { name: 'Suspension', status: 'Good' },
-    ],
-    documents: [
-      { name: 'RC Book', state: 'Uploaded', active: true },
-      { name: 'Insurance', state: 'Uploaded', active: true },
-      { name: 'PUC Certificate', state: 'Uploaded', active: true },
-      { name: 'Loan Closure', state: 'Not Available', active: false },
-    ],
-    photos: [
-      { label: 'Front View', url: '/placeholder-car.jpg' },
-      { label: 'Rear View', url: '/placeholder-car.jpg' },
-      { label: 'Left Side View', url: '/placeholder-car.jpg' },
-      { label: 'Right Side View', url: '/placeholder-car.jpg' },
-      { label: 'Dashboard', url: '/placeholder-car.jpg' },
-      { label: 'Engine Bay', url: '/placeholder-car.jpg' },
-      { label: 'Odometer', url: '/placeholder-car.jpg' },
-    ]
-  };
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-white border border-gray-100 rounded-2xl p-8 text-center space-y-4 shadow-3xs">
+        <Loader2 className="animate-spin text-[#0B5B32]" size={44} />
+        <div className="space-y-1">
+          <h2 className="text-base font-black text-gray-900">Loading Vehicle Summary</h2>
+          <p className="text-xs text-gray-400 font-medium max-w-xs mx-auto">Fetching your registered vehicle details for final review...</p>
+        </div>
+      </div>
+    );
+  }
 
-  /* ==========================================================================
-     STATE INTERFACES: SUBMITTING / SUCCESS / ERROR CORES
-     ========================================================================== */
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-white border border-gray-100 rounded-2xl p-8 text-center space-y-5 shadow-3xs">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-600 border border-red-100">
+          <AlertCircle size={24} />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-black text-gray-900">Error Loading Details</h2>
+          <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">{fetchError}</p>
+        </div>
+        <button 
+          type="button" 
+          onClick={() => window.location.reload()}
+          className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
+        >
+          Reload Page
+        </button>
+      </div>
+    );
+  }
 
   if (registrationStatus === 'submitting') {
     return (
@@ -125,20 +157,20 @@ export default function VehicleReviewConfirmPage({
         </div>
         <div className="space-y-1">
           <h2 className="text-base font-black text-gray-900">Vehicle Registration Failed</h2>
-          <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">We encountered an issue finalizing your scrap connection application records. Please check network configurations and try again.</p>
+          <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">We encountered an issue finalizing your scrap application records. Please try again.</p>
         </div>
         <div className="flex items-center gap-3 pt-2">
           <button 
             type="button" 
             onClick={() => setRegistrationStatus('idle')}
-            className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-5 py-2.5 rounded-xl transition-all text-xs"
+            className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-5 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
           >
             Review Details Again
           </button>
           <button 
             type="button" 
             onClick={handleSubmit}
-            className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-6 py-2.5 rounded-xl transition-all text-xs"
+            className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
           >
             Retry Submission
           </button>
@@ -155,12 +187,12 @@ export default function VehicleReviewConfirmPage({
         </div>
         <div className="space-y-1">
           <h2 className="text-base font-black text-gray-900">Vehicle Registered Successfully!</h2>
-          <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">Your vehicle entry has been added to the database. Bidding is complete and your digital value generation reports are ready.</p>
+          <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">Your vehicle entry has been confirmed. Bidding is complete and your digital value reports are ready.</p>
         </div>
         <button 
           type="button" 
           onClick={onContinue}
-          className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3 rounded-xl flex items-center gap-2 shadow-xs transition-all text-xs"
+          className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3 rounded-xl flex items-center gap-2 shadow-xs transition-all text-xs cursor-pointer"
         >
           <span>View Instant Offer</span>
           <ArrowRight size={14} strokeWidth={2.5} />
@@ -169,16 +201,20 @@ export default function VehicleReviewConfirmPage({
     );
   }
 
-  /* ==========================================================================
-     DEFAULT BASEVIEW: FORM EDIT AND VALUATION CONFIRMATION
-     ========================================================================== */
+  // Extract nested objects dynamically with fallbacks
+  const details = vehicleData?.vehicleDetails || {};
+  const condition = vehicleData?.vehicleCondition || {};
+  const components = vehicleData?.majorComponents || {};
+  const docs = vehicleData?.documents || {};
+  const photos = vehicleData?.photos || {};
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full text-xs">
       
       {/* MAIN DATA REVIEW GRID CONTAINER */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 shadow-3xs space-y-6">
         
-        {/* Header Summary block title banner */}
+        {/* Header Summary Banner */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-[#0B5B32] text-white rounded-xl flex items-center justify-center text-xl shadow-xs shrink-0">
@@ -214,18 +250,28 @@ export default function VehicleReviewConfirmPage({
               </div>
               <button 
                 type="button" onClick={() => handleEditClick(1)}
-                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px]"
+                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px] cursor-pointer"
               >
                 <Edit2 size={10} /> <span>Edit</span>
               </button>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-1">
-              {summaryData.details.map((item, idx) => (
-                <div key={idx} className="space-y-0.5">
-                  <p className="font-black text-gray-800 break-words">{item.value}</p>
-                  <p className="text-[10px] text-gray-400 font-medium">{item.label}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{details.brand || '-'} {details.model || ''}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Car / Model</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{details.registrationNumber || '-'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Registration No.</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{details.manufacturingYear || '-'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Mfg. Year</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{details.fuelType || '-'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Fuel Type</p>
+              </div>
             </div>
           </div>
 
@@ -238,18 +284,28 @@ export default function VehicleReviewConfirmPage({
               </div>
               <button 
                 type="button" onClick={() => handleEditClick(2)}
-                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px]"
+                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px] cursor-pointer"
               >
                 <Edit2 size={10} /> <span>Edit</span>
               </button>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
-              {summaryData.condition.map((item, idx) => (
-                <div key={idx} className="space-y-0.5">
-                  <p className="font-black text-gray-800 break-words">{item.value}</p>
-                  <p className="text-[10px] text-gray-400 font-medium">{item.label}</p>
-                </div>
-              ))}
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{condition.isAccidental ? 'Accidental' : 'No Accident'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Accident History</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{condition.structuralDamage ? 'Damaged' : 'No Damage'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Structural Damage</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{condition.airbagsDeployed ? 'Yes' : 'No'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Airbags Deployed</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="font-black text-gray-800 break-words">{condition.remarks || 'No remarks'}</p>
+                <p className="text-[10px] text-gray-400 font-medium">Remarks</p>
+              </div>
             </div>
           </div>
 
@@ -262,19 +318,22 @@ export default function VehicleReviewConfirmPage({
               </div>
               <button 
                 type="button" onClick={() => handleEditClick(3)}
-                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px]"
+                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px] cursor-pointer"
               >
                 <Edit2 size={10} /> <span>Edit</span>
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
-              {summaryData.components.map((comp, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 font-bold text-gray-700">
-                  <span>{comp.name}:</span>
-                  <span className="text-gray-900 font-black">{comp.status}</span>
-                </div>
-              ))}
-              <span className="text-[#0B5B32] font-black bg-emerald-50 px-2 py-0.5 rounded-md text-[10px]">+ 8 more</span>
+              {Object.keys(components).length > 0 ? (
+                Object.entries(components).map(([key, val]: [string, any], idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 font-bold text-gray-700 capitalize">
+                    <span>{key.replace(/([A-Z])/g, ' $1')}:</span>
+                    <span className="text-gray-900 font-black">{String(val)}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-400 font-bold">No component details available.</p>
+              )}
             </div>
           </div>
 
@@ -287,65 +346,88 @@ export default function VehicleReviewConfirmPage({
               </div>
               <button 
                 type="button" onClick={() => handleEditClick(4)}
-                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px]"
+                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px] cursor-pointer"
               >
                 <Edit2 size={10} /> <span>Edit</span>
               </button>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
-              {summaryData.documents.map((doc, idx) => (
-                <div key={idx} className="border border-gray-100 rounded-xl p-2.5 flex items-start gap-2 bg-white">
-                  {doc.active ? (
-                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                  ) : (
-                    <XCircle size={14} className="text-gray-300 shrink-0 mt-0.5" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-black text-gray-800 text-[11px] truncate">{doc.name}</p>
-                    <p className="text-[9px] text-gray-400 font-bold">{doc.state}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              {Object.entries(docs).map(([docKey, docVal]: [string, any], idx) => {
+                const isUploaded = Boolean(docVal);
+                return (
+                  <div key={idx} className="border border-gray-100 rounded-xl p-2.5 flex items-start gap-2 bg-white">
+                    {isUploaded ? (
+                      <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle size={14} className="text-gray-300 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-black text-gray-800 text-[11px] truncate capitalize">
+                        {docKey.replace(/([A-Z])/g, ' $1')}
+                      </p>
+                      <p className="text-[9px] text-gray-400 font-bold">
+                        {isUploaded ? 'Available' : 'Not Uploaded'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              <div className="border border-gray-100 bg-gray-50/50 rounded-xl p-2.5 flex flex-col justify-center items-center text-center">
-                <span className="font-black text-gray-700 text-[10px]">+ 1 more</span>
-                <span className="text-[9px] text-gray-400 font-bold">Document</span>
-              </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* BLOCK 5: PHOTOS (MANDATORY) */}
+          {/* BLOCK 5: PHOTOS (UPDATED WITH LIGHTBOX INSPECTION & THUMBNAILS) */}
           <div className="border border-gray-100 rounded-2xl p-4 space-y-3 relative bg-white shadow-3xs">
             <div className="flex items-center justify-between border-b border-gray-50 pb-2">
               <div className="flex items-center gap-2 font-black text-gray-800 text-sm">
                 <Camera size={16} className="text-[#0B5B32]" />
-                <h3>Photos (Mandatory)</h3>
+                <h3>Photos Uploaded</h3>
               </div>
               <button 
                 type="button" onClick={() => handleEditClick(5)}
-                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px]"
+                className="flex items-center gap-1 border border-gray-200 hover:bg-gray-50 px-2.5 py-1 rounded-lg font-bold text-gray-600 transition-all text-[10px] cursor-pointer"
               >
                 <Edit2 size={10} /> <span>Edit</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-8 gap-2 pt-1">
-              {summaryData.photos.map((pic, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="aspect-[4/3] bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden text-base">
-                    🚗
-                  </div>
-                  <p className="text-[9px] text-gray-400 font-bold text-center truncate">{pic.label}</p>
-                </div>
-              ))}
-              <div className="aspect-[4/3] border border-dashed border-gray-200 bg-gray-50/50 rounded-lg flex flex-col justify-center items-center text-center p-1">
-                <span className="font-black text-gray-700 text-[9px]">+ 1 more</span>
-                <span className="text-[8px] text-gray-400 font-bold leading-none">Images</span>
-              </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 pt-1">
+              {Object.entries(photos).length > 0 ? (
+                Object.entries(photos).map(([label, url]: [string, any], idx) => {
+                  const hasValidUrl = url && typeof url === 'string' && (url.startsWith('http') || url.startsWith('data:image'));
+                  
+                  return (
+                    <div key={idx} className="space-y-1 group">
+                      <div 
+                        onClick={() => hasValidUrl && setPreviewImage({ url, label })}
+                        className={`aspect-square bg-gray-50 border border-gray-200 rounded-xl overflow-hidden flex items-center justify-center relative transition-all duration-200 ${
+                          hasValidUrl ? 'cursor-pointer hover:border-[#0B5B32] hover:shadow-md' : ''
+                        }`}
+                      >
+                        {hasValidUrl ? (
+                          <>
+                            <img src={url} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                              <Maximize2 size={16} />
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-xl opacity-40">🚗</span>
+                        )}
+                      </div>
+                      <p className="text-[9px] text-gray-500 font-bold text-center truncate capitalize">
+                        {label.replace(/([A-Z])/g, ' $1')}
+                      </p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-gray-400 font-bold col-span-full py-2">No photos uploaded.</p>
+              )}
             </div>
           </div>
 
-          {/* Explicit User Confirmation Switch Rail Block */}
+          {/* Confirmation Checkbox */}
           <label className="flex items-start gap-3 cursor-pointer p-1 select-none">
             <input 
               type="checkbox" 
@@ -363,7 +445,7 @@ export default function VehicleReviewConfirmPage({
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
             <button 
               type="button" onClick={onPrevious}
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
@@ -371,7 +453,7 @@ export default function VehicleReviewConfirmPage({
             
             <button 
               type="submit"
-              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
             >
               <span>Confirm & Get Offer</span>
               <ArrowRight size={14} strokeWidth={2.5} />
@@ -381,7 +463,7 @@ export default function VehicleReviewConfirmPage({
         </form>
       </main>
 
-      {/* RIGHT SIDEBAR VALUE PANEL */}
+      {/* RIGHT SIDEBAR */}
       <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-3xs space-y-5">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">
@@ -412,7 +494,7 @@ export default function VehicleReviewConfirmPage({
 
           <div className="pt-4 border-t border-gray-100 bg-[#F9FAFB] p-3.5 rounded-xl flex gap-3 text-gray-700 items-center justify-between">
             <div className="flex gap-2 items-center">
-              <RefreshCw size={15} className="text-gray-400 animate-spin-slow" />
+              <RefreshCw size={15} className="text-gray-400" />
               <div className="text-[11px]">
                 <p className="font-black text-gray-800">Need to make changes?</p>
                 <p className="text-gray-400 font-bold">You can go back and edit any section before confirming.</p>
@@ -422,6 +504,50 @@ export default function VehicleReviewConfirmPage({
 
         </div>
       </aside>
+
+      {/* PHOTO PREVIEW LIGHTBOX MODAL */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div 
+            className="relative bg-white rounded-2xl max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+              <h4 className="font-black text-gray-800 capitalize text-sm">
+                {previewImage.label.replace(/([A-Z])/g, ' $1')}
+              </h4>
+              <button 
+                type="button" 
+                onClick={() => setPreviewImage(null)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-2 bg-gray-900 flex items-center justify-center overflow-auto max-h-[75vh]">
+              <img 
+                src={previewImage.url} 
+                alt={previewImage.label} 
+                className="max-h-[70vh] w-auto object-contain rounded-lg"
+              />
+            </div>
+
+            <div className="px-5 py-3 border-t border-gray-100 text-center bg-white">
+              <button 
+                type="button" 
+                onClick={() => setPreviewImage(null)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-5 py-2 rounded-xl transition-all text-xs cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

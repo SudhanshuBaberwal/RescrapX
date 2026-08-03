@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import { 
   Cpu, Wrench, ArrowRight, ArrowLeft, Activity, Compass,
-  AlertCircle, ShieldCheck, Flame, Droplet, Fuel, Disc, Eye,
-  Layers, Sun, Lightbulb, UserCheck, CheckCircle2, HelpCircle 
+  ShieldCheck, Flame, Fuel, Disc, Eye,
+  Layers, Sun, Lightbulb, UserCheck, CheckCircle2, HelpCircle, Loader2 
 } from 'lucide-react';
+import { majorComponents } from '@/services/vehicle.service'; // Adjust path according to your folder structure
 
 interface StepComponentProps {
+  vehicleId: string;
   onContinue: () => void;
   onPrevious: () => void;
   isFirstStep: boolean;
@@ -16,6 +18,8 @@ interface StepComponentProps {
   totalStepsCount: number;
 }
 
+type ComponentStatus = 'GOOD' | 'NOT_WORKING' | 'MISSING';
+
 interface ComponentItem {
   id: string;
   label: string;
@@ -23,17 +27,18 @@ interface ComponentItem {
 }
 
 export default function VehicleComponentsPage({
+  vehicleId,
   onContinue,
   onPrevious,
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
   
-  // Initialized structural layout component options exactly matching the design layout map
+  // Structural layout options with EXACT keys expected by backend Zod Schema
   const componentsList: ComponentItem[] = [
     { id: 'engine', label: 'Engine', icon: Cpu },
     { id: 'radiator', label: 'Radiator / Cooling', icon: Activity },
-    { id: 'fuel', label: 'Fuel System', icon: Fuel },
+    { id: 'fuelSystem', label: 'Fuel System', icon: Fuel },
     { id: 'gearbox', label: 'Gearbox / Transmission', icon: Layers },
     { id: 'suspension', label: 'Suspension', icon: Compass },
     { id: 'steering', label: 'Steering', icon: Wrench },
@@ -41,38 +46,78 @@ export default function VehicleComponentsPage({
     { id: 'exhaust', label: 'Exhaust System', icon: Flame },
     { id: 'tyres', label: 'Tyres & Wheels', icon: Disc },
     { id: 'ac', label: 'AC / HVAC (Compressor)', icon: Sun },
-    { id: 'body', label: 'Body Panels', icon: Layers },
+    { id: 'bodyPanels', label: 'Body Panels', icon: Layers },
     { id: 'glass', label: 'Glass (Windshield & Windows)', icon: Eye },
     { id: 'lights', label: 'Lights (Headlight, Tail light, Indicators)', icon: Lightbulb },
     { id: 'interior', label: 'Interior (Seats, Dashboard, etc.)', icon: UserCheck },
   ];
 
-  // Map state configuration object array
-  // Default values set to 'good' matching image configurations (Exhaust system pre-toggled to 'not-working')
-  const [componentStates, setComponentStates] = useState<Record<string, 'good' | 'not-working' | 'missing'>>({
-    engine: 'good',
-    radiator: 'good',
-    fuel: 'good',
-    gearbox: 'good',
-    suspension: 'good',
-    steering: 'good',
-    electrical: 'good',
-    exhaust: 'not-working', // Mocked matching the red highlight state in your image
-    tyres: 'good',
-    ac: 'good',
-    body: 'good',
-    glass: 'good',
-    lights: 'good',
-    interior: 'good',
+  // Component states initialized to UPPERCASE Enums (Matching Zod Schema)
+  const [componentStates, setComponentStates] = useState<Record<string, ComponentStatus>>({
+    engine: 'GOOD',
+    radiator: 'GOOD',
+    fuelSystem: 'GOOD',
+    gearbox: 'GOOD',
+    suspension: 'GOOD',
+    steering: 'GOOD',
+    electrical: 'GOOD',
+    exhaust: 'NOT_WORKING', // Pre-selected as per design
+    tyres: 'GOOD',
+    ac: 'GOOD',
+    bodyPanels: 'GOOD',
+    glass: 'GOOD',
+    lights: 'GOOD',
+    interior: 'GOOD',
   });
 
-  const handleStatusChange = (componentId: string, status: 'good' | 'not-working' | 'missing') => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  const handleStatusChange = (componentId: string, status: ComponentStatus) => {
     setComponentStates(prev => ({ ...prev, [componentId]: status }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onContinue();
+    setApiError('');
+
+    try {
+      setIsSubmitting(true);
+
+      // Payload strictly aligned with backend Zod schema keys & values
+      const payload = {
+        engine: componentStates.engine,
+        radiator: componentStates.radiator,
+        fuelSystem: componentStates.fuelSystem,
+        gearbox: componentStates.gearbox,
+        suspension: componentStates.suspension,
+        steering: componentStates.steering,
+        electrical: componentStates.electrical,
+        exhaust: componentStates.exhaust,
+        tyres: componentStates.tyres,
+        ac: componentStates.ac,
+        bodyPanels: componentStates.bodyPanels,
+        glass: componentStates.glass,
+        lights: componentStates.lights,
+        interior: componentStates.interior,
+      };
+
+      const response = await majorComponents(vehicleId, payload);
+
+      // STRICT CHECK: Sirf API Success hone par hi Agla page Step load hoga
+      if (response && (response.success || response.data)) {
+        onContinue();
+      } else {
+        setApiError(response?.message || 'Failed to update major components details.');
+      }
+
+    } catch (error: any) {
+      console.error("Major components submission error:", error);
+      const errorMsg = error?.response?.data?.message || 'Failed to update major components. Please try again.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,11 +138,17 @@ export default function VehicleComponentsPage({
 
         <hr className="border-gray-100" />
 
+        {/* API Error Notification */}
+        {apiError && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-xs">
+            {apiError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           <p className="text-gray-400 font-bold mb-2">Tell us the condition of major components to help us calculate the right value.</p>
 
           {/* DYNAMIC RESPONSIVE COMPONENT MATRIX GRID */}
-          {/* 1 Column on Mobile, 2 Columns on Tablet, 3 Columns on Desktop Screens */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {componentsList.map((item) => {
               const ItemIcon = item.icon;
@@ -118,42 +169,43 @@ export default function VehicleComponentsPage({
                     {/* OPTION: GOOD STATUS */}
                     <button
                       type="button"
-                      onClick={() => handleStatusChange(item.id, 'good')}
-                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 ${
-                        currentStatus === 'good'
+                      onClick={() => handleStatusChange(item.id, 'GOOD')}
+                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        currentStatus === 'GOOD'
                           ? 'border-emerald-600 bg-emerald-50/40 text-emerald-700 font-extrabold ring-1 ring-emerald-600'
                           : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       <span>Good</span>
-                      {currentStatus === 'good' && <CheckCircle2 size={11} className="fill-emerald-600 text-white shrink-0" />}
+                      {currentStatus === 'GOOD' && <CheckCircle2 size={11} className="fill-emerald-600 text-white shrink-0" />}
                     </button>
 
                     {/* OPTION: NOT WORKING STATUS */}
                     <button
                       type="button"
-                      onClick={() => handleStatusChange(item.id, 'not-working')}
-                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 ${
-                        currentStatus === 'not-working'
+                      onClick={() => handleStatusChange(item.id, 'NOT_WORKING')}
+                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        currentStatus === 'NOT_WORKING'
                           ? 'border-red-500 bg-red-50/40 text-red-600 font-extrabold ring-1 ring-red-500'
                           : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       <span>Not Working</span>
-                      {currentStatus === 'not-working' && <CheckCircle2 size={11} className="fill-red-500 text-white shrink-0" />}
+                      {currentStatus === 'NOT_WORKING' && <CheckCircle2 size={11} className="fill-red-500 text-white shrink-0" />}
                     </button>
 
                     {/* OPTION: MISSING STATUS */}
                     <button
                       type="button"
-                      onClick={() => handleStatusChange(item.id, 'missing')}
-                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 ${
-                        currentStatus === 'missing'
+                      onClick={() => handleStatusChange(item.id, 'MISSING')}
+                      className={`py-2 px-1 text-[10px] font-bold rounded-lg border text-center transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        currentStatus === 'MISSING'
                           ? 'border-amber-500 bg-amber-50/40 text-amber-600 font-extrabold ring-1 ring-amber-500'
                           : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       <span>Missing</span>
+                      {currentStatus === 'MISSING' && <CheckCircle2 size={11} className="fill-amber-500 text-white shrink-0" />}
                     </button>
 
                   </div>
@@ -162,12 +214,13 @@ export default function VehicleComponentsPage({
             })}
           </div>
 
-          {/* DYNAMIC CONTROL ACTION RAIL INTERFACE */}
+          {/* ACTION BUTTONS */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
             <button 
               type="button"
               onClick={onPrevious}
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+              disabled={isSubmitting}
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs disabled:opacity-50 cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
@@ -175,17 +228,27 @@ export default function VehicleComponentsPage({
             
             <button 
               type="submit"
-              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              disabled={isSubmitting}
+              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] disabled:opacity-70 cursor-pointer"
             >
-              <span>Continue</span>
-              <ArrowRight size={14} strokeWidth={2.5} />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <ArrowRight size={14} strokeWidth={2.5} />
+                </>
+              )}
             </button>
           </div>
 
         </form>
       </main>
 
-      {/* RIGHT SIDEBAR TRUST BLOCK TRUST INDEX */}
+      {/* RIGHT SIDEBAR TRUST BLOCK */}
       <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-3xs space-y-5">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">
@@ -214,7 +277,7 @@ export default function VehicleComponentsPage({
             })}
           </div>
 
-          {/* Tips element info container matching the reference card bottom */}
+          {/* Tips element info container */}
           <div className="pt-4 border-t border-gray-100 bg-[#F9FAFB] p-3 rounded-xl flex gap-2.5 text-[#0B5B32]">
             <HelpCircle size={16} className="shrink-0 mt-0.5" />
             <div className="text-[11px] leading-relaxed">

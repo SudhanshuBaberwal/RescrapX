@@ -3,10 +3,12 @@
 import React, { useState, useRef } from 'react';
 import { 
   FileText, UploadCloud, Trash2, ShieldCheck, HelpCircle,
-  ArrowRight, ArrowLeft, FileSpreadsheet, Lock, ExternalLink
+  ArrowRight, ArrowLeft, FileSpreadsheet, Lock, ExternalLink, Loader2 
 } from 'lucide-react';
+import { documents } from '@/services/vehicle.service'; // Adjust path according to project directory
 
 interface StepComponentProps {
+  vehicleId: string;
   onContinue: () => void;
   onPrevious: () => void;
   isFirstStep: boolean;
@@ -16,51 +18,96 @@ interface StepComponentProps {
 }
 
 export default function VehicleDocumentsPage({
+  vehicleId,
   onContinue,
   onPrevious,
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
   
-  // State variables to hold actual files
-  const [rcFile, setRcFile] = useState<{ name: string; size: string } | null>({
-    name: 'RC_Book_Front.jpg',
-    size: '2.4 MB'
-  });
-  const [insuranceFile, setInsuranceFile] = useState<{ name: string; size: string } | null>(null);
-  const [pucFile, setPucFile] = useState<{ name: string; size: string } | null>(null);
-  const [loanFile, setLoanFile] = useState<{ name: string; size: string } | null>(null);
-  const [otherFile, setOtherFile] = useState<{ name: string; size: string } | null>(null);
+  // Real JavaScript File State Management
+  const [rcFile, setRcFile] = useState<File | null>(null);
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
+  const [pucFile, setPucFile] = useState<File | null>(null);
+  const [loanFile, setLoanFile] = useState<File | null>(null);
+  const [otherFile, setOtherFile] = useState<File | null>(null);
 
-  // Hidden references to click standard file input fields programmatically
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  // DOM References for hidden file inputs
   const rcInputRef = useRef<HTMLInputElement>(null);
   const insuranceInputRef = useRef<HTMLInputElement>(null);
   const pucInputRef = useRef<HTMLInputElement>(null);
   const loanInputRef = useRef<HTMLInputElement>(null);
   const otherInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper file processor to convert JS File sizes to readable labels
+  // File validator and Size Formatter
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>, 
-    setFileState: (file: { name: string; size: string } | null) => void
+    setFileState: (file: File | null) => void
   ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
-      setFileState({
-        name: file.name,
-        size: `${sizeInMB} MB`
-      });
-    }
-  };
+    if (!file) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rcFile) {
-      alert("Please upload the required RC Book document before proceeding.");
+    // Validate size (< 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setApiError(`File "${file.name}" exceeds 5 MB size limit.`);
       return;
     }
-    onContinue();
+
+    // Validate type (PNG, JPG, PDF)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      setApiError(`Invalid format for "${file.name}". Only JPG, PNG, or PDF are allowed.`);
+      return;
+    }
+
+    setApiError('');
+    setFileState(file);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApiError('');
+
+    // Pre-validation checks
+    if (!rcFile) {
+      setApiError("RC Book document is required.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const payload = {
+        rcbook: rcFile,
+        insurance: insuranceFile,
+        puc: pucFile,
+        loan_closure: loanFile,
+        other: otherFile,
+      };
+
+      const response = await documents(vehicleId, payload);
+
+      // STRICT CHECK: Next step logic after success confirmation
+      if (response && (response.success || response.data)) {
+        onContinue();
+      } else {
+        setApiError(response?.message || 'Failed to upload documents.');
+      }
+
+    } catch (error: any) {
+      console.error("Documents submission error:", error);
+      const errorMsg = error?.response?.data?.message || 'Error uploading documents. Ensure all required files are selected.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -81,6 +128,13 @@ export default function VehicleDocumentsPage({
         </div>
 
         <hr className="border-gray-100" />
+
+        {/* Global Error Banner */}
+        {apiError && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-xs">
+            {apiError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           <p className="text-gray-400 font-bold mb-2">Please upload the following documents to help us verify your vehicle and generate the best offer.</p>
@@ -104,15 +158,14 @@ export default function VehicleDocumentsPage({
                 </div>
               </div>
 
-              {/* Upload Trigger / Interactive Zone */}
+              {/* Upload Trigger Zone */}
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                {/* Hidden input element handler */}
                 <input 
                   type="file" 
                   ref={rcInputRef} 
                   onChange={(e) => handleFileChange(e, setRcFile)}
                   className="hidden" 
-                  accept="image/*,.pdf"
+                  accept="image/png, image/jpeg, image/jpg, application/pdf"
                 />
 
                 <div 
@@ -124,20 +177,20 @@ export default function VehicleDocumentsPage({
                   <span className="text-[9px] text-gray-400">or drag and drop</span>
                 </div>
 
-                {/* Live Preview State Block */}
+                {/* Preview Thumbnail for RC */}
                 {rcFile && (
                   <div className="border border-gray-200 rounded-xl p-2.5 bg-white relative flex items-center gap-2.5 w-full sm:w-[210px] h-[90px]">
-                    <div className="w-[100px] h-full bg-gray-100 rounded-lg relative overflow-hidden shrink-0 flex items-center justify-center border border-gray-200 text-xl">
-                      📄
+                    <div className="w-[80px] h-full bg-gray-100 rounded-lg shrink-0 flex items-center justify-center border border-gray-200 text-lg">
+                      {rcFile.type.includes('pdf') ? '📄' : '🖼️'}
                     </div>
                     <div className="flex-1 min-w-0 space-y-0.5 pr-4">
                       <p className="font-extrabold text-[10px] text-gray-700 truncate">{rcFile.name}</p>
-                      <p className="text-[9px] font-bold text-gray-400">{rcFile.size}</p>
+                      <p className="text-[9px] font-bold text-gray-400">{formatFileSize(rcFile.size)}</p>
                     </div>
                     <button 
                       type="button" 
                       onClick={() => setRcFile(null)}
-                      className="absolute bottom-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-gray-50 border border-gray-100 rounded-lg transition-all"
+                      className="absolute bottom-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-gray-50 border border-gray-100 rounded-lg transition-all cursor-pointer"
                     >
                       <Trash2 size={12} />
                     </button>
@@ -148,7 +201,7 @@ export default function VehicleDocumentsPage({
             </div>
           </div>
 
-          {/* BLOCK 2: OPTIONAL DOCUMENTS */}
+          {/* BLOCK 2: OPTIONAL / ADDITIONAL DOCUMENTS */}
           <div className="space-y-3">
             <h3 className="font-extrabold text-gray-800 text-sm">Optional Documents (If Available)</h3>
             
@@ -167,7 +220,7 @@ export default function VehicleDocumentsPage({
                       ref={doc.ref} 
                       onChange={(e) => handleFileChange(e, doc.setState)}
                       className="hidden" 
-                      accept="image/*,.pdf"
+                      accept="image/png, image/jpeg, image/jpg, application/pdf"
                     />
 
                     <div className="flex items-start gap-2.5">
@@ -184,12 +237,12 @@ export default function VehicleDocumentsPage({
                       <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-2 flex items-center justify-between gap-1">
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-[9px] text-emerald-800 truncate">{doc.state.name}</p>
-                          <p className="text-[8px] text-emerald-600/80 font-semibold">{doc.state.size}</p>
+                          <p className="text-[8px] text-emerald-600/80 font-semibold">{formatFileSize(doc.state.size)}</p>
                         </div>
                         <button 
                           type="button" 
                           onClick={() => doc.setState(null)}
-                          className="text-gray-400 hover:text-red-500 p-1"
+                          className="text-gray-400 hover:text-red-500 p-1 cursor-pointer"
                         >
                           <Trash2 size={11} />
                         </button>
@@ -210,7 +263,7 @@ export default function VehicleDocumentsPage({
             </div>
           </div>
 
-          {/* Compliance Bottom Banner */}
+          {/* Security Banner */}
           <div className="bg-emerald-50/30 border border-emerald-100/60 rounded-xl p-3 flex items-start gap-2.5 text-gray-600">
             <ShieldCheck size={14} className="text-[#0B5B32] shrink-0 mt-0.5" />
             <p className="font-bold text-[10px] leading-relaxed">
@@ -218,12 +271,13 @@ export default function VehicleDocumentsPage({
             </p>
           </div>
 
-          {/* ACTION BUTTON RAIL */}
+          {/* ACTION BUTTONS */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
             <button 
               type="button"
               onClick={onPrevious}
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+              disabled={isSubmitting}
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs disabled:opacity-50 cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
@@ -231,17 +285,27 @@ export default function VehicleDocumentsPage({
             
             <button 
               type="submit"
-              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              disabled={isSubmitting}
+              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] disabled:opacity-70 cursor-pointer"
             >
-              <span>Continue</span>
-              <ArrowRight size={14} strokeWidth={2.5} />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <ArrowRight size={14} strokeWidth={2.5} />
+                </>
+              )}
             </button>
           </div>
 
         </form>
       </main>
 
-      {/* RIGHT SIDEBAR BENEFIT METRIC PANEL */}
+      {/* RIGHT SIDEBAR */}
       <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-3xs space-y-5">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">

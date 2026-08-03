@@ -9,8 +9,8 @@ import {
 import dynamic from "next/dynamic";
 import { useCurrentLocation } from '@/hooks/getCurrentUserLocation';
 import { reverseGeocode } from '@/lib/location';
+import { pickupLocation } from '@/services/vehicle.service'; // Path according to your app
 
-// Dynamic import par explicitly Props type pass karein
 const LocationMap = dynamic<{ lat: number; lng: number }>(
   () => import("@/components/location/LocationMap"),
   {
@@ -24,6 +24,7 @@ const LocationMap = dynamic<{ lat: number; lng: number }>(
 );
 
 interface StepComponentProps {
+  vehicleId: string; // Added vehicleId Prop
   onContinue: () => void;
   onPrevious: () => void;
   isFirstStep?: boolean;
@@ -33,12 +34,14 @@ interface StepComponentProps {
 }
 
 export default function VehiclePickupLocationPage({
+  vehicleId,
   onContinue,
   onPrevious,
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
 
+  // Form State matched with Zod Enum representations
   const [formData, setFormData] = useState({
     houseNo: '',
     street: '',
@@ -50,14 +53,15 @@ export default function VehiclePickupLocationPage({
     contactName: '',
     mobileNumber: '',
     alternateNumber: '',
-    vehicleLocationType: 'Home',
-    towTruckAccess: 'Yes, easily accessible',
-    vehicleStatus: 'On Road'
+    vehicleLocationType: 'HOME', // Enum: HOME | OFFICE | PARKING | WORKSHOP | OTHER
+    towTruckAccess: 'YES',      // Enum: YES | NO | NOT_SURE
+    vehicleStatus: 'ON_ROAD'    // Enum: ON_ROAD | BASEMENT | SOCIETY | ROADSIDE | GARAGE
   });
 
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
 
-  // Use the custom geolocation hook
   const { location, loading, getLocation } = useCurrentLocation();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -69,12 +73,10 @@ export default function VehiclePickupLocationPage({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Trigger geolocation and reverse geocode address details
   const handleFetchCurrentLocation = async () => {
     try {
       setIsFetchingAddress(true);
-      const data = getLocation();
-      console.log(data)
+      await getLocation();
     } catch (error) {
       console.error("Error getting location:", error);
     } finally {
@@ -82,7 +84,6 @@ export default function VehiclePickupLocationPage({
     }
   };
 
-  // Reverse geocode whenever latitude/longitude updates
   useEffect(() => {
     const autoFillFromLocation = async () => {
       if (!location?.latitude || !location?.longitude) return;
@@ -94,7 +95,7 @@ export default function VehiclePickupLocationPage({
         if (geoData) {
           setFormData(prev => ({
             ...prev,
-            houseNo: geoData.houseNo || prev.houseNo || 'Building / House No.',
+            houseNo: geoData.houseNo || prev.houseNo,
             street: geoData.street || geoData.road || prev.street,
             area: geoData.area || geoData.locality || prev.area,
             pincode: geoData.pincode || geoData.postalCode || prev.pincode,
@@ -114,26 +115,79 @@ export default function VehiclePickupLocationPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError('');
 
-    // Required fields verification
+    // Field Verification
     const requiredFields = ['houseNo', 'street', 'area', 'pincode', 'city', 'state', 'contactName', 'mobileNumber'];
     const missing = requiredFields.filter(field => !formData[field as keyof typeof formData]);
 
     if (missing.length > 0) {
-      alert('Please fill out all required fields marked with a red asterisk (*)');
+      setApiError('Please fill out all required fields marked with an asterisk (*)');
       return;
     }
 
-    onContinue();
+    // Pincode length check
+    if (formData.pincode.length !== 6) {
+      setApiError('Pincode must be exactly 6 digits.');
+      return;
+    }
+
+    // Indian Mobile Number Check
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(formData.mobileNumber)) {
+      setApiError('Please enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const formattedAddress = `${formData.houseNo}, ${formData.street}, ${formData.area}, ${formData.city}, ${formData.state} - ${formData.pincode}`;
+
+      // Construct Payload to match Zod Schema exactly
+      const payload = {
+        houseNumber: formData.houseNo,
+        street: formData.street,
+        area: formData.area,
+        landmark: formData.landmark || undefined,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        latitude: location?.latitude || 0,
+        longitude: location?.longitude || 0,
+        formattedAddress: formattedAddress,
+        placeId: "manual_entry",
+        contactName: formData.contactName,
+        mobileNumber: formData.mobileNumber,
+        alternateNumber: formData.alternateNumber || undefined,
+        vehicleLocation: formData.vehicleLocationType,
+        towAccessibility: formData.towTruckAccess,
+        currentVehiclePosition: formData.vehicleStatus,
+      };
+
+      const response = await pickupLocation(vehicleId, payload);
+
+      if (response && (response.success || response.data)) {
+        onContinue();
+      } else {
+        setApiError(response?.message || "Failed to save pickup location.");
+      }
+
+    } catch (error: any) {
+      console.error("Pickup Location API Error:", error);
+      const msg = error?.response?.data?.message || error?.message || "An error occurred while saving.";
+      setApiError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full text-xs">
 
-      {/* MAIN LAYOUT BLOCK CONTAINER */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 shadow-3xs space-y-6">
 
-        {/* Step Header */}
+        {/* Header */}
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-[#0B5B32] text-white rounded-xl flex items-center justify-center text-xl shadow-xs shrink-0">
             <MapPin size={22} className="stroke-[1.75]" />
@@ -149,6 +203,13 @@ export default function VehiclePickupLocationPage({
         </p>
 
         <hr className="border-gray-100" />
+
+        {/* Global Error Banner */}
+        {apiError && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-xs">
+            {apiError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
 
@@ -199,7 +260,8 @@ export default function VehiclePickupLocationPage({
                 <label className="font-bold text-gray-700">Pincode <span className="text-red-500">*</span></label>
                 <input
                   type="text" name="pincode" value={formData.pincode} onChange={handleInputChange}
-                  placeholder="Enter pincode"
+                  maxLength={6}
+                  placeholder="6 digit pincode"
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
                 />
               </div>
@@ -236,7 +298,7 @@ export default function VehiclePickupLocationPage({
                 type="button"
                 onClick={handleFetchCurrentLocation}
                 disabled={loading || isFetchingAddress}
-                className="flex items-center gap-2 border border-gray-200 rounded-xl px-4 py-2.5 bg-white font-bold hover:bg-gray-50 transition-all text-[#0B5B32] disabled:opacity-60"
+                className="flex items-center gap-2 border border-gray-200 rounded-xl px-4 py-2.5 bg-white font-bold hover:bg-gray-50 transition-all text-[#0B5B32] disabled:opacity-60 cursor-pointer"
               >
                 {(loading || isFetchingAddress) ? (
                   <Loader2 size={14} className="animate-spin text-[#0B5B32]" />
@@ -247,14 +309,10 @@ export default function VehiclePickupLocationPage({
               </button>
             </div>
 
-            {/* Render Map when location coordinates exist */}
             {location?.latitude && location?.longitude ? (
               <div className="space-y-2">
                 <div className="w-full h-56 rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
-                  <LocationMap
-                    lat={location.latitude}
-                    lng={location.longitude}
-                  />
+                  <LocationMap lat={location.latitude} lng={location.longitude} />
                 </div>
                 <div className="flex items-center gap-4 text-[10px] text-gray-500 font-semibold bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                   <span>Lat: {location.latitude.toFixed(6)}</span>
@@ -290,7 +348,8 @@ export default function VehiclePickupLocationPage({
                 <label className="font-bold text-gray-700">Mobile Number <span className="text-red-500">*</span></label>
                 <input
                   type="tel" name="mobileNumber" value={formData.mobileNumber} onChange={handleInputChange}
-                  placeholder="Enter mobile number"
+                  maxLength={10}
+                  placeholder="10-digit mobile number"
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
                 />
               </div>
@@ -298,6 +357,7 @@ export default function VehiclePickupLocationPage({
                 <label className="font-bold text-gray-500 font-semibold">Alternate Number (Optional)</label>
                 <input
                   type="tel" name="alternateNumber" value={formData.alternateNumber} onChange={handleInputChange}
+                  maxLength={10}
                   placeholder="Enter alternate number"
                   className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
                 />
@@ -305,7 +365,7 @@ export default function VehiclePickupLocationPage({
             </div>
           </div>
 
-          {/* SECTION 3: ADDITIONAL INFORMATION */}
+          {/* SECTION 3: ADDITIONAL INFORMATION WITH EXACT ENUMS */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-sm font-black text-gray-800">
               <Truck size={16} className="text-[#0B5B32]" />
@@ -314,47 +374,66 @@ export default function VehiclePickupLocationPage({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 rounded-xl border border-gray-100 bg-gray-50/10">
 
+              {/* vehicleLocation */}
               <div className="space-y-2.5">
                 <h4 className="font-black text-gray-800 text-[11px]">Where is the vehicle currently?</h4>
-                {['Home', 'Office', 'Parking', 'Workshop', 'Other'].map((item) => (
-                  <label key={item} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
+                {[
+                  { label: 'Home', value: 'HOME' },
+                  { label: 'Office', value: 'OFFICE' },
+                  { label: 'Parking', value: 'PARKING' },
+                  { label: 'Workshop', value: 'WORKSHOP' },
+                  { label: 'Other', value: 'OTHER' }
+                ].map((item) => (
+                  <label key={item.value} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
                     <input
                       type="radio"
-                      checked={formData.vehicleLocationType === item}
-                      onChange={() => handleRadioChange('vehicleLocationType', item)}
+                      checked={formData.vehicleLocationType === item.value}
+                      onChange={() => handleRadioChange('vehicleLocationType', item.value)}
                       className="accent-[#0B5B32] w-3.5 h-3.5"
                     />
-                    <span>{item}</span>
+                    <span>{item.label}</span>
                   </label>
                 ))}
               </div>
 
+              {/* towAccessibility */}
               <div className="space-y-2.5">
                 <h4 className="font-black text-gray-800 text-[11px]">Can the tow truck reach the vehicle?</h4>
-                {['Yes, easily accessible', 'No, narrow / restricted access', 'Not sure'].map((item) => (
-                  <label key={item} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
+                {[
+                  { label: 'Yes, easily accessible', value: 'YES' },
+                  { label: 'No, restricted access', value: 'NO' },
+                  { label: 'Not sure', value: 'NOT_SURE' }
+                ].map((item) => (
+                  <label key={item.value} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
                     <input
                       type="radio"
-                      checked={formData.towTruckAccess === item}
-                      onChange={() => handleRadioChange('towTruckAccess', item)}
+                      checked={formData.towTruckAccess === item.value}
+                      onChange={() => handleRadioChange('towTruckAccess', item.value)}
                       className="accent-[#0B5B32] w-3.5 h-3.5"
                     />
-                    <span>{item}</span>
+                    <span>{item.label}</span>
                   </label>
                 ))}
               </div>
 
+              {/* currentVehiclePosition */}
               <div className="space-y-2.5">
                 <h4 className="font-black text-gray-800 text-[11px]">Vehicle is currently</h4>
-                {['On Road', 'Basement Parking', 'Society Parking', 'Roadside', 'Garage / Workshop'].map((item) => (
-                  <label key={item} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
+                {[
+                  { label: 'On Road', value: 'ON_ROAD' },
+                  { label: 'Basement Parking', value: 'BASEMENT' },
+                  { label: 'Society Parking', value: 'SOCIETY' },
+                  { label: 'Roadside', value: 'ROADSIDE' },
+                  { label: 'Garage / Workshop', value: 'GARAGE' }
+                ].map((item) => (
+                  <label key={item.value} className="flex items-center gap-2.5 cursor-pointer font-bold text-gray-600 select-none">
                     <input
                       type="radio"
-                      checked={formData.vehicleStatus === item}
-                      onChange={() => handleRadioChange('vehicleStatus', item)}
+                      checked={formData.vehicleStatus === item.value}
+                      onChange={() => handleRadioChange('vehicleStatus', item.value)}
                       className="accent-[#0B5B32] w-3.5 h-3.5"
                     />
-                    <span>{item}</span>
+                    <span>{item.label}</span>
                   </label>
                 ))}
               </div>
@@ -372,8 +451,10 @@ export default function VehiclePickupLocationPage({
           {/* ACTION BUTTON RAIL */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
             <button
-              type="button" onClick={onPrevious}
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+              type="button" 
+              onClick={onPrevious}
+              disabled={isSubmitting}
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs disabled:opacity-50 cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
@@ -381,17 +462,27 @@ export default function VehiclePickupLocationPage({
 
             <button
               type="submit"
-              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              disabled={isSubmitting}
+              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] disabled:opacity-70 cursor-pointer"
             >
-              <span>Continue to Review & Confirm</span>
-              <ArrowRight size={14} strokeWidth={2.5} />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Saving Location...</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue to Review & Confirm</span>
+                  <ArrowRight size={14} strokeWidth={2.5} />
+                </>
+              )}
             </button>
           </div>
 
         </form>
       </main>
 
-      {/* RIGHT SIDEBAR VALUE PANEL */}
+      {/* RIGHT SIDEBAR */}
       <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6 text-xs">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-3xs space-y-5">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">

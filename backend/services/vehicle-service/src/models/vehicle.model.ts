@@ -8,6 +8,14 @@ export interface IVehicleDocument {
   uploadedAt: Date;
 }
 
+export interface IUploadedPhoto {
+  path: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
 export enum VehicleStatus {
   DRAFT = "DRAFT",
   SUBMITTED = "SUBMITTED",
@@ -80,8 +88,8 @@ export interface IVehicle extends Document {
   isRegistered?: boolean;
   currentStep: RegistrationStep;
   vehicleDetails: {
+    carName: string;
     registrationNumber: string;
-    manufacturer: string;
     model: string;
     variant: string;
     fuelType: string;
@@ -122,44 +130,35 @@ export interface IVehicle extends Document {
     loanClosure?: IVehicleDocument;
     other?: IVehicleDocument;
   };
- photos: {
-  front?: IUploadedPhoto;
-  rear?: IUploadedPhoto;
-  left?: IUploadedPhoto;
-  right?: IUploadedPhoto;
-  dashboard?: IUploadedPhoto;
-  interior?: IUploadedPhoto;
-  engine?: IUploadedPhoto;
-  odometer?: IUploadedPhoto;
-  chassisNumber?: IUploadedPhoto;
-};
+  photos: {
+    front?: IUploadedPhoto;
+    rear?: IUploadedPhoto;
+    left?: IUploadedPhoto;
+    right?: IUploadedPhoto;
+    dashboard?: IUploadedPhoto;
+    interior?: IUploadedPhoto;
+    engine?: IUploadedPhoto;
+    odometer?: IUploadedPhoto;
+    chassisNumber?: IUploadedPhoto;
+  };
 
   pickup: {
     houseNumber: string;
     street: string;
     area: string;
-
     landmark?: string;
-
     city: string;
     state: string;
     pincode: string;
-
     latitude: number;
     longitude: number;
-
     formattedAddress: string;
     placeId: string;
-
     contactName: string;
     mobileNumber: string;
-
     alternateNumber?: string;
-
     vehicleLocation: "HOME" | "OFFICE" | "PARKING" | "WORKSHOP" | "OTHER";
-
     towAccessibility: "YES" | "NO" | "NOT_SURE";
-
     currentVehiclePosition:
       | "ON_ROAD"
       | "BASEMENT"
@@ -172,9 +171,7 @@ export interface IVehicle extends Document {
     completed: boolean;
     completedAt?: Date;
   }[];
-
   rejectionReason?: string;
-
   createdAt: Date;
   updatedAt: Date;
 }
@@ -338,7 +335,7 @@ const vehicleDocumentSchema = new Schema(
   },
   {
     _id: false,
-  }
+  },
 );
 
 const documentsSchema = new Schema(
@@ -370,20 +367,47 @@ const documentsSchema = new Schema(
   },
   {
     _id: false,
-  }
+  },
+);
+// 1. Photo Document ke liye Sub-Schema banayein
+const uploadedPhotoSchema = new Schema(
+  {
+    path: {
+      type: String,
+      required: true,
+    },
+    originalName: {
+      type: String,
+      required: true,
+    },
+    mimeType: {
+      type: String,
+      required: true,
+    },
+    size: {
+      type: Number,
+      required: true,
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false },
 );
 
+// 2. Updated photosSchema
 const photosSchema = new Schema(
   {
-    front: String,
-    rear: String,
-    left: String,
-    right: String,
-    interior: String,
-    dashboard: String,
-    engine: String,
-    odometer: String,
-    chassisNumber: String,
+    front: { type: uploadedPhotoSchema, default: null },
+    rear: { type: uploadedPhotoSchema, default: null },
+    left: { type: uploadedPhotoSchema, default: null },
+    right: { type: uploadedPhotoSchema, default: null },
+    dashboard: { type: uploadedPhotoSchema, default: null },
+    interior: { type: uploadedPhotoSchema, default: null },
+    engine: { type: uploadedPhotoSchema, default: null },
+    odometer: { type: uploadedPhotoSchema, default: null },
+    chassisNumber: { type: uploadedPhotoSchema, default: null },
   },
   { _id: false },
 );

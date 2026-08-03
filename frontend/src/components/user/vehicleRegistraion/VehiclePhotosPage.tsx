@@ -3,11 +3,13 @@
 import React, { useState, useRef } from 'react';
 import { 
   Camera, Upload, Trash2, ShieldCheck, Info,
-  ArrowRight, ArrowLeft, Image as ImageIcon, Sun, 
-  Maximize, Eye, HelpCircle, Sparkles
+  ArrowRight, ArrowLeft, Sun, 
+  Maximize, Eye, HelpCircle, Sparkles, Loader2
 } from 'lucide-react';
+import { photos } from '@/services/vehicle.service'; // Path ko app ke structure ke according adjust karein
 
 interface StepComponentProps {
+  vehicleId: string;
   onContinue: () => void;
   onPrevious: () => void;
   isFirstStep: boolean;
@@ -23,16 +25,21 @@ interface PhotoSlot {
 }
 
 export default function VehiclePhotosPage({
+  vehicleId,
   onContinue,
   onPrevious,
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
   
-  // State to hold binary object URLs for loaded image slot components
+  // Real File instances to send to FormData
+  const [photoFiles, setPhotoFiles] = useState<Record<string, File>>({});
+  // Object URLs used strictly for UI previews
   const [photoPreviews, setPhotoPreviews] = useState<Record<string, string>>({});
-  
-  // Dynamic collection of structural image upload targets matching layout reference
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
+
   const photoSlots: PhotoSlot[] = [
     { id: 'front', label: 'Front View' },
     { id: 'rear', label: 'Rear View' },
@@ -45,46 +52,100 @@ export default function VehiclePhotosPage({
     { id: 'extra', label: 'Extra Images', optional: true },
   ];
 
-  // Map reference lookup table to connect slots safely with underlying file input triggers
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, slotId: string) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setPhotoPreviews(prev => ({ ...prev, [slotId]: objectUrl }));
-    }
-  };
+    if (!file) return;
 
-  const clearPhoto = (slotId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid triggering file upload picker window on wrapper click
+    // Optional File Size Check (< 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setApiError(`Image for "${slotId}" exceeds the maximum limit of 10 MB.`);
+      return;
+    }
+
+    setApiError('');
+
+    // Clean old preview object URL if replacing
     if (photoPreviews[slotId]) {
       URL.revokeObjectURL(photoPreviews[slotId]);
     }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    setPhotoFiles(prev => ({ ...prev, [slotId]: file }));
+    setPhotoPreviews(prev => ({ ...prev, [slotId]: objectUrl }));
+  };
+
+  const clearPhoto = (slotId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop click bubbling to input box
+
+    if (photoPreviews[slotId]) {
+      URL.revokeObjectURL(photoPreviews[slotId]);
+    }
+
+    setPhotoFiles(prev => {
+      const updated = { ...prev };
+      delete updated[slotId];
+      return updated;
+    });
+
     setPhotoPreviews(prev => {
       const updated = { ...prev };
       delete updated[slotId];
       return updated;
     });
+
     if (inputRefs.current[slotId]) {
       inputRefs.current[slotId]!.value = '';
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate required fields (all fields except 'extra')
+    setApiError('');
+
+    // Validate required fields client-side before API call
     const missingFields = photoSlots
-      .filter(slot => !slot.optional && !photoPreviews[slot.id])
+      .filter(slot => !slot.optional && !photoFiles[slot.id])
       .map(slot => slot.label);
 
     if (missingFields.length > 0) {
-      alert(`Please upload the following required photos to proceed:\n• ${missingFields.join('\n• ')}`);
+      setApiError(`Please upload all required photos:\n ${missingFields.join(', ')}`);
       return;
     }
 
-    onContinue();
+    try {
+      setIsSubmitting(true);
+
+      // Prepare Payload
+      const payload = {
+        front: photoFiles['front'],
+        rear: photoFiles['rear'],
+        left: photoFiles['left'],
+        right: photoFiles['right'],
+        dashboard: photoFiles['dashboard'],
+        interior: photoFiles['interior'],
+        engine: photoFiles['engine'],
+        odometer: photoFiles['odometer'],
+      };
+
+      const response = await photos(vehicleId, payload);
+
+      // STRICT CHECK: Sirf API succeed hone par Next step switch karenge
+      if (response && (response.success || response.data)) {
+        onContinue();
+      } else {
+        setApiError(response?.message || 'Failed to upload vehicle photos.');
+      }
+
+    } catch (error: any) {
+      console.error("Photos submission error:", error);
+      const errorMsg = error?.response?.data?.message || 'Error uploading photos. Please try again.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -93,7 +154,7 @@ export default function VehiclePhotosPage({
       {/* MAIN LAYOUT BLOCK CONTAINER */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 shadow-3xs space-y-6">
         
-        {/* Step Context Title Header */}
+        {/* Step Header */}
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-[#0B5B32] text-white rounded-xl flex items-center justify-center text-xl shadow-xs shrink-0">
             <Camera size={22} className="stroke-[1.75]" />
@@ -106,11 +167,17 @@ export default function VehiclePhotosPage({
 
         <hr className="border-gray-100" />
 
+        {/* Global Error Banner */}
+        {apiError && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-xs whitespace-pre-line">
+            {apiError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           <p className="text-gray-400 font-bold mb-2">Please upload clear and recent photos of your vehicle from the required angles.</p>
 
-          {/* DYNAMIC GRID CONTAINER FOR CARDS MAP */}
-          {/* Automatically stacks on Mobile, 2 Columns on Tablet, and expands into 4 Columns on widescreen desktops */}
+          {/* DYNAMIC GRID CONTAINER FOR CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {photoSlots.map((slot) => {
               const hasPreview = !!photoPreviews[slot.id];
@@ -122,13 +189,12 @@ export default function VehiclePhotosPage({
                     hasPreview ? 'group' : 'cursor-pointer hover:border-[#0B5B32]'
                   }`}
                 >
-                  {/* Hidden Input field references mapped uniquely */}
                   <input 
                     type="file"
                     ref={el => { inputRefs.current[slot.id] = el; }}
                     onChange={(e) => handleFileChange(e, slot.id)}
                     className="hidden"
-                    accept="image/*"
+                    accept="image/png, image/jpeg, image/jpg, image/heic"
                   />
 
                   {/* Header Title Layer */}
@@ -142,7 +208,7 @@ export default function VehiclePhotosPage({
                     {!slot.optional && <Info size={11} className="text-gray-300 shrink-0" />}
                   </div>
 
-                  {/* Operational Image Render Logic */}
+                  {/* Image Render / Dropzone */}
                   {hasPreview ? (
                     <div className="w-full h-[85px] rounded-lg overflow-hidden relative border border-gray-100">
                       <img 
@@ -154,7 +220,7 @@ export default function VehiclePhotosPage({
                         <button
                           type="button"
                           onClick={(e) => clearPhoto(slot.id, e)}
-                          className="p-1.5 bg-white text-red-600 rounded-md hover:bg-red-50 shadow-sm transition-all"
+                          className="p-1.5 bg-white text-red-600 rounded-md hover:bg-red-50 shadow-sm transition-all cursor-pointer"
                           title="Remove photo"
                         >
                           <Trash2 size={13} />
@@ -174,7 +240,7 @@ export default function VehiclePhotosPage({
             })}
           </div>
 
-          {/* Guidelines Banner block bar layout */}
+          {/* Guidelines Banner */}
           <div className="bg-emerald-50/30 border border-emerald-100/60 rounded-xl p-3 flex items-start gap-2.5 text-gray-600">
             <ShieldCheck size={14} className="text-[#0B5B32] shrink-0 mt-0.5" />
             <p className="font-bold text-[10px] leading-relaxed">
@@ -182,7 +248,7 @@ export default function VehiclePhotosPage({
             </p>
           </div>
 
-          {/* LOWER PHOTO TIPS RAIL CONTAINER */}
+          {/* PHOTO TIPS RAIL */}
           <div className="border border-gray-100 rounded-xl p-4 bg-[#F9FAFB]/60 space-y-3">
             <h4 className="font-black text-gray-800 text-[11px]">Photo Tips</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 text-[11px]">
@@ -208,12 +274,13 @@ export default function VehiclePhotosPage({
             </div>
           </div>
 
-          {/* ACTION BUTTON RAIL */}
+          {/* ACTION BUTTONS */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
             <button 
               type="button"
               onClick={onPrevious}
-              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+              disabled={isSubmitting}
+              className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black text-xs px-6 py-3.5 rounded-xl flex items-center gap-2 transition-all shadow-3xs disabled:opacity-50 cursor-pointer"
             >
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
@@ -221,17 +288,27 @@ export default function VehiclePhotosPage({
             
             <button 
               type="submit"
-              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              disabled={isSubmitting}
+              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] disabled:opacity-70 cursor-pointer"
             >
-              <span>Continue</span>
-              <ArrowRight size={14} strokeWidth={2.5} />
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <span>Continue</span>
+                  <ArrowRight size={14} strokeWidth={2.5} />
+                </>
+              )}
             </button>
           </div>
 
         </form>
       </main>
 
-      {/* RIGHT SIDEBAR VALUE PANEL */}
+      {/* RIGHT SIDEBAR */}
       <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
         <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-3xs space-y-5">
           <h3 className="text-sm font-black text-gray-900 tracking-tight">

@@ -1,12 +1,16 @@
 import { Router } from "express";
 import {
   createVehicleDraft,
+  findVehicle,
+  getAllVehicles,
   majorComponents,
   registerBasicVehicleDetails,
+  reviewVehicle,
   // savePickupLocation,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
+  vehiclePickupLocation,
 } from "../controllers/vehicle.controller.js";
 import {
   pickupSchema,
@@ -17,7 +21,9 @@ import {
 } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
-import uploadVehicleDocument, { uploadVehiclePhotos } from "../middlewares/uploadVehicleDocument.js";
+import uploadVehicleDocument, {
+  uploadVehiclePhotos,
+} from "../middlewares/uploadVehicleDocument.js";
 
 const router = Router();
 
@@ -50,6 +56,7 @@ router.put(
   uploadVehicleDocumentController,
 );
 
+router.get("/all-vehicles", attachUser, getAllVehicles);
 
 router.put(
   "/photos",
@@ -58,10 +65,13 @@ router.put(
   uploadVehiclePhotosController,
 );
 
-// router.put(
-//   "/pickup-location",
-//   attachUser,
-//   validate(pickupSchema),
-//   savePickupLocation,
-// );
+router.put(
+  "/pickup-location",
+  attachUser,
+  validate(pickupSchema),
+  vehiclePickupLocation,
+);
+
+router.get("/get-vehicle", attachUser, findVehicle);
+router.put("/reviews", attachUser, reviewVehicle);
 export default router;
