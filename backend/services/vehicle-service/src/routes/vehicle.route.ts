@@ -1,10 +1,9 @@
 import { Router } from "express";
-
 import {
   createVehicleDraft,
   majorComponents,
   registerBasicVehicleDetails,
-  savePickupLocation,
+  // savePickupLocation,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
@@ -18,9 +17,7 @@ import {
 } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
-import uploadVehicleDocument, {
-  uploadVehiclePhotos,
-} from "../middlewares/uploadVehicleDocument.js";
+import uploadVehicleDocument, { uploadVehiclePhotos } from "../middlewares/uploadVehicleDocument.js";
 
 const router = Router();
 
@@ -53,6 +50,7 @@ router.put(
   uploadVehicleDocumentController,
 );
 
+
 router.put(
   "/photos",
   attachUser,
@@ -60,11 +58,10 @@ router.put(
   uploadVehiclePhotosController,
 );
 
-router.put(
-  "/pickup-location",
-  attachUser,
-  validate(pickupSchema),
-  savePickupLocation,
-);
-
+// router.put(
+//   "/pickup-location",
+//   attachUser,
+//   validate(pickupSchema),
+//   savePickupLocation,
+// );
 export default router;

@@ -17,19 +17,16 @@ export const RVSFPartners: React.FC = () => {
   getAllPartners()
   const dispatch = useDispatch<AppDispatch>()
   const { allPartnersData } = useSelector((state: RootState) => state.admin)
-  const partner = allPartnersData ?? [];
+  console.log(allPartnersData)
+  const partner = Array.isArray(allPartnersData)
+  ? allPartnersData
+  : [];
   const { userData } = useSelector((state: RootState) => state.user)
   const [selectedPartner, setSelectedPartner] = useState<any | null>(null);
   const [loading, setLoading] = useState(false)
-  const activePartner = Array.isArray(partner)
-    ? partner.filter(p => p.partnerStatus === "APPROVED")
-    : [];
-  const onHoldPartner = Array.isArray(partner)
-    ? partner.filter(p => p.partnerStatus === "UNDER_REVIEW")
-    : [];
-  const pendingPartner = Array.isArray(partner)
-    ? partner.filter(p => p.partnerStatus === "PENDING")
-    : [];
+  const activePartner = partner.filter((partner) => partner.partnerStatus === "APPROVED")
+  const onHoldPartner = partner.filter((partner) => partner.partnerStatus === "UNDER_REVIEW")
+  const pendingPartner = partner.filter((partner) => partner.partnerStatus === "PENDING")
   const { showToast } = useToast()
   const router = useRouter()
   const partnerKPIs = [
@@ -61,7 +58,7 @@ export const RVSFPartners: React.FC = () => {
         "success"
       );
       console.log(result)
-      dispatch(setUserData({ ...userData, partnerStatus: "REJECTED", rejectionReason: rejectReason }))
+      dispatch(setUserData({...userData,partnerStatus:"REJECTED" , rejectionReason:rejectReason}))
       setRejectReason("");
       setShowRejectModal(false);
     } catch (error) {
@@ -215,7 +212,7 @@ export const RVSFPartners: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {Array.isArray(partner) ? partner.map((partner, index) => {
+                  {partner.map((partner, index) => {
                     const isSelected = selectedPartner && selectedPartner._id === partner._id;
                     return (
                       <tr
@@ -260,7 +257,7 @@ export const RVSFPartners: React.FC = () => {
                         </td>
                       </tr>
                     );
-                  }) : []}
+                  })}
                 </tbody>
               </table>
             </div>

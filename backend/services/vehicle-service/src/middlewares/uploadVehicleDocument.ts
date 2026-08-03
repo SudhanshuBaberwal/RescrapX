@@ -33,15 +33,38 @@ const uploadVehicleDocument = upload.fields([
 ]);
 
 export const uploadVehiclePhotos = upload.fields([
-    { name:"front", maxCount:1 },
-    { name:"rear", maxCount:1 },
-    { name:"left", maxCount:1 },
-    { name:"right", maxCount:1 },
-    { name:"dashboard", maxCount:1 },
-    { name:"interior", maxCount:1 },
-    { name:"engine", maxCount:1 },
-    { name:"odometer", maxCount:1 },
-    { name:"chassisNumber", maxCount:1 },
+  {
+    name: "front",
+    maxCount: 1,
+  },
+  {
+    name: "rear",
+    maxCount: 1,
+  },
+  {
+    name: "left",
+    maxCount: 1,
+  },
+  {
+    name: "right",
+    maxCount: 1,
+  },
+  {
+    name: "dashboard",
+    maxCount: 1,
+  },
+  {
+    name: "interior",
+    maxCount: 1,
+  },
+  {
+    name: "engine",
+    maxCount: 1,
+  },
+  {
+    name: "odometer",
+    maxCount: 1,
+  },
 ]);
 
 export default uploadVehicleDocument;

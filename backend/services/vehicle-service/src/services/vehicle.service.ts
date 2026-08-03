@@ -1,9 +1,12 @@
 import vehicleRepository from "../repositories/vehicle.repository.js";
-import { IVehicle, RegistrationStep } from "../models/vehicle.model.js";
+import {
+  IVehicle,
+  RegistrationStep,
+  VehicleDocumentType,
+} from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import {
   UploadedFiles,
-  UploadedPhoto,
   UploadedPhotos,
   vehicleBasicDto,
   vehicleConditionDto,
@@ -13,17 +16,15 @@ import {
 } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
 import supabaseService from "./supabase.service.js";
+
 const createPhoto = (upload: any, file: Express.Multer.File) => ({
   path: upload.path,
-
   originalName: file.originalname,
-
   mimeType: file.mimetype,
-
   size: file.size,
-
   uploadedAt: new Date(),
 });
+
 class VehicleService {
   private validateStep(vehicle: IVehicle, requiredStep: number) {
     if (vehicle.currentStep < requiredStep) {
