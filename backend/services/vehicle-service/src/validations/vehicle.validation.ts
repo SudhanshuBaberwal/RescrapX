@@ -138,7 +138,6 @@ export const pickupSchema = z.object({
     latitude:z.number(),
     longitude:z.number(),
     formattedAddress:z.string(),
-    placeId:z.string(),
     contactName:z.string(),
     mobileNumber:z.string().regex(/^[6-9]\d{9}$/),
     alternateNumber:z.string().optional(),

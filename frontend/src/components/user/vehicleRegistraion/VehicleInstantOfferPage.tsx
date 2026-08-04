@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   CheckCircle2, Gavel, Award, UserCheck, ShieldCheck, 
   Calendar, Truck, ShieldAlert, DollarSign, FileText, ArrowLeft, 
-  Share2, ArrowRight, Star, Clock
+  Share2, ArrowRight, Star, Clock, Home
 } from 'lucide-react';
 
 interface StepComponentProps {
@@ -22,6 +23,8 @@ export default function VehicleInstantOfferPage({
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
+
+  const router = useRouter();
 
   // Dynamic values parsed down from the global multi-step registration wizard
   const offerDetails = {
@@ -165,18 +168,30 @@ export default function VehicleInstantOfferPage({
 
         {/* BOTTOM UTILITY LOWER RAIL TRIGGERS */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-100">
-          <button 
-            type="button" onClick={onPrevious}
-            className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs"
-          >
-            <ArrowLeft size={14} strokeWidth={2.5} />
-            <span>Modify Details</span>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              type="button" 
+              onClick={() => router.push('/')}
+              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
+            >
+              <Home size={14} strokeWidth={2.5} />
+              <span>Home</span>
+            </button>
+
+            <button 
+              type="button" 
+              onClick={onPrevious}
+              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
+            >
+              <ArrowLeft size={14} strokeWidth={2.5} />
+              <span>Modify Details</span>
+            </button>
+          </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <button 
               type="button" onClick={handleShare}
-              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-5 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs"
+              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-5 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
             >
               <Share2 size={13} />
               <span>Share Offer</span>
@@ -184,7 +199,7 @@ export default function VehicleInstantOfferPage({
             
             <button 
               type="button" onClick={onContinue}
-              className="w-full sm:w-auto bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99]"
+              className="w-full sm:w-auto bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
             >
               <span>Schedule Pickup Now</span>
               <ArrowRight size={14} strokeWidth={2.5} />

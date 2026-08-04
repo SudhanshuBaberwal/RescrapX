@@ -21,9 +21,7 @@ export default function JourneyAndReviews() {
     }
     setLoading(true)
     try {
-      const data = await createDraftVehicle()
-      // dispatch(setVehicleData(data.data))
-      // // console.log(data.data._id)
+      await createDraftVehicle()
       router.push("/user/my-vehicles")
     } catch (error) {
       console.log(error)

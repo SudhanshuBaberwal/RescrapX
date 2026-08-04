@@ -24,6 +24,7 @@ export default function MyVehiclesPage() {
 
   // Access allVehiclesData from Redux Store
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle);
+  const { vehicleData } = useSelector((state: RootState) => state.vehicle)
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +65,25 @@ export default function MyVehiclesPage() {
     }
   };
 
+  const handleRegister = async () => {
+   try {
+     if (vehicleData != null) {
+       router.push(`/register-vehicle/${vehicleData.currentStep}`)
+       return;
+     }
+     setLoading(true)
+     try {
+       await createDraftVehicle()
+     } catch (error) {
+       console.log(error)
+     } finally {
+       setLoading(false)
+     }
+   } catch (error) {
+    console.log(error)
+   }
+  }
+
   // Helper for Status Badge styling
   const getStatusBadge = (status?: string) => {
     switch (status) {
@@ -103,7 +123,7 @@ export default function MyVehiclesPage() {
               ) : (
                 <Plus size={16} strokeWidth={2.5} />
               )}
-              <span>Register New Vehicle</span>
+              <span onClick={() => handleRegister}>Register New Vehicle</span>
             </button>
           </div>
 
@@ -151,7 +171,7 @@ export default function MyVehiclesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {vehiclesList.map((vehicle: IVehicle) => {
                 const details = vehicle?.vehicleDetails;
-
+                const isRegistered = vehicle.isRegistered;
                 return (
                   <div
                     key={vehicle._id}
@@ -167,7 +187,7 @@ export default function MyVehiclesPage() {
                           </div>
                           <div>
                             <h2 className="text-sm font-black text-gray-900 group-hover:text-[#0B5B32] transition-colors leading-tight">
-                              {details?.carName || 'Unnamed Vehicle'}
+                              {details?.manufacturer || 'Unnamed Vehicle'}
                             </h2>
                             <p className="text-[11px] font-bold text-gray-400 mt-0.5">
                               {details?.model ? `${details.model} ${details.variant || ''}` : 'Model N/A'}
@@ -203,7 +223,7 @@ export default function MyVehiclesPage() {
                     {/* Card Bottom CTA */}
                     <div className="pt-2 flex justify-between items-center text-xs font-bold text-[#0B5B32] group-hover:translate-x-0.5 transition-transform">
                       <span>
-                        {vehicle.status === 'VERIFIED' ? 'View Details' : `Continue Registration (Step ${vehicle.currentStep || 1})`}
+                        {isRegistered ? 'View Details' : `Continue Registration (Step ${vehicle.currentStep || 1})`}
                       </span>
                       <ArrowRight size={14} />
                     </div>

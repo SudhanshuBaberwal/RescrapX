@@ -82,12 +82,12 @@ export enum structuralDamage {
 }
 export interface IVehicle {
     owner: string
-    _id:string
+    _id: string
     status: VehicleStatus;
     isRegistered?: boolean;
     currentStep: RegistrationStep;
     vehicleDetails: {
-        carName:string
+        carName: string
         registrationNumber: string;
         manufacturer: string;
         model: string;
@@ -156,8 +156,7 @@ export interface IVehicle {
         latitude: number;
         longitude: number;
 
-        formattedAddress: string;
-        placeId: string;
+        formattedAddress?: string;
 
         contactName: string;
         mobileNumber: string;

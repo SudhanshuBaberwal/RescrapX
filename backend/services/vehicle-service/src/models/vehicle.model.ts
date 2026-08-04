@@ -152,8 +152,7 @@ export interface IVehicle extends Document {
     pincode: string;
     latitude: number;
     longitude: number;
-    formattedAddress: string;
-    placeId: string;
+    formattedAddress?: string;
     contactName: string;
     mobileNumber: string;
     alternateNumber?: string;
@@ -414,16 +413,55 @@ const photosSchema = new Schema(
 
 const pickupSchema = new Schema(
   {
-    address: String,
+    houseNumber: String,
+    street: String,
+    area: String,
+    landmark: {
+      type: String,
+      default: "",
+    },
+
     city: String,
     state: String,
     pincode: String,
+
     latitude: Number,
     longitude: Number,
-    preferredDate: Date,
-    preferredTime: String,
+
+    formattedAddress: String,
+
+    contactName: String,
+    mobileNumber: String,
+
+    alternateNumber: {
+      type: String,
+      default: "",
+    },
+
+    vehicleLocation: {
+      type: String,
+      enum: ["HOME", "OFFICE", "PARKING", "WORKSHOP", "OTHER"],
+    },
+
+    towAccessibility: {
+      type: String,
+      enum: ["YES", "NO", "NOT_SURE"],
+    },
+
+    currentVehiclePosition: {
+      type: String,
+      enum: [
+        "ON_ROAD",
+        "BASEMENT_PARKING",
+        "SOCIETY_PARKING",
+        "ROADSIDE",
+        "GARAGE_WORKSHOP",
+      ],
+    },
   },
-  { _id: false },
+  {
+    _id: false,
+  }
 );
 
 const timelineSchema = new Schema(

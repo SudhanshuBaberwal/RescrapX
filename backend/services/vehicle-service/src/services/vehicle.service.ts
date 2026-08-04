@@ -298,10 +298,26 @@ class VehicleService {
     if (vehicle.currentStep < RegistrationStep.PHOTOS) {
       throw new ApiError(400, "Complete previous steps first.");
     }
-    vehicle.pickup = payload;
+    vehicle.pickup = {
+      houseNumber: payload.houseNumber,
+      street: payload.street,
+      area: payload.area,
+      landmark: payload.landmark,
+      city: payload.city,
+      state: payload.state,
+      pincode: payload.pincode,
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      formattedAddress: payload.formattedAddress,
+      contactName: payload.contactName,
+      mobileNumber: payload.mobileNumber,
+      alternateNumber: payload.alternateNumber,
+      vehicleLocation: payload.vehicleLocation,
+      towAccessibility: payload.towAccessibility,
+      currentVehiclePosition: payload.currentVehiclePosition,
+    };
     vehicle.currentStep = Math.max(
       vehicle.currentStep,
-
       RegistrationStep.PICKUP,
     );
     await vehicle.save();
@@ -309,7 +325,17 @@ class VehicleService {
   }
 
   async reviewVehicleAndConfirm(vehicleId: string) {
-    const vehicle = await vehicleRepository.confirmSaveVehicle(vehicleId);
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle Not Found");
+    }
+    vehicle.isRegistered = true;
+    vehicle.currentStep = Math.max(
+      vehicle.currentStep,
+      RegistrationStep.SUBMITTED,
+    );
+    await vehicle.save();
     return vehicle;
   }
 }

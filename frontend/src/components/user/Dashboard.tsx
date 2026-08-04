@@ -5,11 +5,14 @@ import {
   ArrowRight, Play, ShieldCheck, IndianRupee, Truck, Leaf,
   Calendar, Clock, Copy, ChevronRight
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function UserDashBoard() {
   const handleCopy = () => {
     navigator.clipboard.writeText('RX240015');
   };
+
+  const router = useRouter()
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-2">
@@ -47,7 +50,7 @@ export default function UserDashBoard() {
             <ArrowRight size={14} />
           </button>
           <button className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs px-5 py-3.5 rounded-xl flex items-center gap-2 shadow-2xs transition">
-            <span>Learn How It Works</span>
+            <span onClick={() => router.push("/user/my-vehicles")}>My Vehicles</span>
             <Play size={12} className="fill-gray-500 stroke-none" />
           </button>
         </div>

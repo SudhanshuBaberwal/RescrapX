@@ -166,6 +166,7 @@ export default function VehiclePickupLocationPage({
       };
 
       const response = await pickupLocation(vehicleId, payload);
+      console.log(response)
 
       if (response && (response.success || response.data)) {
         onContinue();

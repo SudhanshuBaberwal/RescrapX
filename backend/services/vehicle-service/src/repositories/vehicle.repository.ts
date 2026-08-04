@@ -44,12 +44,6 @@ class VehicleRepository {
       owner: userId,
     });
   }
-
-  async confirmSaveVehicle(vehicleId: string) {
-    return await Vehicle.findByIdAndUpdate(vehicleId, {
-      isRegistered: true,
-    });
-  }
 }
 
 export default new VehicleRepository();
