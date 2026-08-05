@@ -15,9 +15,9 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const formatDate = (dateString?: string) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-IN', {
+const formatDate = (dateValue?: string | Date) => {
+  if (!dateValue) return 'N/A';
+  return new Date(dateValue).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
@@ -169,7 +169,7 @@ export default function VehicleDetailsPage() {
           {/* BACK BAR */}
           <div className="flex items-center justify-between">
             <button
-              onClick={() => router.push('/my-vehicles')}
+              onClick={() => router.push('/user/my-vehicles')}
               className="inline-flex items-center gap-1.5 text-xs font-black text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-3.5 py-2 rounded-xl shadow-2xs transition-colors cursor-pointer"
             >
               <ArrowLeft size={14} /> Back to My Vehicles
@@ -242,7 +242,7 @@ export default function VehicleDetailsPage() {
               </div>
               <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl text-right">
                 <span className="text-[10px] text-gray-400 font-bold uppercase block">Created On</span>
-                {/* <span className="text-xs font-bold text-gray-700">{formatDate(vehicle.createdAt)}</span> */}
+                <span className="text-xs font-bold text-gray-700">{formatDate(vehicle.createdAt)}</span>
               </div>
             </div>
           </div>
@@ -330,7 +330,7 @@ export default function VehicleDetailsPage() {
                 <div className="flex items-start gap-3 bg-gray-50 p-3.5 rounded-xl text-xs">
                   <MapPin size={16} className="text-[#0B5B32] shrink-0 mt-0.5" />
                   <div className="space-y-0.5 font-medium text-gray-700">
-                    {/* <p className="font-bold text-gray-900">{pickup.address || 'Address not specified'}</p> */}
+                    <p className="font-bold text-gray-900">{pickup.formattedAddress || 'Address not specified'}</p>
                     <p>{pickup.area || ''} {pickup.city || ''}</p>
                     <p>{pickup.state || ''} - {pickup.pincode || ''}</p>
                   </div>
