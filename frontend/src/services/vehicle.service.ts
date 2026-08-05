@@ -1,3 +1,4 @@
+import { VehicleStatus } from "@/components/admin/VehiclesDashboard";
 import { ComponentCondition } from "@/context/vehicleProvider";
 import api from "@/utils/api";
 
@@ -46,12 +47,12 @@ export const vehicleCondition = async (
     structuralDamage: string;
     airbagsDeployed: boolean;
     description?: string;
-  }
+  },
 ) => {
   try {
     const result = await api.put(
       `/api/vehicle/register/vehicle-condition?vehicleId=${vehicleId}`,
-      data
+      data,
     );
     return result.data;
   } catch (error) {
@@ -65,24 +66,24 @@ export const majorComponents = async (
   data: {
     engine: string;
     radiator: string;
-    fuelSystem: string; 
+    fuelSystem: string;
     gearbox: string;
     suspension: string;
     steering: string;
-    electrical: string;  
+    electrical: string;
     exhaust: string;
     tyres: string;
     ac: string;
-    bodyPanels: string;  
+    bodyPanels: string;
     glass: string;
     lights: string;
     interior: string;
-  }
+  },
 ) => {
   try {
     const result = await api.put(
       `/api/vehicle/register/major-components?vehicleId=${vehicleId}`,
-      data
+      data,
     );
     return result.data;
   } catch (error) {
@@ -99,7 +100,7 @@ export const documents = async (
     puc?: File | null;
     insurance?: File | null;
     other?: File | null;
-  }
+  },
 ) => {
   try {
     const formData = new FormData();
@@ -114,7 +115,7 @@ export const documents = async (
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
-      }
+      },
     );
     return result.data;
   } catch (error) {
@@ -134,7 +135,7 @@ export const photos = async (
     interior?: File;
     engine?: File;
     odometer?: File;
-  }
+  },
 ) => {
   try {
     const formData = new FormData();
@@ -147,7 +148,7 @@ export const photos = async (
       formData,
       {
         headers: { "Content-Type": "multipart/form-data" },
-      }
+      },
     );
     return result.data;
   } catch (error) {
@@ -176,12 +177,12 @@ export const pickupLocation = async (
     vehicleLocation: string;
     towAccessibility: string;
     currentVehiclePosition: string;
-  }
+  },
 ) => {
   try {
     const result = await api.put(
       `/api/vehicle/register/pickup-location?vehicleId=${vehicleId}`,
-      data
+      data,
     );
     return result.data;
   } catch (error) {
@@ -200,20 +201,49 @@ export const getAllVehiclesData = async () => {
   }
 };
 
-export const getVehicle = async (vehicleId:string) => {
+export const getVehicle = async (vehicleId: string) => {
   try {
-    const data = await api.get(`/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`)
+    const data = await api.get(
+      `/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`,
+    );
     return data;
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 
-export const reviewAndSubmit = async (vehicleId:string) => {
+export const reviewAndSubmit = async (vehicleId: string) => {
   try {
-    const data = await api.put(`/api/vehicle/register/reviews?vehicleId=${vehicleId}`)
+    const data = await api.put(
+      `/api/vehicle/register/reviews?vehicleId=${vehicleId}`,
+    );
     return data;
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
+
+export const getAllVehiclesDataForAdmin = async () => {
+  try {
+    const res = await api.get("/api/vehicle/register/vehicles");
+    return res;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const updateVehicleStatus = async (
+  vehicleId: string,
+  status: VehicleStatus,
+  rejectionReason?: string,
+) => {
+  try {
+    const res = await api.put(
+      `/api/vehicle/register/status?vehicleId=${vehicleId}`,
+      { status, rejectionReason },
+    );
+    return res.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -11,6 +11,7 @@ import VehiclePickupLocationPage from "./VehiclePickupLocationPage";
 import VehicleReviewConfirmPage from "./VehicleReviewConfirmPage";
 import VehicleInstantOfferPage from "./VehicleInstantOfferPage";
 import { Shield } from "lucide-react";
+import VehicleApprovalPendingPage from "./WaitingPage";
 
 interface Props {
   vehicleId: string;
@@ -30,7 +31,7 @@ const pages = [
   VehiclePhotosPage,
   VehiclePickupLocationPage,
   VehicleReviewConfirmPage,
-  VehicleInstantOfferPage
+  VehicleApprovalPendingPage,
 ];
 
 export default function VehicleRegistrationDetails({

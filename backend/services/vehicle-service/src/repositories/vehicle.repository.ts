@@ -1,3 +1,5 @@
+import supabase from "../config/supabase.js";
+import ApiError from "../lib/ApiError.js";
 import Vehicle, {
   IVehicle,
   RegistrationStep,
@@ -35,7 +37,11 @@ class VehicleRepository {
   }
 
   async findVehicleByUserId(userId: string) {
-    return Vehicle.find({ owner: userId });
+    return await Vehicle.find({ owner: userId });
+  }
+
+  async findAllVehicles() {
+    return await Vehicle.find({ isRegistered: true });
   }
 
   async findVehicleByVehicleId(userId: string, vehicleId: string) {
@@ -43,6 +49,22 @@ class VehicleRepository {
       _id: vehicleId,
       owner: userId,
     });
+  }
+
+  async getPublicUrl(path: string) {
+    if (!path) return null;
+
+    // Clean path to prevent leading slashes or accidental bucket prefix duplicates
+    const cleanPath = path
+      .replace(/^partner-documents\//, "")
+      .replace(/^\/+/, "");
+
+    // OPTION A: If your bucket "partner-documents" is set to PUBLIC in Supabase:
+    const { data } = supabase.storage
+      .from("partner-documents")
+      .getPublicUrl(cleanPath);
+
+    return data.publicUrl;
   }
 }
 

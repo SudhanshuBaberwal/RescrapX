@@ -1,22 +1,24 @@
 import { Router } from "express";
 import {
+  allVehiclesDataForAdmin,
   createVehicleDraft,
   findVehicle,
   getAllVehicles,
   majorComponents,
   registerBasicVehicleDetails,
   reviewVehicle,
-  // savePickupLocation,
+  underVerification,
+  updateVehicleStatus,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
   vehiclePickupLocation,
+  viewDocument,
 } from "../controllers/vehicle.controller.js";
 import {
   pickupSchema,
   vehicleBasicSchema,
   vehicleConditionSchema,
-  vehicleDocumentSchema,
   vehicleMajorComponentsSchema,
 } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
@@ -24,6 +26,7 @@ import validate from "../middlewares/validate.middleware.js";
 import uploadVehicleDocument, {
   uploadVehiclePhotos,
 } from "../middlewares/uploadVehicleDocument.js";
+import adminOnly from "../middlewares/adminOnly.js";
 
 const router = Router();
 
@@ -74,4 +77,13 @@ router.put(
 
 router.get("/get-vehicle", attachUser, findVehicle);
 router.put("/reviews", attachUser, reviewVehicle);
+router.get("/vehicles", adminOnly, allVehiclesDataForAdmin);
+router.post("/view-document", viewDocument);
+router.put("/under-verification", attachUser, underVerification);
+router.put(
+  "/status",
+  attachUser,
+  adminOnly,
+  updateVehicleStatus,
+);
 export default router;

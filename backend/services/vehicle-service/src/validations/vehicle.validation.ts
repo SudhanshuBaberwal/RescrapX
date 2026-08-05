@@ -4,6 +4,7 @@ import {
   TransmissionType,
   accidentType,
   ComponentCondition,
+  VehicleStatus,
 } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 
@@ -128,41 +129,36 @@ export function validateVehiclePhotos(files: UploadedPhotos) {
 }
 
 export const pickupSchema = z.object({
-    houseNumber:z.string().min(1),
-    street:z.string().min(1),
-    area:z.string().min(1),
-    landmark:z.string().optional(),
-    city:z.string(),
-    state:z.string(),
-    pincode:z.string().length(6),
-    latitude:z.number(),
-    longitude:z.number(),
-    formattedAddress:z.string(),
-    contactName:z.string(),
-    mobileNumber:z.string().regex(/^[6-9]\d{9}$/),
-    alternateNumber:z.string().optional(),
-    vehicleLocation:z.enum([
-        "HOME",
-        "OFFICE",
-        "PARKING",
-        "WORKSHOP",
-        "OTHER"
-    ]),
-    towAccessibility:z.enum([
-        "YES",
-        "NO",
-        "NOT_SURE"
-    ]),
-    currentVehiclePosition:z.enum([
-        "ON_ROAD",
-        "BASEMENT",
-        "SOCIETY",
-        "ROADSIDE",
-        "GARAGE"
-    ])
+  houseNumber: z.string().min(1),
+  street: z.string().min(1),
+  area: z.string().min(1),
+  landmark: z.string().optional(),
+  city: z.string(),
+  state: z.string(),
+  pincode: z.string().length(6),
+  latitude: z.number(),
+  longitude: z.number(),
+  formattedAddress: z.string(),
+  contactName: z.string(),
+  mobileNumber: z.string().regex(/^[6-9]\d{9}$/),
+  alternateNumber: z.string().optional(),
+  vehicleLocation: z.enum(["HOME", "OFFICE", "PARKING", "WORKSHOP", "OTHER"]),
+  towAccessibility: z.enum(["YES", "NO", "NOT_SURE"]),
+  currentVehiclePosition: z.enum([
+    "ON_ROAD",
+    "BASEMENT",
+    "SOCIETY",
+    "ROADSIDE",
+    "GARAGE",
+  ]),
 });
 
-export type vehicleLocationDto = z.infer<typeof pickupSchema>
+export const vehicleStatusSchema = z.object({
+  status: z.enum([VehicleStatus.VERIFIED, VehicleStatus.REJECTED]),
+  rejectionReason: z.string().optional(),
+});
+
+export type vehicleLocationDto = z.infer<typeof pickupSchema>;
 export type vehicleBasicDto = z.infer<typeof vehicleBasicSchema>;
 export type vehicleConditionDto = z.infer<typeof vehicleConditionSchema>;
 export type vehicleMajorComponentsDto = z.infer<

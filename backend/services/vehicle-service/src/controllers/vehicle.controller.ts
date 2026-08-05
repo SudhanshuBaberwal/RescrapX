@@ -10,6 +10,7 @@ import {
   UploadedPhotos,
 } from "../validations/vehicle.validation.js";
 import vehicleRepository from "../repositories/vehicle.repository.js";
+import supabaseService from "../services/supabase.service.js";
 export const createVehicleDraft = asyncHandler(async (req, res) => {
   // Gateway should inject this after authentication
   const userId = req.headers["x-user-id"] as string;
@@ -144,4 +145,56 @@ export const findVehicle = asyncHandler(async (req, res) => {
     vehicleId,
   );
   return ApiResponse.success(res, 201, "Vehicle Data", vehicle);
+});
+
+export const allVehiclesDataForAdmin = asyncHandler(async (req, res) => {
+  const vehicles = await vehicleRepository.findAllVehicles();
+  if (!vehicles) {
+    throw new ApiError(403, "Currently Vehicles Are Not Available.");
+  }
+  return ApiResponse.success(res, 201, "All vehicle data", vehicles);
+});
+
+export const viewDocument = asyncHandler(async (req, res) => {
+  const { path } = req.body;
+
+  // Use getSignedUrl or getPublicUrl with sanitized path
+  const url = await supabaseService.getSignedUrl("partner-documents", path);
+
+  return ApiResponse.success(
+    res,
+    201,
+    "Document URL generated successfully",
+    url,
+  );
+});
+
+export const underVerification = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+  const vehicle = vehicleService.vehicleUnderVerification(vehicleId);
+  return ApiResponse.success(
+    res,
+    201,
+    "Vehicle is under verification",
+    vehicle,
+  );
+});
+
+
+export const updateVehicleStatus = asyncHandler(async (req, res) => {
+  const { vehicleId } = req.query;
+  const { status, rejectionReason } = req.body;
+
+  const vehicle = await vehicleService.handleStatusByAdmin(
+    vehicleId as string,
+    status,
+    rejectionReason,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    `Vehicle ${status.toLowerCase()} successfully.`,
+    vehicle,
+  );
 });

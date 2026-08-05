@@ -3,6 +3,7 @@ import {
   IVehicle,
   RegistrationStep,
   VehicleDocumentType,
+  VehicleStatus,
 } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import {
@@ -335,6 +336,50 @@ class VehicleService {
       vehicle.currentStep,
       RegistrationStep.SUBMITTED,
     );
+    await vehicle.save();
+    return vehicle;
+  }
+
+  async vehicleUnderVerification(vehicleId: string) {
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle Not Found");
+    }
+    vehicle.status = VehicleStatus.UNDER_VERIFICATION;
+    await vehicle.save();
+    return vehicle;
+  }
+
+  async handleStatusByAdmin(
+    vehicleId: string,
+    status: VehicleStatus,
+    rejectionReason?: string,
+  ) {
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    if (
+      status !== VehicleStatus.VERIFIED &&
+      status !== VehicleStatus.REJECTED
+    ) {
+      throw new ApiError(400, "Status must be VERIFIED or REJECTED");
+    }
+
+    if (
+      status === VehicleStatus.REJECTED &&
+      (!rejectionReason || rejectionReason.trim() === "")
+    ) {
+      throw new ApiError(400, "Rejection reason is required");
+    }
+    vehicle.status = status;
+    if (status === VehicleStatus.REJECTED) {
+      vehicle.rejectionReason = rejectionReason!;
+    } else {
+      vehicle.rejectionReason = "";
+    }
     await vehicle.save();
     return vehicle;
   }
