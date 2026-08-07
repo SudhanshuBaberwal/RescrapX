@@ -1,4 +1,8 @@
-import User, { PartnerNextStep, PartnerStatus } from "../models/user.model.js";
+import User, {
+  PartnerNextStep,
+  PartnerStatus,
+  UserRole,
+} from "../models/user.model.js";
 import { RejectPartnerDto } from "../validations/admin.validation.js";
 
 class AdminRepository {
@@ -55,6 +59,12 @@ class AdminRepository {
         returnDocument: "after",
       },
     );
+  }
+
+  async getAllCustomers() {
+    return await User.find({ role: UserRole.USER })
+      .select("-password -refreshToken")
+      .sort({ createdAt: -1 });
   }
 }
 

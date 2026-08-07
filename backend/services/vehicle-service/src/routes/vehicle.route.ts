@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   allVehiclesDataForAdmin,
   createVehicleDraft,
+  FindALlVehicleForUserController,
   findVehicle,
   getAllVehicles,
   majorComponents,
@@ -80,10 +81,6 @@ router.put("/reviews", attachUser, reviewVehicle);
 router.get("/vehicles", adminOnly, allVehiclesDataForAdmin);
 router.post("/view-document", viewDocument);
 router.put("/under-verification", attachUser, underVerification);
-router.put(
-  "/status",
-  attachUser,
-  adminOnly,
-  updateVehicleStatus,
-);
+router.put("/status", attachUser, adminOnly, updateVehicleStatus);
+router.get("/user-vehicles", attachUser, FindALlVehicleForUserController);
 export default router;

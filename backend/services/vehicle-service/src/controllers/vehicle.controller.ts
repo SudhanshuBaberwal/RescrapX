@@ -180,7 +180,6 @@ export const underVerification = asyncHandler(async (req, res) => {
   );
 });
 
-
 export const updateVehicleStatus = asyncHandler(async (req, res) => {
   const { vehicleId } = req.query;
   const { status, rejectionReason } = req.body;
@@ -198,3 +197,17 @@ export const updateVehicleStatus = asyncHandler(async (req, res) => {
     vehicle,
   );
 });
+
+export const FindALlVehicleForUserController = asyncHandler(
+  async (req, res) => {
+    const userId =
+      (req.user?.userId as string) || (req.headers["x-user-id"] as string);
+    const vehicles = await vehicleService.findAllVehicleOfUser(userId);
+    return ApiResponse.success(
+      res,
+      201,
+      "Vehicle data fetch successfully",
+      vehicles,
+    );
+  },
+);

@@ -383,6 +383,14 @@ class VehicleService {
     await vehicle.save();
     return vehicle;
   }
+
+  async findAllVehicleOfUser(userId:string){
+    const vehicles = await vehicleRepository.findVehicleByUserId(userId)
+    if (!vehicles){
+      throw new ApiError(400,"No Vehicle Found")
+    }
+    return vehicles;
+  }
 }
 
 export default new VehicleService();

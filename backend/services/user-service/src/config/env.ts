@@ -10,6 +10,8 @@ export const env = {
   MONGODB_URI:
     process.env.MONGODB_URI || "mongodb://localhost:27017/rescrapx-auth",
 
+  VEHICLE_SERVICE_URL:process.env.VEHICLE_SERVICE_URL!,
+
 //   REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
 
 //   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || "",

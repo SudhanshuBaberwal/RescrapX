@@ -31,7 +31,7 @@ const pages = [
   VehiclePhotosPage,
   VehiclePickupLocationPage,
   VehicleReviewConfirmPage,
-  VehicleApprovalPendingPage,
+  VehicleInstantOfferPage,
 ];
 
 export default function VehicleRegistrationDetails({
