@@ -24,23 +24,41 @@ const formatDate = (dateValue?: string | Date) => {
   });
 };
 
-const getMediaUrl = (pathObj: any) => {
+const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
+
+const getMediaUrl = (pathObj: any): string | null => {
   if (!pathObj) return null;
+
   let rawPath = '';
-  if (typeof pathObj === 'string') rawPath = pathObj;
-  else if (typeof pathObj === 'object') {
-    rawPath = pathObj.path || pathObj.fullPath || pathObj.url || pathObj.key || '';
+
+  if (typeof pathObj === 'string') {
+    rawPath = pathObj;
+  } else if (typeof pathObj === 'object') {
+    rawPath =
+      pathObj.url ||
+      pathObj.path?.path ||
+      pathObj.path ||
+      pathObj.fullPath ||
+      pathObj.key ||
+      '';
   }
 
-  if (!rawPath) return null;
-  if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) return rawPath;
+  if (!rawPath || typeof rawPath !== 'string') return null;
 
-  const cleanPath = rawPath.replace(/^partner-documents\//i, '').replace(/^\/+/, '');
-  const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
+  // Already a complete signed or public URL
+  if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('data:')) {
+    return rawPath;
+  }
+
+  // Clean bucket path prefixes
+  const cleanPath = rawPath
+    .replace(/^partner-documents\//i, '')
+    .replace(/^\/+/, '');
+
+  if (!cleanPath) return null;
 
   return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/partner-documents/${cleanPath}`;
 };
-
 export default function VehicleDetailsPage() {
   // Trigger custom hook to fetch all vehicles on reload
   getAllVehicles();
@@ -53,6 +71,62 @@ export default function VehicleDetailsPage() {
   const [vehicle, setVehicle] = useState<IVehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+
+  // State to hold resolved image URLs
+  const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
+
+  useEffect(() => {
+    if (!vehicle) return;
+
+    const rawPhotos = vehicle.photos || {};
+    const initialList: { label: string; rawPath: string; url: string }[] = [];
+
+    if (Array.isArray(rawPhotos)) {
+      rawPhotos.forEach((item: any) => {
+        const url = getMediaUrl(item);
+        const rawPath = typeof item === 'string' ? item : item?.path || item?.fullPath || '';
+        if (url) initialList.push({ label: item?.name || 'Photo', rawPath, url });
+      });
+    } else if (rawPhotos && typeof rawPhotos === 'object') {
+      Object.entries(rawPhotos).forEach(([key, photoObj]) => {
+        const url = getMediaUrl(photoObj);
+        const rawPath = typeof photoObj === 'string' ? photoObj : photoObj?.path || '';
+        if (url) {
+          initialList.push({
+            label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
+            rawPath,
+            url,
+          });
+        }
+      });
+    }
+
+    // Pre-fetch signed URLs for images from backend
+    const fetchSignedUrls = async () => {
+      const updatedList = await Promise.all(
+        initialList.map(async (item) => {
+          try {
+            const res = await axios.post(
+              "http://localhost:8000/api/vehicle/register/view-document",
+              { path: item.rawPath },
+              { withCredentials: true }
+            );
+            const signedUrl = res.data?.data?.url || res.data?.url || res.data?.data || res.data || item.url;
+            return { label: item.label, url: signedUrl };
+          } catch {
+            return { label: item.label, url: item.url };
+          }
+        })
+      );
+
+      setResolvedPhotos(updatedList);
+      if (updatedList.length > 0 && !activePhoto) {
+        setActivePhoto(updatedList[0].url);
+      }
+    };
+
+    fetchSignedUrls();
+  }, [vehicle]);
 
   // Sync from Redux OR fetch directly if Redux takes time
   useEffect(() => {
@@ -134,14 +208,22 @@ export default function VehicleDetailsPage() {
   if (Array.isArray(rawPhotos)) {
     rawPhotos.forEach((item: any) => {
       const url = getMediaUrl(item);
-      if (url) photoList.push({ label: item.name || 'Photo', url });
+      if (url) photoList.push({ label: item?.name || 'Photo', url });
     });
   } else if (rawPhotos && typeof rawPhotos === 'object') {
     Object.entries(rawPhotos).forEach(([key, photoObj]) => {
       const url = getMediaUrl(photoObj);
-      if (url) photoList.push({ label: key.replace(/([A-Z])/g, ' $1').toUpperCase(), url });
+      if (url) {
+        photoList.push({
+          label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
+          url,
+        });
+      }
     });
   }
+
+  // Fallback to active photo or the first valid photo in list
+  const currentMainPhoto = activePhoto || (photoList.length > 0 ? photoList[0].url : null);
 
   // Document Extraction
   const rawDocs = (vehicle.documents || {}) as Record<string, any>;
@@ -291,25 +373,40 @@ export default function VehicleDetailsPage() {
               {/* PHOTOS GALLERY */}
               <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-3xs space-y-4">
                 <h2 className="text-xs font-black uppercase tracking-wider text-gray-400">Vehicle Photos</h2>
-                {photoList.length > 0 ? (
+                {resolvedPhotos.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="bg-gray-900 rounded-xl h-64 overflow-hidden flex items-center justify-center relative">
+                    {/* Main Preview Screen */}
+                    <div className="bg-gray-900 rounded-xl h-72 overflow-hidden flex items-center justify-center relative">
                       <img
-                        src={activePhoto || photoList[0].url}
+                        src={activePhoto || resolvedPhotos[0]?.url}
                         alt="Vehicle Preview"
                         className="w-full h-full object-contain"
                       />
                     </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                      {photoList.map((p, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setActivePhoto(p.url)}
-                          className="aspect-square rounded-lg border border-gray-200 overflow-hidden hover:border-[#0B5B32] transition-colors cursor-pointer"
-                        >
-                          <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
-                        </button>
-                      ))}
+
+                    {/* Thumbnails */}
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                      {resolvedPhotos.map((p, idx) => {
+                        const isSelected = (activePhoto || resolvedPhotos[0]?.url) === p.url;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActivePhoto(p.url)}
+                            className={`group relative aspect-square rounded-xl border-2 overflow-hidden transition-all cursor-pointer bg-gray-100 ${isSelected ? 'border-[#0B5B32] ring-2 ring-[#0B5B32]/20' : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                          >
+                            <img
+                              src={p.url}
+                              alt={p.label}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                            <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] font-bold py-0.5 px-1 truncate text-center">
+                              {p.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ) : (
