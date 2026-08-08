@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  User, Lock, Sliders, Shield, CheckCircle2,
+  User, Lock, Sliders, Shield, CheckCircle2, XCircle,
   Mail, Phone, Bell, FileText, Trash2, AlertTriangle, MessageSquare,
   Camera, UploadCloud, BadgeCheck, RefreshCw, Save
 } from 'lucide-react';
 import { KYC, updateProfile } from '@/services/user.service';
+import { getUserProfileData } from '@/hooks/getUserProfileData';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export interface ProfileData {
   dateOfBirth: string;
@@ -24,7 +27,13 @@ const ADDRESS_TYPE_OPTIONS = ['PRIMARY', 'SECONDARY'] as const;
 const GENDER_OPTIONS = ['MALE', 'FEMALE', 'OTHER'] as const;
 
 export default function CustomerSettingsLayout() {
+  getUserProfileData();
+  const { userProfileData } = useSelector((state: RootState) => state.user);
+
   const [activeTab, setActiveTab] = useState('profile');
+
+  // Check if profile is verified from Redux store data
+  const isVerifiedProfile = userProfileData?.isVerifiedProfile ?? false;
 
   // Profile State mapped strictly to backend field types
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -39,7 +48,49 @@ export default function CustomerSettingsLayout() {
     landmark: '',
   });
 
+  // Camera & KYC Verification States
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [selectedDocType, setSelectedDocType] = useState('aadhaar');
+  const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
+  const [idBackFile, setIdBackFile] = useState<File | null>(null);
+
+  // KYC Status State: 'pending' | 'submitted' | 'approved' | 'rejected'
+  const [kycStatus, setKycStatus] = useState<'pending' | 'submitted' | 'approved' | 'rejected'>('pending');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Populate form fields & status with user profile data when available
+  useEffect(() => {
+    if (userProfileData) {
+      const formattedDob = userProfileData.dateOfBirth
+        ? new Date(userProfileData.dateOfBirth).toISOString().split('T')[0]
+        : '';
+
+      setProfileData({
+        dateOfBirth: formattedDob,
+        phoneNumber: userProfileData.phoneNumber || '',
+        gender: userProfileData.gender || 'MALE',
+        addressType: userProfileData.address?.type || 'PRIMARY',
+        addressDetails: userProfileData.address?.addressDetails || '',
+        city: userProfileData.address?.city || '',
+        state: userProfileData.address?.state || '',
+        pincode: userProfileData.address?.pincode || '',
+        landmark: userProfileData.address?.landmark || '',
+      });
+
+      // Sync KYC status from backend response if available
+      if (userProfileData.isVerifiedProfile) {
+        setKycStatus("approved");
+      }
+      if (userProfileData.verificationDocument.kycRejectionReason) {
+        setRejectionReason(userProfileData.verificationDocument.kycRejectionReason);
+      }
+    }
+  }, [userProfileData]);
 
   // Simple State Handler
   const handleInputChange = (
@@ -55,6 +106,7 @@ export default function CustomerSettingsLayout() {
   // Submit Profile Data to API
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isVerifiedProfile) return;
     try {
       setIsSavingProfile(true);
       await updateProfile(profileData);
@@ -66,17 +118,6 @@ export default function CustomerSettingsLayout() {
       setIsSavingProfile(false);
     }
   };
-
-  // Camera & KYC Verification States
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [userPhoto, setUserPhoto] = useState<string | null>(null);
-  const [selectedDocType, setSelectedDocType] = useState('aadhaar');
-  const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
-  const [idBackFile, setIdBackFile] = useState<File | null>(null);
-  const [kycStatus, setKycStatus] = useState<'pending' | 'submitted' | 'verified'>('pending');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Preferences Toggle States
   const [preferences, setPreferences] = useState({
@@ -183,6 +224,9 @@ export default function CustomerSettingsLayout() {
       await KYC(formData);
 
       setKycStatus('submitted');
+      setUserPhoto(null);
+      setIdFrontFile(null);
+      setIdBackFile(null);
     } catch (error) {
       console.error(error);
       alert('Failed to submit KYC documentation. Please try again.');
@@ -242,24 +286,28 @@ export default function CustomerSettingsLayout() {
                   Update your personal identity details and contact methods.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('kyc')}
-                  className="flex items-center gap-1.5 bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs"
-                >
-                  <BadgeCheck size={14} />
-                  <span>Verify Documents</span>
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="flex items-center gap-1.5 border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs"
-                >
-                  <Save size={12} />
-                  <span>{isSavingProfile ? 'Saving...' : 'Save Changes'}</span>
-                </button>
-              </div>
+
+              {/* Hide Verify Documents & Save Changes buttons if profile is verified */}
+              {!isVerifiedProfile && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('kyc')}
+                    className="flex items-center gap-1.5 bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs"
+                  >
+                    <BadgeCheck size={14} />
+                    <span>Verify Documents</span>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="flex items-center gap-1.5 border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs px-3 py-1.5 rounded-lg transition shadow-2xs"
+                  >
+                    <Save size={12} />
+                    <span>{isSavingProfile ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-xs">
@@ -272,7 +320,8 @@ export default function CustomerSettingsLayout() {
                   name="dateOfBirth"
                   value={profileData.dateOfBirth}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  disabled={isVerifiedProfile}
+                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -285,8 +334,9 @@ export default function CustomerSettingsLayout() {
                   name="phoneNumber"
                   value={profileData.phoneNumber}
                   onChange={handleInputChange}
+                  disabled={isVerifiedProfile}
                   placeholder="+919876543210"
-                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -298,7 +348,8 @@ export default function CustomerSettingsLayout() {
                   name="gender"
                   value={profileData.gender}
                   onChange={handleInputChange}
-                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  disabled={isVerifiedProfile}
+                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   {GENDER_OPTIONS.map((option) => (
                     <option key={option} value={option}>
@@ -330,7 +381,8 @@ export default function CustomerSettingsLayout() {
                     name="addressType"
                     value={profileData.addressType}
                     onChange={handleInputChange}
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                    disabled={isVerifiedProfile}
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                   >
                     {ADDRESS_TYPE_OPTIONS.map((option) => (
                       <option key={option} value={option}>
@@ -349,8 +401,9 @@ export default function CustomerSettingsLayout() {
                     rows={3}
                     value={profileData.addressDetails}
                     onChange={handleInputChange}
+                    disabled={isVerifiedProfile}
                     placeholder="Street name, house number, area details..."
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] resize-none"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] resize-none disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -363,8 +416,9 @@ export default function CustomerSettingsLayout() {
                     name="city"
                     value={profileData.city}
                     onChange={handleInputChange}
+                    disabled={isVerifiedProfile}
                     placeholder="Enter city"
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -379,8 +433,9 @@ export default function CustomerSettingsLayout() {
                     name="state"
                     value={profileData.state}
                     onChange={handleInputChange}
+                    disabled={isVerifiedProfile}
                     placeholder="Enter state"
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -393,8 +448,9 @@ export default function CustomerSettingsLayout() {
                     name="pincode"
                     value={profileData.pincode}
                     onChange={handleInputChange}
+                    disabled={isVerifiedProfile}
                     placeholder="Enter pincode"
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -407,23 +463,27 @@ export default function CustomerSettingsLayout() {
                     name="landmark"
                     value={profileData.landmark}
                     onChange={handleInputChange}
+                    disabled={isVerifiedProfile}
                     placeholder="Nearby landmark"
-                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={isSavingProfile}
-                className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition shadow-xs flex items-center gap-2"
-              >
-                <Save size={14} />
-                <span>{isSavingProfile ? 'Saving Changes...' : 'Save Profile Details'}</span>
-              </button>
-            </div>
+            {/* Hide Save Profile Details button if profile is verified */}
+            {!isVerifiedProfile && (
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingProfile}
+                  className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-6 py-2.5 rounded-xl transition shadow-xs flex items-center gap-2"
+                >
+                  <Save size={14} />
+                  <span>{isSavingProfile ? 'Saving Changes...' : 'Save Profile Details'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </form>
       )}
@@ -431,204 +491,255 @@ export default function CustomerSettingsLayout() {
       {/* TAB CONTENT: VERIFY DOCUMENTATIONS (KYC) */}
       {activeTab === 'kyc' && (
         <form onSubmit={handleKycSubmit} className="space-y-6">
-          {kycStatus === 'submitted' && (
-            <div className="bg-[#E6F4EA] border border-[#0B5B32]/20 rounded-2xl p-4 flex items-center justify-between">
+          {/* APPROVED BANNER */}
+          {(kycStatus === 'approved' || isVerifiedProfile) && (
+            <div className="bg-[#E6F4EA] border border-[#0B5B32]/30 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-[#0B5B32] text-white rounded-xl">
-                  <CheckCircle2 size={18} />
+                  <CheckCircle2 size={20} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-extrabold text-gray-900">Verification Submitted</h4>
+                  <h4 className="text-xs font-black text-gray-900">Profile Approved</h4>
                   <p className="text-[11px] text-gray-600 font-medium">
-                    Your live photo and government document are under review. It usually takes 10–15 minutes.
+                    Your identity documents have been verified and approved by the admin.
                   </p>
                 </div>
               </div>
               <span className="bg-[#0B5B32] text-white text-[10px] font-black px-3 py-1 rounded-lg">
+                Approved
+              </span>
+            </div>
+          )}
+
+          {/* REJECTED BANNER */}
+          {kycStatus === 'rejected' && !isVerifiedProfile && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-600 text-white rounded-xl">
+                  <XCircle size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-red-900">Profile Rejected</h4>
+                  <p className="text-[11px] text-red-700 font-medium">
+                    {rejectionReason
+                      ? `Reason: ${rejectionReason}. Please reupload clear documents below.`
+                      : 'Your documents were rejected. Please reupload clear copies and capture a new live photo.'}
+                  </p>
+                </div>
+              </div>
+              <span className="bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-lg shrink-0">
+                Action Required
+              </span>
+            </div>
+          )}
+
+          {/* SUBMITTED / UNDER REVIEW BANNER */}
+          {kycStatus === 'submitted' && !isVerifiedProfile && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-600 text-white rounded-xl">
+                  <RefreshCw size={20} className="animate-spin" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-amber-950">Verification Under Review</h4>
+                  <p className="text-[11px] text-amber-800 font-medium">
+                    Your live photo and government document are currently under admin review.
+                  </p>
+                </div>
+              </div>
+              <span className="bg-amber-600 text-white text-[10px] font-black px-3 py-1 rounded-lg shrink-0">
                 Under Review
               </span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Step 1: Live Photo */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-gray-900">1. Live Photo Verification</h3>
-                  <span className="text-[10px] font-bold text-[#0B5B32] bg-[#E6F4EA] px-2 py-0.5 rounded-md">
-                    Step 1 of 2
-                  </span>
+          {/* UPLOAD FORM (Hidden if verified or approved) */}
+          {!isVerifiedProfile && kycStatus !== 'approved' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Step 1: Live Photo */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-gray-900">1. Live Photo Verification</h3>
+                    <span className="text-[10px] font-bold text-[#0B5B32] bg-[#E6F4EA] px-2 py-0.5 rounded-md">
+                      Step 1 of 2
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    Take a real-time photo of yourself to confirm your identity matches your document.
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                  Take a real-time photo of yourself to confirm your identity matches your document.
-                </p>
+
+                <div className="relative w-full h-56 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-4">
+                  {userPhoto ? (
+                    <div className="relative w-full h-full">
+                      <img src={userPhoto} alt="Captured user" className="w-full h-full object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserPhoto(null);
+                          startCamera();
+                        }}
+                        className="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-1.5"
+                      >
+                        <RefreshCw size={12} /> Retake
+                      </button>
+                    </div>
+                  ) : isCameraActive ? (
+                    <div className="relative w-full h-full">
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover rounded-lg scale-x-[-1]" />
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#0B5B32] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-2 hover:bg-[#094d2a]"
+                      >
+                        <Camera size={14} /> Capture Photo
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="w-12 h-12 bg-emerald-50 text-[#0B5B32] rounded-full flex items-center justify-center mx-auto">
+                        <Camera size={22} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-gray-700">Camera Access Required</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">Ensure good lighting and face clearly visible</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={startCamera}
+                        className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-2"
+                      >
+                        <Camera size={14} /> Open Camera
+                      </button>
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
               </div>
 
-              <div className="relative w-full h-56 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-4">
-                {userPhoto ? (
-                  <div className="relative w-full h-full">
-                    <img src={userPhoto} alt="Captured user" className="w-full h-full object-cover rounded-lg" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserPhoto(null);
-                        startCamera();
-                      }}
-                      className="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm flex items-center gap-1.5"
-                    >
-                      <RefreshCw size={12} /> Retake
-                    </button>
+              {/* Step 2: Government ID */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-black text-gray-900">2. Government ID Proof</h3>
+                    <span className="text-[10px] font-bold text-[#0B5B32] bg-[#E6F4EA] px-2 py-0.5 rounded-md">
+                      Step 2 of 2
+                    </span>
                   </div>
-                ) : isCameraActive ? (
-                  <div className="relative w-full h-full">
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover rounded-lg scale-x-[-1]" />
-                    <button
-                      type="button"
-                      onClick={capturePhoto}
-                      className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-[#0B5B32] text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md flex items-center gap-2 hover:bg-[#094d2a]"
-                    >
-                      <Camera size={14} /> Capture Photo
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-emerald-50 text-[#0B5B32] rounded-full flex items-center justify-center mx-auto">
-                      <Camera size={22} />
+                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                    Upload a clear photo or copy of your government identity document.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Document Type</label>
+                  <select
+                    value={selectedDocType}
+                    onChange={(e) => setSelectedDocType(e.target.value)}
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 text-xs font-bold rounded-xl p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  >
+                    <option value="aadhaar">Government Identity Card (e.g., Identity / Voter ID)</option>
+                    <option value="pan">Permanent Account Number (PAN Card)</option>
+                    <option value="dl">Driving License</option>
+                    <option value="passport">Passport</option>
+                  </select>
+                </div>
+
+                {/* ID PREVIEWS AND INPUTS */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Front Side Upload / Preview */}
+                  {idFrontFile ? (
+                    <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center min-h-[100px] overflow-hidden group">
+                      {idFrontFile.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(idFrontFile)}
+                          alt="Front ID Preview"
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <span className="text-[11px] font-bold text-gray-700 p-2 text-center break-all">
+                          {idFrontFile.name}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIdFrontFile(null)}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-md text-[10px] shadow-sm transition"
+                        title="Remove file"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-700">Camera Access Required</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Ensure good lighting and face clearly visible</p>
+                  ) : (
+                    <label className="border-2 border-dashed border-gray-200 hover:border-[#0B5B32] bg-gray-50/50 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[100px]">
+                      <UploadCloud size={20} className="text-gray-400 mb-1" />
+                      <span className="text-[11px] font-bold text-gray-700">Upload Front Side</span>
+                      <span className="text-[9px] text-gray-400 mt-0.5">JPG, PNG or PDF</span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        onChange={(e) => setIdFrontFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                  )}
+
+                  {/* Back Side Upload / Preview */}
+                  {idBackFile ? (
+                    <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center min-h-[100px] overflow-hidden group">
+                      {idBackFile.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(idBackFile)}
+                          alt="Back ID Preview"
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                      ) : (
+                        <span className="text-[11px] font-bold text-gray-700 p-2 text-center break-all">
+                          {idBackFile.name}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIdBackFile(null)}
+                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-md text-[10px] shadow-sm transition"
+                        title="Remove file"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={startCamera}
-                      className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-4 py-2 rounded-xl transition shadow-xs inline-flex items-center gap-2"
-                    >
-                      <Camera size={14} /> Open Camera
-                    </button>
-                  </div>
-                )}
-                <canvas ref={canvasRef} className="hidden" />
+                  ) : (
+                    <label className="border-2 border-dashed border-gray-200 hover:border-[#0B5B32] bg-gray-50/50 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[100px]">
+                      <UploadCloud size={20} className="text-gray-400 mb-1" />
+                      <span className="text-[11px] font-bold text-gray-700">Upload Back Side</span>
+                      <span className="text-[9px] text-gray-400 mt-0.5">Optional for PAN</span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        onChange={(e) => setIdBackFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-[#0B5B32] hover:bg-[#094d2a] disabled:bg-gray-400 text-white font-bold text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2"
+                  >
+                    <BadgeCheck size={16} />{' '}
+                    {isSubmitting
+                      ? 'Submitting...'
+                      : kycStatus === 'rejected'
+                      ? 'Reupload Documents for Verification'
+                      : 'Submit Documents for Verification'}
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Step 2: Government ID */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-black text-gray-900">2. Government ID Proof</h3>
-                  <span className="text-[10px] font-bold text-[#0B5B32] bg-[#E6F4EA] px-2 py-0.5 rounded-md">
-                    Step 2 of 2
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                  Upload a clear photo or copy of your government identity document.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Select Document Type</label>
-                <select
-                  value={selectedDocType}
-                  onChange={(e) => setSelectedDocType(e.target.value)}
-                  className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 text-xs font-bold rounded-xl p-2.5 focus:outline-none focus:border-[#0B5B32]"
-                >
-                  <option value="aadhaar">Government Identity Card (e.g., Identity / Voter ID)</option>
-                  <option value="pan">Permanent Account Number (PAN Card)</option>
-                  <option value="dl">Driving License</option>
-                  <option value="passport">Passport</option>
-                </select>
-              </div>
-
-              {/* ID PREVIEWS AND INPUTS */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Front Side Upload / Preview */}
-                {idFrontFile ? (
-                  <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center min-h-[100px] overflow-hidden group">
-                    {idFrontFile.type.startsWith('image/') ? (
-                      <img
-                        src={URL.createObjectURL(idFrontFile)}
-                        alt="Front ID Preview"
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <span className="text-[11px] font-bold text-gray-700 p-2 text-center break-all">
-                        {idFrontFile.name}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setIdFrontFile(null)}
-                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-md text-[10px] shadow-sm transition"
-                      title="Remove file"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-gray-200 hover:border-[#0B5B32] bg-gray-50/50 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[100px]">
-                    <UploadCloud size={20} className="text-gray-400 mb-1" />
-                    <span className="text-[11px] font-bold text-gray-700">Upload Front Side</span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">JPG, PNG or PDF</span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      onChange={(e) => setIdFrontFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                )}
-
-                {/* Back Side Upload / Preview */}
-                {idBackFile ? (
-                  <div className="relative border-2 border-dashed border-gray-200 rounded-xl p-2 flex flex-col items-center justify-center min-h-[100px] overflow-hidden group">
-                    {idBackFile.type.startsWith('image/') ? (
-                      <img
-                        src={URL.createObjectURL(idBackFile)}
-                        alt="Back ID Preview"
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                    ) : (
-                      <span className="text-[11px] font-bold text-gray-700 p-2 text-center break-all">
-                        {idBackFile.name}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setIdBackFile(null)}
-                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-md text-[10px] shadow-sm transition"
-                      title="Remove file"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-gray-200 hover:border-[#0B5B32] bg-gray-50/50 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[100px]">
-                    <UploadCloud size={20} className="text-gray-400 mb-1" />
-                    <span className="text-[11px] font-bold text-gray-700">Upload Back Side</span>
-                    <span className="text-[9px] text-gray-400 mt-0.5">Optional for PAN</span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      onChange={(e) => setIdBackFile(e.target.files?.[0] || null)}
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-[#0B5B32] hover:bg-[#094d2a] disabled:bg-gray-400 text-white font-bold text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2"
-                >
-                  <BadgeCheck size={16} /> {isSubmitting ? 'Submitting...' : 'Submit Documents for Verification'}
-                </button>
-              </div>
-            </div>
-          </div>
+          )}
         </form>
       )}
 

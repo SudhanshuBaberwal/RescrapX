@@ -7,7 +7,6 @@ import { RootState } from '@/store/store';
 import { openImage } from '@/services/admin.service';
 import { approveKYC, rejectKYC } from '@/services/user.service';
 
-
 const ModalImageCard: React.FC<{
   label: string;
   imageSource?: any;
@@ -124,9 +123,8 @@ const ModalImageCard: React.FC<{
 
       <div
         onClick={handleOpenImage}
-        className={`relative h-44 bg-slate-100/80 rounded-xl border border-slate-200/80 overflow-hidden flex items-center justify-center group shadow-xs ${
-          rawPath ? 'cursor-pointer' : ''
-        }`}
+        className={`relative h-44 bg-slate-100/80 rounded-xl border border-slate-200/80 overflow-hidden flex items-center justify-center group shadow-xs ${rawPath ? 'cursor-pointer' : ''
+          }`}
       >
         {previewLoading ? (
           <div className="flex flex-col items-center justify-center text-slate-400 space-y-1">
@@ -293,15 +291,13 @@ export const CustomersDashboard: React.FC = () => {
     ];
   }, [localUsersList]);
 
-  // Handle Approve KYC Action
   const handleApproveKyc = async () => {
     if (!selectedCustomer?._id) return;
     try {
       setIsSubmittingKycAction(true);
-      
+
       await approveKYC(selectedCustomer._id);
 
-      // Dynamically update UI state
       setLocalUsersList((prevList) =>
         prevList.map((user) => {
           if (user._id === selectedCustomer._id) {
@@ -330,7 +326,6 @@ export const CustomersDashboard: React.FC = () => {
     }
   };
 
-  // Handle Reject KYC Action
   const handleRejectKyc = async () => {
     if (!selectedCustomer?._id) return;
     if (!rejectionReason.trim()) {
@@ -343,7 +338,6 @@ export const CustomersDashboard: React.FC = () => {
 
       await rejectKYC(selectedCustomer._id, rejectionReason.trim());
 
-      // Dynamically update UI state
       setLocalUsersList((prevList) =>
         prevList.map((user) => {
           if (user._id === selectedCustomer._id) {
@@ -376,6 +370,11 @@ export const CustomersDashboard: React.FC = () => {
     setStatusFilter('ALL');
     setKycFilter('ALL');
   };
+
+  // Updated to consider both profile verification and document status
+  const isApproved =
+    Boolean(selectedCustomer?.isVerifiedProfile) ||
+    selectedCustomer?.verificationDocument?.status === 'APPROVED';
 
   return (
     <div className="w-full flex flex-col justify-between min-h-screen bg-slate-50/50 text-slate-700">
@@ -497,16 +496,26 @@ export const CustomersDashboard: React.FC = () => {
                           </td>
                           <td className="p-3 text-center font-bold text-slate-800">{user.vehicles?.length || 0}</td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${user.isVerifiedProfile ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                              {user.isVerifiedProfile ? 'Verified' : 'Unverified'}
-                            </span>
+                            {user.isVerifiedProfile || kycDocStatus === 'APPROVED' ? (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-600">
+                                ✓ Approved
+                              </span>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${kycDocStatus === 'PENDING' ? 'bg-amber-50 text-amber-600' :
+                                kycDocStatus === 'REJECTED' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'
+                                }`}>
+                                {kycDocStatus === 'PENDING' && '◷ Pending Review'}
+                                {kycDocStatus === 'REJECTED' && '✕ Rejected'}
+                                {kycDocStatus === 'NOT SUBMITTED' && 'Not Uploaded'}
+                              </span>
+                            )}
                           </td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${kycDocStatus === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${kycDocStatus === 'VERIFIED' ? 'bg-emerald-50 text-emerald-600' :
                               kycDocStatus === 'PENDING' ? 'bg-amber-50 text-amber-600' :
                                 kycDocStatus === 'REJECTED' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'
                               }`}>
-                              {kycDocStatus === 'APPROVED' && '✓ Approved'}
+                              {kycDocStatus === 'VERIFIED' && '✓ Approved'}
                               {kycDocStatus === 'PENDING' && '◷ Pending Review'}
                               {kycDocStatus === 'REJECTED' && '✕ Rejected'}
                               {kycDocStatus === 'NOT SUBMITTED' && 'Not Uploaded'}
@@ -616,9 +625,8 @@ export const CustomersDashboard: React.FC = () => {
 
       {/* KYC VERIFICATION MODAL */}
       {isKycModalOpen && selectedCustomer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 transition-all">
+        <div className="fixed inset-0 z-[9999] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 transition-all">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 shadow-2xl max-h-[90vh] overflow-y-auto">
-
             <div className="flex justify-between items-start border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">KYC Document Verification</h3>
@@ -676,7 +684,11 @@ export const CustomersDashboard: React.FC = () => {
             )}
 
             <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-              {!showRejectionInput ? (
+              {isApproved ? (
+                <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-xs py-2.5 rounded-xl text-center">
+                  ✓ Document Approved
+                </div>
+              ) : !showRejectionInput ? (
                 <>
                   <button
                     type="button"

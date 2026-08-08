@@ -7,9 +7,7 @@ import { updateUserProfileSchema, UploadedFiles } from "../validations/user-docu
 
 export const syncVehicleDocumentsController = asyncHandler(async (req, res) => {
   const owner = req.user?.id as string;
-
   const result = await userDocumentService.syncVehicleDocuments(owner);
-
   return ApiResponse.success(
     res,
     200,

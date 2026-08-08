@@ -84,7 +84,6 @@ class UserDocumentsClass {
 
   async syncVehicleDocuments(owner: string) {
     const documents = await this.getAllVehiclesDocuments(owner);
-
     const vehicleMap = new Map<
       string,
       {
@@ -144,9 +143,7 @@ class UserDocumentsClass {
       existingVehicle.model = incomingVehicle.model;
       existingVehicle.documents = incomingVehicle.documents;
     }
-
     await userDoc.save();
-
     return userDoc;
   }
 

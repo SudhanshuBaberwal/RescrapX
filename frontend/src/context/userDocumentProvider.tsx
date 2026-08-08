@@ -43,7 +43,7 @@ export interface IVerificationDocument {
   back?: IDocuments;
 
   submittedAt: Date;
-
+  rejectionReason?:string
   status: VerificationStatus;
 }
 export interface IUserAddress {
