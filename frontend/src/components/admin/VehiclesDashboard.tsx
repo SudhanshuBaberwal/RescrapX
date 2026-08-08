@@ -23,22 +23,127 @@ const formatDate = (dateString?: string) => {
   });
 };
 
-const getMediaUrl = (pathObj: any) => {
-  if (!pathObj) return null;
-  let rawPath = '';
-  if (typeof pathObj === 'string') {
-    rawPath = pathObj;
-  } else if (typeof pathObj === 'object') {
-    rawPath = pathObj.path || pathObj.fullPath || pathObj.url || pathObj.key || '';
+// Custom Hook to Fetch Signed URL for Private Supabase Vehicle Images
+function useSignedUrl(pathObj: any) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
+
+  const rawPath = typeof pathObj === 'object'
+    ? pathObj?.path || pathObj?.url || pathObj?.fullPath || pathObj?.key
+    : pathObj;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!rawPath) {
+      setSignedUrl(null);
+      return;
+    }
+
+    if (typeof rawPath === 'string' && (rawPath.startsWith('http://') || rawPath.startsWith('https://'))) {
+      setSignedUrl(rawPath);
+      return;
+    }
+
+    const fetchSignedUrl = async () => {
+      try {
+        setLoading(true);
+        setError(false);
+
+        const response = await axios.post(
+          "http://localhost:8000/api/vehicle/register/view-document",
+          { path: rawPath },
+          { withCredentials: true }
+        );
+
+        const url =
+          response.data?.data?.url ||
+          response.data?.url ||
+          response.data?.data ||
+          response.data?.message ||
+          (typeof response.data === 'string' ? response.data : null);
+
+        if (isMounted) {
+          if (url && typeof url === 'string') {
+            setSignedUrl(url);
+          } else {
+            setError(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching signed URL for vehicle image:", err);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchSignedUrl();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rawPath]);
+
+  return { signedUrl, loading, error, rawPath };
+}
+
+// Sub-component for Main Display Image
+const MainVehicleImage: React.FC<{ photoItem: any; title: string }> = ({ photoItem, title }) => {
+  const { signedUrl, loading, error } = useSignedUrl(photoItem);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center text-slate-400 text-xs font-semibold">
+        <span>Loading image...</span>
+      </div>
+    );
   }
 
-  if (!rawPath) return null;
-  if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) return rawPath;
+  if (error || !signedUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center text-slate-400 text-xs p-2 text-center">
+        <span>⚠️ Failed to load photo preview</span>
+      </div>
+    );
+  }
 
-  const cleanPath = rawPath.replace(/^partner-documents\//i, '').replace(/^\/+/, '');
-  const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
+  return (
+    <img
+      src={signedUrl}
+      alt={title}
+      className="w-full h-full object-contain"
+    />
+  );
+};
 
-  return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/partner-documents/${cleanPath}`;
+// Sub-component for Thumbnail Selector Buttons
+const VehicleThumbnailButton: React.FC<{
+  photoItem: any;
+  title: string;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ photoItem, title, isActive, onClick }) => {
+  const { signedUrl, loading, error } = useSignedUrl(photoItem);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`aspect-video rounded overflow-hidden border relative cursor-pointer bg-slate-100 flex items-center justify-center ${
+        isActive ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-400'
+      }`}
+    >
+      {loading ? (
+        <span className="text-[9px] text-slate-400">...</span>
+      ) : signedUrl && !error ? (
+        <img src={signedUrl} alt={title} className="w-full h-full object-cover" />
+      ) : (
+        <span className="text-[8px] font-bold text-slate-400 uppercase p-0.5 truncate">{title}</span>
+      )}
+    </button>
+  );
 };
 
 const getStatusStyle = (status?: string) => {
@@ -73,7 +178,6 @@ export default function VehiclesDashboard() {
 
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle) || { allVehiclesData: [] };
   
-  // Filter out REJECTED vehicles entirely from state
   const [vehiclesList, setVehiclesList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -109,7 +213,7 @@ export default function VehiclesDashboard() {
     setActivePhotoIndex(0);
   }, [selectedVehicle]);
 
-  // Dynamic Filtering Calculation
+  // Dynamic Filtering
   const filteredVehiclesList = useMemo(() => {
     return vehiclesList.filter((item: any) => {
       const details = item.vehicleDetails || {};
@@ -135,7 +239,7 @@ export default function VehiclesDashboard() {
     });
   }, [vehiclesList, searchQuery, statusFilter, fuelTypeFilter, stateFilter]);
 
-  // Mapping to UI format
+  // UI Table mapping
   const mappedVehicles = filteredVehiclesList.map((item: any) => {
     const details = item.vehicleDetails || {};
     const pickup = item.pickup || {};
@@ -164,27 +268,25 @@ export default function VehiclesDashboard() {
     };
   });
 
-  // Extract Photos safely
+  // Extract Raw Photos Safely
   const rawPhotos = selectedVehicle?.photos || {};
   const photoKeys = ['front', 'rear', 'left', 'right', 'dashboard', 'engine', 'odometer', 'interior', 'chassisNumber'];
-  const vehiclePhotosList: { title: string; url: string }[] = [];
+  const vehiclePhotosList: { title: string; rawItem: any }[] = [];
 
   if (Array.isArray(rawPhotos)) {
     rawPhotos.forEach((item: any) => {
-      const url = getMediaUrl(item);
-      if (url) vehiclePhotosList.push({ title: (item.name || item.type || 'PHOTO').toUpperCase(), url });
+      if (item) vehiclePhotosList.push({ title: (item.name || item.type || 'PHOTO').toUpperCase(), rawItem: item });
     });
   } else if (typeof rawPhotos === 'object' && rawPhotos !== null) {
     photoKeys.forEach((key) => {
       const photoItem = rawPhotos[key];
       if (photoItem) {
-        const url = getMediaUrl(photoItem);
-        if (url) vehiclePhotosList.push({ title: key.replace(/([A-Z])/g, ' $1').toUpperCase(), url });
+        vehiclePhotosList.push({ title: key.replace(/([A-Z])/g, ' $1').toUpperCase(), rawItem: photoItem });
       }
     });
   }
 
-  // Extract Documents safely
+  // Extract Documents Safely
   const rawDocs = selectedVehicle?.documents || {};
   const docKeys = [
     { key: 'rcbook', label: 'RC Book' },
@@ -201,16 +303,14 @@ export default function VehiclesDashboard() {
       return {
         label: doc.label,
         rawPath: rawPathStr,
-        url: getMediaUrl(rawPathObj),
       };
     })
-    .filter((doc) => doc.url !== null && doc.rawPath !== '');
+    .filter((doc) => doc.rawPath !== '');
 
   const activeDetails = selectedVehicle?.pickup || {};
   const activeVehicleDetails = selectedVehicle?.vehicleDetails || {};
   const activeStatus = getStatusStyle(selectedVehicle?.status);
 
-  // Check if current selected vehicle is verified
   const isVehicleVerified = selectedVehicle?.status?.toUpperCase() === 'VERIFIED' || selectedVehicle?.status?.toUpperCase() === 'APPROVED';
 
   // Approve Handler
@@ -219,8 +319,6 @@ export default function VehiclesDashboard() {
     try {
       setIsUpdatingStatus(true);
       await updateVehicleStatus(selectedVehicle._id, 'VERIFIED');
-      
-      // Update local state
       setVehiclesList((prev) =>
         prev.map((v) => (v._id === selectedVehicle._id ? { ...v, status: 'VERIFIED' } : v))
       );
@@ -241,8 +339,6 @@ export default function VehiclesDashboard() {
     try {
       setIsUpdatingStatus(true);
       await updateVehicleStatus(selectedVehicle._id, 'REJECTED', reason);
-
-      // Remove vehicle from state
       setVehiclesList((prev) => {
         const updated = prev.filter((v) => v._id !== selectedVehicle._id);
         if (updated.length > 0) {
@@ -260,7 +356,7 @@ export default function VehiclesDashboard() {
     }
   };
 
-  const handleViewPDF = async (path: string, directUrl: string) => {
+  const handleViewPDF = async (path: string) => {
     if (!path) return;
     try {
       const response = await axios.post(
@@ -268,13 +364,18 @@ export default function VehiclesDashboard() {
         { path },
         { withCredentials: true }
       );
-      const targetUrl = typeof response.data === 'string'
-        ? response.data
-        : response.data?.data?.url || response.data?.data || response.data?.url || directUrl;
+      const targetUrl =
+        response.data?.data?.url ||
+        response.data?.url ||
+        response.data?.data ||
+        response.data?.message ||
+        (typeof response.data === 'string' ? response.data : null);
 
-      window.open(targetUrl || directUrl, "_blank");
+      if (targetUrl) {
+        window.open(targetUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (err) {
-      window.open(directUrl, "_blank");
+      console.error("Failed to view document:", err);
     }
   };
 
@@ -291,7 +392,7 @@ export default function VehiclesDashboard() {
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased w-full">
       <div className="p-4 md:p-6 mx-auto max-w-[1750px] space-y-6">
 
-        {/* Global Dashboard Navbar */}
+        {/* Header Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Vehicles</h1>
@@ -328,13 +429,13 @@ export default function VehiclesDashboard() {
           ))}
         </div>
 
-        {/* Core Layout */}
+        {/* Core Dashboard Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-          {/* LEFT CONTAINER: Interactive Filters + Data Table */}
+          {/* LEFT: Filters + Table */}
           <div className={`${isDetailsOpen ? 'xl:col-span-8' : 'xl:col-span-12'} space-y-6 transition-all`}>
 
-            {/* Filter Control Bar */}
+            {/* Filter Bar */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
                 <div className="flex flex-col gap-1 lg:col-span-1">
@@ -411,7 +512,7 @@ export default function VehiclesDashboard() {
               </div>
             </div>
 
-            {/* Main Vehicles Data Table */}
+            {/* Table */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">All Vehicles ({mappedVehicles.length})</h3>
 
@@ -492,7 +593,7 @@ export default function VehiclesDashboard() {
 
           </div>
 
-          {/* RIGHT CONTAINER: Inspector Panel Side Sheet */}
+          {/* RIGHT: Inspector Panel Side Sheet */}
           {isDetailsOpen && selectedVehicle && (
             <div className="xl:col-span-4 bg-white border border-slate-200 rounded-xl p-4 md:p-5 shadow-2xs space-y-5 sticky top-6 w-full">
               <button onClick={() => setIsDetailsOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer">✕</button>
@@ -513,7 +614,7 @@ export default function VehiclesDashboard() {
                 </div>
               </div>
 
-              {/* Photos Section */}
+              {/* Vehicle Photos Section */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
@@ -529,25 +630,21 @@ export default function VehiclesDashboard() {
                 {vehiclePhotosList.length > 0 ? (
                   <>
                     <div className="bg-slate-900 h-52 rounded-lg flex items-center justify-center relative overflow-hidden border border-slate-200">
-                      <img
-                        src={vehiclePhotosList[activePhotoIndex]?.url}
-                        alt={vehiclePhotosList[activePhotoIndex]?.title || "Vehicle Photo"}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/600x400?text=Image+Not+Found";
-                        }}
+                      <MainVehicleImage
+                        photoItem={vehiclePhotosList[activePhotoIndex]?.rawItem}
+                        title={vehiclePhotosList[activePhotoIndex]?.title || "Vehicle Photo"}
                       />
                       {vehiclePhotosList.length > 1 && (
                         <>
                           <button
                             onClick={() => setActivePhotoIndex((prev) => (prev > 0 ? prev - 1 : vehiclePhotosList.length - 1))}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-xs text-slate-800 shadow-md font-bold cursor-pointer"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-xs text-slate-800 shadow-md font-bold cursor-pointer z-10"
                           >
                             ‹
                           </button>
                           <button
                             onClick={() => setActivePhotoIndex((prev) => (prev < vehiclePhotosList.length - 1 ? prev + 1 : 0))}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-xs text-slate-800 shadow-md font-bold cursor-pointer"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-xs text-slate-800 shadow-md font-bold cursor-pointer z-10"
                           >
                             ›
                           </button>
@@ -557,13 +654,13 @@ export default function VehiclesDashboard() {
 
                     <div className="grid grid-cols-5 gap-1.5">
                       {vehiclePhotosList.slice(0, 5).map((photo, i) => (
-                        <button
+                        <VehicleThumbnailButton
                           key={i}
+                          photoItem={photo.rawItem}
+                          title={photo.title}
+                          isActive={activePhotoIndex === i}
                           onClick={() => setActivePhotoIndex(i)}
-                          className={`aspect-video rounded overflow-hidden border relative cursor-pointer ${activePhotoIndex === i ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-400'}`}
-                        >
-                          <img src={photo.url} alt={photo.title} className="w-full h-full object-cover" />
-                        </button>
+                        />
                       ))}
                     </div>
                   </>
@@ -588,7 +685,7 @@ export default function VehiclesDashboard() {
                           <span className="font-semibold text-slate-700">{doc.label}</span>
                         </div>
                         <button
-                          onClick={() => handleViewPDF(doc.rawPath, doc.url || '')}
+                          onClick={() => handleViewPDF(doc.rawPath)}
                           className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 cursor-pointer"
                         >
                           View Doc ↗

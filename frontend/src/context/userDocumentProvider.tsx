@@ -1,4 +1,3 @@
-
 export interface IDocuments {
   path: string;
   originalName: string;
@@ -6,11 +5,6 @@ export interface IDocuments {
   size: number;
   uploadedAt: Date;
 }
-
-/* =========================
-   VEHICLE DOCUMENT TYPES
-========================= */
-
 export enum DocumentsType {
   RC_BOOK = "RC_BOOK",
   INSURANCE = "INSURANCE",
@@ -18,11 +12,6 @@ export enum DocumentsType {
   LOAN_CLOSURE = "LOAN_CLOSURE",
   OTHER = "OTHER",
 }
-
-/* =========================
-   VERIFICATION DOCUMENT TYPES
-========================= */
-
 export enum VERIFICATION_DOCUMENTS {
   AADAHR_CARD = "AADAHR_CARD",
   PAN_CARD = "PAN_CARD",
@@ -30,21 +19,22 @@ export enum VERIFICATION_DOCUMENTS {
   VOTERID = "VOTERID",
   DRIVING_LICENSE = "DRIVING_LICENSE",
 }
-
-/* =========================
-   VERIFICATION STATUS
-========================= */
-
 export enum VerificationStatus {
   PENDING = "PENDING",
   VERIFIED = "VERIFIED",
   REJECTED = "REJECTED",
 }
+export enum Gender {
+  MALE = "MALE",
+  FEMALE = "FEMALE",
+  OTHER = "OTHER",
+  PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY",
+}
 
-/* =========================
-   USER KYC DOCUMENT
-========================= */
-
+export enum AddressType {
+  PRIMARY = "PRIMARY",
+  SECONDARY = "SECONDARY",
+}
 export interface IVerificationDocument {
   type: VERIFICATION_DOCUMENTS;
 
@@ -56,11 +46,14 @@ export interface IVerificationDocument {
 
   status: VerificationStatus;
 }
-
-/* =========================
-   VEHICLE DOCUMENTS
-========================= */
-
+export interface IUserAddress {
+  type: AddressType;
+  addressDetails: string;
+  pincode: string;
+  landmark?: string;
+  city: string;
+  state: string;
+}
 export interface IVehicleDocuments {
   vehicleId: string;
 
@@ -74,25 +67,17 @@ export interface IVehicleDocuments {
     other?: IDocuments;
   };
 }
-
-/* =========================
-   USER DOCUMENTS
-========================= */
-
 export interface IUserDocuments {
+  _id?:string
   owner: string;
-
+  dateOfBirth?: Date;
+  phoneNumber?: string;
+  gender?: Gender;
+  address?: IUserAddress;
   isVerifiedProfile: boolean;
-
-  // Live photo captured from camera
   currentPic?: IDocuments;
-
-  // Aadhaar / PAN / Passport / Voter ID / Driving License
   verificationDocument?: IVerificationDocument;
-
-  // All vehicles owned by the user
   vehicles: IVehicleDocuments[];
-
   createdAt?: Date;
   updatedAt?: Date;
 }

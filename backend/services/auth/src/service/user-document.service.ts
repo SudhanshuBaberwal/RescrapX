@@ -7,6 +7,7 @@ import axios from "axios";
 import vehicleClient from "../clients/vehicle.client.js";
 import adminRepository from "../repository/admin.repository.js";
 import {
+  KYCDecisionInput,
   UpdateUserProfileInput,
   validateDocumentType,
   validateUserDocuments,
@@ -275,10 +276,7 @@ class UserDocumentsClass {
 
     return userDoc;
   }
-  async updateUserProfile(
-    owner: string,
-    data: UpdateUserProfileInput,
-  ) {
+  async updateUserProfile(owner: string, data: UpdateUserProfileInput) {
     if (!mongoose.Types.ObjectId.isValid(owner)) {
       throw new ApiError(400, "Invalid user ID");
     }
@@ -289,18 +287,13 @@ class UserDocumentsClass {
     const dateOfBirth = new Date(data.dateOfBirth);
 
     if (Number.isNaN(dateOfBirth.getTime())) {
-      throw new ApiError(
-        400,
-        "Invalid date of birth",
-      );
+      throw new ApiError(400, "Invalid date of birth");
     }
 
     /*
      * Normalize phone number
      */
-    const phoneNumber = data.phoneNumber
-      .replace(/[\s-]/g, "")
-      .trim();
+    const phoneNumber = data.phoneNumber.replace(/[\s-]/g, "").trim();
 
     let userDocument = await UserDocuments.findOne({
       owner,
@@ -312,13 +305,13 @@ class UserDocumentsClass {
         dateOfBirth,
         phoneNumber,
         gender: data.gender,
-
         address: {
           type: data.addressType,
+          state: data.state,
+          city: data.city,
           addressDetails: data.addressDetails.trim(),
           pincode: data.pincode.trim(),
-          landmark:
-            data.landmark?.trim() || undefined,
+          landmark: data.landmark?.trim() || undefined,
         },
 
         isVerifiedProfile: false,
@@ -330,17 +323,15 @@ class UserDocumentsClass {
       return userDocument;
     }
     userDocument.dateOfBirth = dateOfBirth;
-
     userDocument.phoneNumber = phoneNumber;
-
     userDocument.gender = data.gender;
-
     userDocument.address = {
       type: data.addressType,
       addressDetails: data.addressDetails.trim(),
       pincode: data.pincode.trim(),
-      landmark:
-        data.landmark?.trim() || undefined,
+      city: data.city,
+      state: data.state,
+      landmark: data.landmark?.trim() || undefined,
     };
 
     await userDocument.save();
@@ -360,6 +351,81 @@ class UserDocumentsClass {
     }
 
     return userDocument;
+  }
+
+  async getAllUserProfiles() {
+    const userProfiles = await UserDocuments.find()
+      .populate({
+        path: "owner",
+      })
+      .sort({ createdAt: -1 });
+
+    if (!userProfiles || userProfiles.length === 0) {
+      throw new ApiError(404, "No user profiles found");
+    }
+
+    return userProfiles;
+  }
+
+  async opendocument(userId: string) {
+    const profile = await UserDocuments.findById(userId);
+    console.log(profile);
+
+    if (!profile) {
+      throw new ApiError(404, "User documents not found");
+    }
+
+    const response = {
+      ...profile.toObject(),
+
+      currentPic: profile.currentPic
+        ? {
+            ...profile.currentPic,
+            path: adminRepository.getDocumentUrl(profile.currentPic.path),
+          }
+        : null,
+
+      verificationDocument: profile.verificationDocument
+        ? {
+            ...profile.verificationDocument.toObject(),
+
+            front: {
+              ...profile.verificationDocument.front,
+              path: adminRepository.getDocumentUrl(
+                profile.verificationDocument.front.path,
+              ),
+            },
+
+            back: profile.verificationDocument.back
+              ? {
+                  ...profile.verificationDocument.back,
+                  path: adminRepository.getDocumentUrl(
+                    profile.verificationDocument.back.path,
+                  ),
+                }
+              : null,
+          }
+        : null,
+    };
+  }
+  async updateKYCStatus(owner: string, data: KYCDecisionInput) {
+    const userDocuments = await UserDocuments.findById(owner);
+
+    if (!userDocuments) {
+      throw new ApiError(404, "User verification documents not found");
+    }
+
+    if (!userDocuments.verificationDocument) {
+      throw new ApiError(400, "User has not submitted verification documents");
+    }
+
+    if (data.verified) {
+      const updatedUser = await adminRepository.updateKYCStatus(owner, data);
+      return updatedUser;
+    }
+
+    const updatedUser = await adminRepository.updateKYCStatus(owner, data);
+    return updatedUser;
   }
 }
 

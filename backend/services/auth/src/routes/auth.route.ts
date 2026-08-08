@@ -29,6 +29,8 @@ import {
 import validate from "../middleware/validate.middleware.js";
 import protect from "../middleware/protect.middleware.js";
 import { partnerSignupSchema } from "../validations/partner.validation.js";
+import adminOnly from "../middleware/adminOnly.js";
+import { getAllUserProfilesController } from "../controllers/admin.controller.js";
 
 const authrouter = Router();
 
@@ -83,5 +85,6 @@ authrouter.post(
   validate(partnerSignupSchema),
   partnerSignupController,
 );
+
 
 export default authrouter;

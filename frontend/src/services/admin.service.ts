@@ -41,3 +41,21 @@ export const reuploadDocuments = async (partnerId: string) => {
     console.log(error);
   }
 };
+
+export const geAllUserProfiles = async () => {
+  try {
+    const result = await api.get("/api/auth/admin/users/profiles")
+    return result.data;
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export const openImage = async (path: string) => {
+  const response = await api.post('/api/auth/admin/open-image', { path }, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  return response.data;
+};

@@ -14,6 +14,8 @@ export interface ProfileData {
   gender: string;
   addressType: string;
   addressDetails: string;
+  city: string;
+  state: string;
   pincode: string;
   landmark: string;
 }
@@ -22,7 +24,7 @@ const ADDRESS_TYPE_OPTIONS = ['PRIMARY', 'SECONDARY'] as const;
 const GENDER_OPTIONS = ['MALE', 'FEMALE', 'OTHER'] as const;
 
 export default function CustomerSettingsLayout() {
-  const [activeTab, setActiveTab] = useState('kyc');
+  const [activeTab, setActiveTab] = useState('profile');
 
   // Profile State mapped strictly to backend field types
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -31,6 +33,8 @@ export default function CustomerSettingsLayout() {
     gender: 'MALE',
     addressType: 'PRIMARY',
     addressDetails: '',
+    city: '',
+    state: '',
     pincode: '',
     landmark: '',
   });
@@ -349,9 +353,37 @@ export default function CustomerSettingsLayout() {
                     className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32] resize-none"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={profileData.city}
+                    onChange={handleInputChange}
+                    placeholder="Enter city"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  />
+                </div>
               </div>
 
               <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={profileData.state}
+                    onChange={handleInputChange}
+                    placeholder="Enter state"
+                    className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 font-bold rounded-lg p-2.5 focus:outline-none focus:border-[#0B5B32]"
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                     Pincode

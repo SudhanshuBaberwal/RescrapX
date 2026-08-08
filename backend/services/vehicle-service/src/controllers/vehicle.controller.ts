@@ -157,9 +157,10 @@ export const allVehiclesDataForAdmin = asyncHandler(async (req, res) => {
 
 export const viewDocument = asyncHandler(async (req, res) => {
   const { path } = req.body;
-
-  // Use getSignedUrl or getPublicUrl with sanitized path
-  const url = await supabaseService.getSignedUrl("partner-documents", path);
+  if (!path || typeof path !== "string") {
+    throw new ApiError(400, "Document path is required");
+  }
+  const url = await vehicleRepository.getDocumentUrl(path);
 
   return ApiResponse.success(
     res,

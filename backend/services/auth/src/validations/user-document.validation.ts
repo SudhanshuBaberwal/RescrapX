@@ -161,7 +161,6 @@ export const updateUserProfileSchema = z.object({
   addressType: z.enum(ADDRESS_TYPE_VALUES, {
     message: "Invalid address type",
   }),
-
   addressDetails: z
     .string()
     .trim()
@@ -179,6 +178,40 @@ export const updateUserProfileSchema = z.object({
     .max(150, "Landmark cannot exceed 150 characters")
     .optional()
     .or(z.literal("")),
+  city: z.string().trim().max(150),
+  state: z.string().trim().max(150),
 });
+
+export const KYCDecisionSchema = z
+  .object({
+    verified: z.boolean(),
+    rejectionReason: z
+      .string()
+      .trim()
+      .min(3, "Rejection reason must be at least 3 characters")
+      .max(500, "Rejection reason cannot exceed 500 characters")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Rejected -> reason required
+    if (!data.verified && !data.rejectionReason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rejectionReason"],
+        message: "Rejection reason is required when rejecting KYC",
+      });
+    }
+
+    // Approved -> reason should not exist
+    if (data.verified && data.rejectionReason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rejectionReason"],
+        message: "Rejection reason is not allowed when approving KYC",
+      });
+    }
+  });
+
+export type KYCDecisionInput = z.infer<typeof KYCDecisionSchema>;
 
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;

@@ -1,9 +1,4 @@
 import mongoose, { Schema, Types } from "mongoose";
-
-/* =========================
-BASIC DOCUMENT
-========================= */
-
 export interface IDocuments {
   path: string;
   originalName: string;
@@ -11,11 +6,6 @@ export interface IDocuments {
   size: number;
   uploadedAt: Date;
 }
-
-/* =========================
-VEHICLE DOCUMENT TYPES
-========================= */
-
 export enum DocumentsType {
   RC_BOOK = "RC_BOOK",
   INSURANCE = "INSURANCE",
@@ -23,11 +13,6 @@ export enum DocumentsType {
   LOAN_CLOSURE = "LOAN_CLOSURE",
   OTHER = "OTHER",
 }
-
-/* =========================
-VERIFICATION DOCUMENT TYPES
-========================= */
-
 export enum VERIFICATION_DOCUMENTS {
   AADAHR_CARD = "AADAHR_CARD",
   PAN_CARD = "PAN_CARD",
@@ -35,21 +20,11 @@ export enum VERIFICATION_DOCUMENTS {
   VOTERID = "VOTERID",
   DRIVING_LICENSE = "DRIVING_LICENSE",
 }
-
-/* =========================
-VERIFICATION STATUS
-========================= */
-
 export enum VerificationStatus {
   PENDING = "PENDING",
   VERIFIED = "VERIFIED",
   REJECTED = "REJECTED",
 }
-
-/* =========================
-USER PROFILE
-========================= */
-
 export enum Gender {
   MALE = "MALE",
   FEMALE = "FEMALE",
@@ -61,41 +36,22 @@ export enum AddressType {
   PRIMARY = "PRIMARY",
   SECONDARY = "SECONDARY",
 }
-
-/* =========================
-VERIFICATION DOCUMENT
-========================= */
-
 export interface IVerificationDocument {
   type: VERIFICATION_DOCUMENTS;
-
   front: IDocuments;
-
   back?: IDocuments;
-
   submittedAt: Date;
-
+  rejectionReason?: string;
   status: VerificationStatus;
 }
-
-/* =========================
-USER ADDRESS
-========================= */
-
 export interface IUserAddress {
   type: AddressType;
-
   addressDetails: string;
-
   pincode: string;
-
   landmark?: string;
+  city: string;
+  state: string;
 }
-
-/* =========================
-VEHICLE DOCUMENTS
-========================= */
-
 export interface IVehicleDocuments {
   vehicleId: Types.ObjectId;
 
@@ -109,47 +65,20 @@ export interface IVehicleDocuments {
     other?: IDocuments;
   };
 }
-
-/* =========================
-USER DOCUMENTS
-========================= */
-
 export interface IUserDocuments {
   owner: Types.ObjectId;
-
-  /* Personal Information */
-
   dateOfBirth?: Date;
-
   phoneNumber?: string;
-
   gender?: Gender;
-
-  /* Address Information */
-
   address?: IUserAddress;
-
-  /* KYC */
-
   isVerifiedProfile: boolean;
-
   currentPic?: IDocuments;
-
   verificationDocument?: IVerificationDocument;
-
-  /* Vehicle Documents */
-
   vehicles: IVehicleDocuments[];
 
   createdAt?: Date;
-
   updatedAt?: Date;
 }
-
-/* =========================================================
-BASIC DOCUMENT SCHEMA
-========================================================= */
-
 const DocumentSchema = new Schema(
   {
     path: {
@@ -181,11 +110,6 @@ const DocumentSchema = new Schema(
     _id: false,
   },
 );
-
-/* =========================================================
-ADDRESS SCHEMA
-========================================================= */
-
 const UserAddressSchema = new Schema(
   {
     type: {
@@ -216,16 +140,23 @@ const UserAddressSchema = new Schema(
       trim: true,
       maxlength: 150,
     },
+    city: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
+    state: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
   },
   {
     _id: false,
   },
 );
-
-/* =========================================================
-VERIFICATION DOCUMENT SCHEMA
-========================================================= */
-
 const VerificationDocumentSchema = new Schema(
   {
     type: {
@@ -248,6 +179,11 @@ const VerificationDocumentSchema = new Schema(
       type: Date,
       default: Date.now,
     },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
 
     status: {
       type: String,
@@ -259,11 +195,6 @@ const VerificationDocumentSchema = new Schema(
     _id: false,
   },
 );
-
-/* =========================================================
-VEHICLE DOCUMENT SCHEMA
-========================================================= */
-
 const VehicleDocumentsSchema = new Schema(
   {
     vehicleId: {
@@ -309,11 +240,6 @@ const VehicleDocumentsSchema = new Schema(
     _id: false,
   },
 );
-
-/* =========================================================
-MAIN USER DOCUMENT SCHEMA
-========================================================= */
-
 const UserDocumentsSchema = new Schema(
   {
     owner: {
@@ -323,67 +249,41 @@ const UserDocumentsSchema = new Schema(
       unique: true,
       index: true,
     },
-
-    /* =====================================================
-    PERSONAL INFORMATION
-    ===================================================== */
-
     dateOfBirth: {
       type: Date,
       required: false,
     },
-
     phoneNumber: {
       type: String,
       required: false,
       trim: true,
     },
-
     gender: {
       type: String,
       enum: Object.values(Gender),
       required: false,
     },
-
-    /* =====================================================
-    ADDRESS INFORMATION
-    ===================================================== */
-
     address: {
       type: UserAddressSchema,
       required: false,
       default: null,
     },
-
-    /* =====================================================
-    KYC
-    ===================================================== */
-
+    rejectionReason: {
+      type: String,
+      deafult: "",
+    },
     isVerifiedProfile: {
       type: Boolean,
       default: false,
     },
-
-    /*
-     * Live photo captured using camera.
-     */
     currentPic: {
       type: DocumentSchema,
       required: false,
     },
-
-    /*
-     * Government ID document.
-     */
     verificationDocument: {
       type: VerificationDocumentSchema,
       required: false,
     },
-
-    /* =====================================================
-    VEHICLE DOCUMENTS
-    ===================================================== */
-
     vehicles: {
       type: [VehicleDocumentsSchema],
       default: [],
@@ -393,11 +293,6 @@ const UserDocumentsSchema = new Schema(
     timestamps: true,
   },
 );
-
-/* =========================================================
-MODEL
-========================================================= */
-
 const UserDocuments =
   mongoose.models.UserDocuments ||
   mongoose.model("UserDocuments", UserDocumentsSchema);

@@ -1,13 +1,13 @@
-import api from "@/utils/api"
+import api from "@/utils/api";
 
 export const getUserDocument = async () => {
-    try {
-        const result = await api.post("/api/auth/sync-vehicle-documents")
-        return result.data
-    } catch (error) {
-        console.log(error)
-    }
-}
+  try {
+    const result = await api.post("/api/auth/sync-vehicle-documents");
+    return result.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 export const KYC = async (formData: FormData) => {
   try {
@@ -29,6 +29,41 @@ export const updateProfile = async (profileData: Record<string, any>) => {
     return result;
   } catch (error) {
     console.log(error);
+    throw error;
+  }
+};
+export const approveKYC = async (documentId: string) => {
+  try {
+    const response = await api.patch(
+      `/api/auth/update-status?documentId=${documentId}`,
+      {
+        verified: true,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Approve KYC error:", error);
+    throw error;
+  }
+};
+
+export const rejectKYC = async (
+  documentId: string,
+  rejectionReason: string,
+) => {
+  try {
+    const response = await api.patch(
+      `/api/auth/update-status?documentId=${documentId}`,
+      {
+        verified: false,
+        rejectionReason,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Reject KYC error:", error);
     throw error;
   }
 };

@@ -3,6 +3,9 @@ import protect from "../middleware/protect.middleware.js";
 import adminOnly from "../middleware/adminOnly.js";
 import {
   approvePartnerController,
+  getAllUserProfilesController,
+  getDocumentUrlController,
+  
   rejectPartner,
   reuploadPartnerDocument,
   viewDocument,
@@ -21,4 +24,6 @@ adminRouter.post("/document/view", protect, adminOnly, viewDocument);
 adminRouter.patch("/reject-partner", protect, adminOnly, rejectPartner);
 adminRouter.patch("/reupload-document" , protect,reuploadPartnerDocument)
 
+adminRouter.get("/users/profiles",protect, adminOnly, getAllUserProfilesController);
+adminRouter.post("/open-image",protect,adminOnly,getDocumentUrlController)
 export default adminRouter;

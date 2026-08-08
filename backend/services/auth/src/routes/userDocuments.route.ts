@@ -9,6 +9,7 @@ import {
 import protect from "../middleware/protect.middleware.js";
 import adminOnly from "../middleware/adminOnly.js";
 import { uploaduserDocuments } from "../middleware/uploadPartnerDocuments.js";
+import { updateKYCStatus } from "../controllers/admin.controller.js";
 
 const router = Router();
 
@@ -33,15 +34,7 @@ router.post(
   ]),
   KYCController,
 );
-router.get(
-  "/profile",
-  protect,
-  getUserProfileController,
-);
-router.put(
-  "/profile",
-  protect,
-  updateUserProfileController,
-);
-
+router.get("/profile", protect, getUserProfileController);
+router.put("/profile", protect, updateUserProfileController);
+router.patch("/update-status",protect, adminOnly, updateKYCStatus);
 export default router;

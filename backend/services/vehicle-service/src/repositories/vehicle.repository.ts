@@ -7,6 +7,7 @@ import Vehicle, {
 } from "../models/vehicle.model.js";
 
 class VehicleRepository {
+  BUCKET_NAME = "partner-documents";
   async findDraftByUserId(userId: string): Promise<IVehicle | null> {
     return Vehicle.findOne({
       userId,
@@ -65,6 +66,27 @@ class VehicleRepository {
       .getPublicUrl(cleanPath);
 
     return data.publicUrl;
+  }
+
+  async getDocumentUrl(
+    path: string,
+    expiresIn = 60 * 10, // 10 minutes
+  ): Promise<string> {
+    if (!path) {
+      throw new ApiError(400, "Document path is required");
+    }
+
+    const { data, error } = await supabase.storage
+      .from(this.BUCKET_NAME)
+      .createSignedUrl(path, expiresIn);
+
+    if (error || !data?.signedUrl) {
+      console.error("Supabase signed URL error:", error);
+
+      throw new ApiError(404, "Unable to generate document URL");
+    }
+
+    return data.signedUrl;
   }
 }
 
