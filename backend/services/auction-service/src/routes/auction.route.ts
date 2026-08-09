@@ -1,15 +1,10 @@
 import { Router } from "express";
 
+import { createAuction } from "../controllers/auction.controller.js";
+import adminOnly from "../middlewares/adminOnly.js";
+import protect from "../middlewares/protect.js";
 const router = Router();
 
-router.get("/", (_, res) => {
-    res.json({
-        success: true,
-        message: "Auction Service Working"
-    });
-
-});
-
-// router.post("/create-auction")
+router.post("/create",protect, adminOnly, createAuction);
 
 export default router;

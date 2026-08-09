@@ -1,19 +1,16 @@
 import axios from "axios";
-import { env } from "../config/env.js";
 
-class VehicleClient {
-  async getVehicle(vehicleId: string, token: string) {
-    const { data } = await axios.get(
-      `${env.VEHICLE_SERVICE_URL}/api/vehicle/register/${vehicleId}`,
+export const vehicleClient = {
+  async getReadyForBiddingVehicles(token: string) {
+    const response = await axios.get(
+      `${process.env.VEHICLE_SERVICE_URL}/api/vehicles/ready-for-bidding`,
       {
         headers: {
-          Authorization: token,
+          Authorization: `Bearer ${token}`,
         },
-      },
+      }
     );
 
-    return data.data;
-  }
-}
-
-export default new VehicleClient();
+    return response.data.data;
+  },
+};

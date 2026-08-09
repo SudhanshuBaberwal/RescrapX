@@ -1,5 +1,5 @@
 import ApiError from "../lib/ApiError.js";
-import {
+import User, {
   PartnerNextStep,
   PartnerStatus,
   UserRole,
@@ -101,6 +101,14 @@ class PartnerService {
     const partners = await partnerRepository.findByPartnerRole();
 
     return partners;
+  }
+
+  async getReadyForAuctionPartner() {
+    return User.find({
+      role: UserRole.PARTNER,
+      partnerStatus: PartnerStatus.APPROVED,
+      partnerNextStep: PartnerNextStep.DASHBOARD,
+    }).select("_id fullName company");
   }
 }
 

@@ -23,4 +23,11 @@ router.get(
   partnerController.getAllPartnersController,
 );
 
+router.get(
+  "/ready-for-auction",
+  protect,
+  adminOnly,
+  partnerController.getReadyForAuctionPartners,
+);
+
 export default router;

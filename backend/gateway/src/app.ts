@@ -32,8 +32,10 @@ app.use(
     parseReqBody: false,
   }),
 );
-app.use("/api/user", protect ,proxyRoutes(env.USER_SERVICE_URL));
+app.use("/api/user", protect, proxyRoutes(env.USER_SERVICE_URL));
 
-app.use("/api/vehicle", protect,proxyRoutes(env.VEHICLE_SERVICE_URL));
+app.use("/api/vehicle", protect, proxyRoutes(env.VEHICLE_SERVICE_URL));
+
+app.use("/api/auction", protect, proxyRoutes(env.AUCTION_SERVICE_URL));
 
 export default app;

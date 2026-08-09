@@ -36,6 +36,6 @@ app.get("/health", (_, res) => {
     });
 });
 
-app.use("/auction", auctionRoutes);
+app.use("/", auctionRoutes);
 
 export default app;

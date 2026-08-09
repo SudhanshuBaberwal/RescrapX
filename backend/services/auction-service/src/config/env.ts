@@ -8,5 +8,6 @@ export const env = {
     MONGODB_URI: process.env.MONGODB_URI!,
     REDIS_URL: process.env.REDIS_URL!,
     JWT_SECRET: process.env.JWT_SECRET!,
-    VEHICLE_SERVICE_URL: process.env.VEHICLE_SERVICE_URL!
+    VEHICLE_SERVICE_URL: process.env.VEHICLE_SERVICE_URL!,
+    PARTNER_SERVICE_URL:process.env.PARTNER_SERVICE_URL!,
 };

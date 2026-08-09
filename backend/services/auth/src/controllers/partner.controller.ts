@@ -41,6 +41,17 @@ class PartnerController {
 
     ApiResponse.success(res, 200, "Get partner data", partners);
   });
+
+  getReadyForAuctionPartners = asyncHandler(async (req, res) => {
+    const partners = await partnerService.getReadyForAuctionPartner();
+
+    return ApiResponse.success(
+      res,
+      201,
+      "partner fetch successfully",
+      partners,
+    );
+  });
 }
 
 export default new PartnerController();

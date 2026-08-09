@@ -1,5 +1,5 @@
 import vehicleRepository from "../repositories/vehicle.repository.js";
-import {
+import Vehicle, {
   IVehicle,
   RegistrationStep,
   VehicleDocumentType,
@@ -384,12 +384,37 @@ class VehicleService {
     return vehicle;
   }
 
-  async findAllVehicleOfUser(userId:string){
-    const vehicles = await vehicleRepository.findVehicleByUserId(userId)
-    if (!vehicles){
-      throw new ApiError(400,"No Vehicle Found")
+  async findAllVehicleOfUser(userId: string) {
+    const vehicles = await vehicleRepository.findVehicleByUserId(userId);
+    if (!vehicles) {
+      throw new ApiError(400, "No Vehicle Found");
     }
     return vehicles;
+  }
+
+  async applyVehicleForBidding(vehicleId: string) {
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    if (vehicle?.status === VehicleStatus.REJECTED) {
+      throw new ApiError(404, "This Vehicle is Rejected By Admin");
+    }
+    if (vehicle?.status !== VehicleStatus.VERIFIED) {
+      throw new ApiError(404, "This Vehicle is Not Verifed By Admin");
+    }
+
+    vehicle.status = VehicleStatus.READY_FOR_BIDDING;
+    await vehicle.save();
+    return vehicle;
+  }
+
+  async getReadyForBiddingVehicles(){
+    return Vehicle.find({
+      status:VehicleStatus.READY_FOR_BIDDING,
+    }).select("_id vehicleDetails pickup owner status")
   }
 }
 

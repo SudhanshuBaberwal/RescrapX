@@ -1,10 +1,12 @@
 import { Router } from "express";
 import {
   allVehiclesDataForAdmin,
+  ApplyForBiddingVehicleController,
   createVehicleDraft,
   FindALlVehicleForUserController,
   findVehicle,
   getAllVehicles,
+  getReadyForBiddingVehicles,
   majorComponents,
   registerBasicVehicleDetails,
   reviewVehicle,
@@ -83,4 +85,6 @@ router.post("/view-document", viewDocument);
 router.put("/under-verification", attachUser, underVerification);
 router.put("/status", attachUser, adminOnly, updateVehicleStatus);
 router.get("/user-vehicles", attachUser, FindALlVehicleForUserController);
+router.post("/apply", attachUser, ApplyForBiddingVehicleController);
+router.get("/ready-for-auction", adminOnly, getReadyForBiddingVehicles);
 export default router;

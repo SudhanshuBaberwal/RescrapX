@@ -212,3 +212,23 @@ export const FindALlVehicleForUserController = asyncHandler(
     );
   },
 );
+
+export const ApplyForBiddingVehicleController = asyncHandler(
+  async (req, res) => {
+    const vehicleId = req.query.vehicleId as string;
+    const vehicle = await vehicleService.applyVehicleForBidding(vehicleId);
+    return ApiResponse.success(res, 201, "Vehicle ready for bidding", vehicle);
+  },
+);
+
+export const getReadyForBiddingVehicles = asyncHandler(
+  async (req, res) => {
+    const vehicles =
+      await vehicleService.getReadyForBiddingVehicles();
+
+    return res.status(200).json({
+      success: true,
+      data: vehicles,
+    });
+  }
+);

@@ -86,8 +86,8 @@ export default function CustomerSettingsLayout() {
       if (userProfileData.isVerifiedProfile) {
         setKycStatus("approved");
       }
-      if (userProfileData.verificationDocument.kycRejectionReason) {
-        setRejectionReason(userProfileData.verificationDocument.kycRejectionReason);
+      if (userProfileData.verificationDocument?.rejectionReason) {
+        setRejectionReason(userProfileData.verificationDocument.rejectionReason);
       }
     }
   }, [userProfileData]);

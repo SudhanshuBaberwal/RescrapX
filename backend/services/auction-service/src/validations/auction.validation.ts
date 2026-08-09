@@ -2,14 +2,16 @@ import { z } from "zod";
 
 export const createAuctionSchema = z
   .object({
-    vehicleId: z.string().trim().min(1),
     minimumBid: z.number().positive(),
     reservePrice: z.number().positive(),
-    bidIncrement: z.number().min(100),
+    bidIncrement: z
+      .number()
+      .min(100)
+      .default(1000),
     startTime: z.coerce.date(),
     endTime: z.coerce.date(),
     visibility: z.enum(["PUBLIC", "PRIVATE"]),
-    autoExtend: z.boolean(),
+    autoExtend: z.boolean().default(true),
   })
   .superRefine((data, ctx) => {
     if (data.reservePrice < data.minimumBid) {
@@ -36,4 +38,5 @@ export const createAuctionSchema = z
     }
   });
 
-export type CreateAuctionDto = z.infer<typeof createAuctionSchema>;
+export type CreateAuctionDto =
+  z.infer<typeof createAuctionSchema>;

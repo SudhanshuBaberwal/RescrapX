@@ -11,9 +11,12 @@ import { getAllVehicles } from '@/hooks/getAllVehicles';
 import {
   Car, ShieldCheck, Calendar, Fuel, Gauge, ArrowLeft,
   XCircle, CheckCircle2, AlertCircle, FileText, MapPin,
-  RefreshCw, Eye
+  RefreshCw, Eye, Gavel
 } from 'lucide-react';
 import axios from 'axios';
+import { getUserProfileData } from '@/hooks/getUserProfileData';
+import { applyForAuction } from '@/services/auction/auctionVehicle.service';
+import { useToast } from '@/lib/ui/toast/ToastContext';
 
 const formatDate = (dateValue?: string | Date) => {
   if (!dateValue) return 'N/A';
@@ -45,12 +48,10 @@ const getMediaUrl = (pathObj: any): string | null => {
 
   if (!rawPath || typeof rawPath !== 'string') return null;
 
-  // Already a complete signed or public URL
   if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('data:')) {
     return rawPath;
   }
 
-  // Clean bucket path prefixes
   const cleanPath = rawPath
     .replace(/^partner-documents\//i, '')
     .replace(/^\/+/, '');
@@ -59,20 +60,22 @@ const getMediaUrl = (pathObj: any): string | null => {
 
   return `${SUPABASE_PROJECT_URL}/storage/v1/object/public/partner-documents/${cleanPath}`;
 };
-export default function VehicleDetailsPage() {
-  // Trigger custom hook to fetch all vehicles on reload
-  getAllVehicles();
 
+export default function VehicleDetailsPage() {
+  getAllVehicles();
+  getUserProfileData();
+
+  const { userProfileData } = useSelector((state: RootState) => state.user);
   const params = useParams();
   const router = useRouter();
   const vehicleId = params?.Id as string;
-
+  const { showToast } = useToast()
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle);
   const [vehicle, setVehicle] = useState<IVehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+  const [auctionError, setAuctionError] = useState<string | null>(null);
 
-  // State to hold resolved image URLs
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
 
   useEffect(() => {
@@ -101,7 +104,6 @@ export default function VehicleDetailsPage() {
       });
     }
 
-    // Pre-fetch signed URLs for images from backend
     const fetchSignedUrls = async () => {
       const updatedList = await Promise.all(
         initialList.map(async (item) => {
@@ -128,7 +130,6 @@ export default function VehicleDetailsPage() {
     fetchSignedUrls();
   }, [vehicle]);
 
-  // Sync from Redux OR fetch directly if Redux takes time
   useEffect(() => {
     let isMounted = true;
 
@@ -141,7 +142,6 @@ export default function VehicleDetailsPage() {
       }
     }
 
-    // Direct API fallback call on page refresh
     if (vehicleId) {
       axios
         .get(`http://localhost:8000/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`, { withCredentials: true })
@@ -180,6 +180,32 @@ export default function VehicleDetailsPage() {
     }
   };
 
+  const status = vehicle?.status?.toUpperCase();
+  const isVehicleVerified = status === 'VERIFIED' || status === 'APPROVED';
+  const isUserProfileVerified = Boolean(userProfileData?.isVerifiedProfile);
+
+  const handleRegisterForAuction = async () => {
+    try {
+      setAuctionError(null);
+      if (!isUserProfileVerified && !isVehicleVerified) {
+        setAuctionError("You and your vehicle are not verified by admin.");
+        return;
+      }
+      if (!isUserProfileVerified) {
+        setAuctionError("You are not verified by admin.");
+        return;
+      }
+      if (!isVehicleVerified) {
+        setAuctionError("Your vehicle is not verified by admin.");
+        return;
+      }
+      await applyForAuction(vehicleId)
+      showToast("Vehicle Registered For Auction Successfully", 'success')
+    } catch (error) {
+      console.log(error)
+    }
+  };
+
   if (loading || !vehicle) {
     return (
       <div className="w-full min-h-screen bg-[#F9FAFB] flex flex-col justify-between antialiased">
@@ -197,35 +223,8 @@ export default function VehicleDetailsPage() {
 
   const details = vehicle.vehicleDetails || {};
   const pickup = vehicle.pickup || {};
-  const status = vehicle.status?.toUpperCase();
   const isRejected = status === 'REJECTED';
-  const isVerified = status === 'VERIFIED' || status === 'APPROVED';
 
-  // Photo Extraction
-  const rawPhotos = vehicle.photos || {};
-  const photoList: { label: string; url: string }[] = [];
-
-  if (Array.isArray(rawPhotos)) {
-    rawPhotos.forEach((item: any) => {
-      const url = getMediaUrl(item);
-      if (url) photoList.push({ label: item?.name || 'Photo', url });
-    });
-  } else if (rawPhotos && typeof rawPhotos === 'object') {
-    Object.entries(rawPhotos).forEach(([key, photoObj]) => {
-      const url = getMediaUrl(photoObj);
-      if (url) {
-        photoList.push({
-          label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
-          url,
-        });
-      }
-    });
-  }
-
-  // Fallback to active photo or the first valid photo in list
-  const currentMainPhoto = activePhoto || (photoList.length > 0 ? photoList[0].url : null);
-
-  // Document Extraction
   const rawDocs = (vehicle.documents || {}) as Record<string, any>;
   const docKeys = [
     { key: 'rcbook', label: 'RC Book' },
@@ -248,15 +247,40 @@ export default function VehicleDetailsPage() {
         <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 space-y-6">
           <UserNavbar />
 
-          {/* BACK BAR */}
-          <div className="flex items-center justify-between">
+          {/* BACK BAR & ACTION BUTTON */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               onClick={() => router.push('/user/my-vehicles')}
               className="inline-flex items-center gap-1.5 text-xs font-black text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-3.5 py-2 rounded-xl shadow-2xs transition-colors cursor-pointer"
             >
               <ArrowLeft size={14} /> Back to My Vehicles
             </button>
+
+            <button
+              type="button"
+              onClick={handleRegisterForAuction}
+              className="inline-flex items-center gap-2 text-xs font-black text-white bg-[#0B5B32] hover:bg-[#084827] px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <Gavel size={15} /> Register Vehicle for Auction
+            </button>
           </div>
+
+          {/* AUCTION ERROR MESSAGE BANNER */}
+          {auctionError && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={20} className="text-amber-600 shrink-0" />
+                <p className="text-xs font-bold">{auctionError}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAuctionError(null)}
+                className="text-xs font-black text-amber-700 hover:text-amber-900"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {/* REJECTION REASON BANNER */}
           {isRejected && (
@@ -284,7 +308,7 @@ export default function VehicleDetailsPage() {
           )}
 
           {/* VERIFIED BANNER */}
-          {isVerified && (
+          {isVehicleVerified && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CheckCircle2 size={22} className="text-[#0B5B32] shrink-0" />
@@ -318,7 +342,7 @@ export default function VehicleDetailsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl text-right">
                 <span className="text-[10px] text-gray-400 font-bold uppercase block">Status</span>
-                <span className={`text-xs font-black ${isRejected ? 'text-rose-600' : isVerified ? 'text-[#0B5B32]' : 'text-amber-600'}`}>
+                <span className={`text-xs font-black ${isRejected ? 'text-rose-600' : isVehicleVerified ? 'text-[#0B5B32]' : 'text-amber-600'}`}>
                   {vehicle.status || 'DRAFT'}
                 </span>
               </div>
@@ -375,7 +399,6 @@ export default function VehicleDetailsPage() {
                 <h2 className="text-xs font-black uppercase tracking-wider text-gray-400">Vehicle Photos</h2>
                 {resolvedPhotos.length > 0 ? (
                   <div className="space-y-3">
-                    {/* Main Preview Screen */}
                     <div className="bg-gray-900 rounded-xl h-72 overflow-hidden flex items-center justify-center relative">
                       <img
                         src={activePhoto || resolvedPhotos[0]?.url}
@@ -384,7 +407,6 @@ export default function VehicleDetailsPage() {
                       />
                     </div>
 
-                    {/* Thumbnails */}
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                       {resolvedPhotos.map((p, idx) => {
                         const isSelected = (activePhoto || resolvedPhotos[0]?.url) === p.url;
