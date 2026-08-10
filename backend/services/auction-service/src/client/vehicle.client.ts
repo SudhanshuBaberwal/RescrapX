@@ -1,16 +1,12 @@
 import axios from "axios";
+import { env } from "../config/env.js";
 
-export const vehicleClient = {
-  async getReadyForBiddingVehicles(token: string) {
-    const response = await axios.get(
-      `${process.env.VEHICLE_SERVICE_URL}/api/vehicles/ready-for-bidding`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data.data;
+const vehicleClient = axios.create({
+  baseURL: env.VEHICLE_SERVICE_URL,
+  // timeout: 5000,
+  headers: {
+    "Content-Type": "application/json",
   },
-};
+});
+
+export default vehicleClient;

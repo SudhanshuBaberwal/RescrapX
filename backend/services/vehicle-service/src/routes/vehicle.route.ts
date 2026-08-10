@@ -30,6 +30,7 @@ import uploadVehicleDocument, {
   uploadVehiclePhotos,
 } from "../middlewares/uploadVehicleDocument.js";
 import adminOnly from "../middlewares/adminOnly.js";
+import serviceAuth from "../middlewares/serviceAuth.js";
 
 const router = Router();
 
@@ -86,5 +87,5 @@ router.put("/under-verification", attachUser, underVerification);
 router.put("/status", attachUser, adminOnly, updateVehicleStatus);
 router.get("/user-vehicles", attachUser, FindALlVehicleForUserController);
 router.post("/apply", attachUser, ApplyForBiddingVehicleController);
-router.get("/ready-for-auction", adminOnly, getReadyForBiddingVehicles);
+router.get("/ready-for-auction",serviceAuth, getReadyForBiddingVehicles);
 export default router;

@@ -10,9 +10,9 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: ["http://localhost:8000"],
     credentials: true,
-  }),
+  })
 );
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));

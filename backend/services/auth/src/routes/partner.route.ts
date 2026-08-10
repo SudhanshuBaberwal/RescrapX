@@ -4,6 +4,7 @@ import protect from "../middleware/protect.middleware.js";
 import uploadPartnerDocuments from "../middleware/uploadPartnerDocuments.js";
 import partnerController from "../controllers/partner.controller.js";
 import adminOnly from "../middleware/adminOnly.js";
+import serviceAuth from "../middleware/serviceAuth.js";
 
 const router = express.Router();
 
@@ -25,8 +26,7 @@ router.get(
 
 router.get(
   "/ready-for-auction",
-  protect,
-  adminOnly,
+  serviceAuth,
   partnerController.getReadyForAuctionPartners,
 );
 

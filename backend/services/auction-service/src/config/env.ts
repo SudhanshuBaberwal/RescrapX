@@ -10,4 +10,5 @@ export const env = {
     JWT_SECRET: process.env.JWT_SECRET!,
     VEHICLE_SERVICE_URL: process.env.VEHICLE_SERVICE_URL!,
     PARTNER_SERVICE_URL:process.env.PARTNER_SERVICE_URL!,
+    INTERNAL_SERVICE_TOKEN:process.env.INTERNAL_SERVICE_TOKEN!,
 };

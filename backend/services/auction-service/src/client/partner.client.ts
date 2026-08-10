@@ -1,16 +1,12 @@
 import axios from "axios";
+import { env } from "../config/env.js";
 
-export const partnerClient = {
-  async getAuctionReadyPartners(token: string) {
-    const response = await axios.get(
-      `${process.env.PARTNER_SERVICE_URL}/api/partners/auction-ready`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data.data;
+const partnerClient = axios.create({
+  baseURL: env.PARTNER_SERVICE_URL,
+  // timeout: 5000,
+  headers: {
+    "Content-Type": "application/json",
   },
-};
+});
+
+export default partnerClient;;

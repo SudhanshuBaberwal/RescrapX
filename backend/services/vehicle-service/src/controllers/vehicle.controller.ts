@@ -221,14 +221,11 @@ export const ApplyForBiddingVehicleController = asyncHandler(
   },
 );
 
-export const getReadyForBiddingVehicles = asyncHandler(
-  async (req, res) => {
-    const vehicles =
-      await vehicleService.getReadyForBiddingVehicles();
+export const getReadyForBiddingVehicles = asyncHandler(async (req, res) => {
+  const vehicles = await vehicleService.getReadyForBiddingVehicles();
 
-    return res.status(200).json({
-      success: true,
-      data: vehicles,
-    });
-  }
-);
+  return res.status(200).json({
+    success: true,
+    data: vehicles,
+  });
+});
