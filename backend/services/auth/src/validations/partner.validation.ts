@@ -1,41 +1,41 @@
 import { z } from "zod";
 import ApiError from "../lib/ApiError.js";
 
-export const partnerSignupSchema = z
-  .object({
-    phoneNumber: z
-      .string()
-      .trim()
-      .min(10, "Phone number must be at least 10 digits")
-      .max(15, "Phone number cannot exceed 15 digits"),
+export const partnerSignupSchema = z.object({
+  phoneNumber: z
+    .string()
+    .trim()
+    .min(10, "Phone number must be at least 10 digits")
+    .max(15, "Phone number cannot exceed 15 digits"),
 
-    companyName: z.string().trim().min(2, "Company name is required"),
+  companyName: z.string().trim().min(2, "Company name is required"),
+  latitude: z.number(),
+  longitude: z.number(),
+  gstNumber: z
+    .string()
+    .trim()
+    .min(15, "Invalid GST Number")
+    .max(15, "Invalid GST Number"),
 
-    gstNumber: z
-      .string()
-      .trim()
-      .min(15, "Invalid GST Number")
-      .max(15, "Invalid GST Number"),
+  panNumber: z
+    .string()
+    .trim()
+    .min(10, "Invalid PAN Number")
+    .max(10, "Invalid PAN Number"),
 
-    panNumber: z
-      .string()
-      .trim()
-      .min(10, "Invalid PAN Number")
-      .max(10, "Invalid PAN Number"),
+  registrationNumber: z
+    .string()
+    .trim()
+    .min(3, "Registration number is required"),
 
-    registrationNumber: z
-      .string()
-      .trim()
-      .min(3, "Registration number is required"),
+  address: z.string().trim().min(5, "Address is required"),
 
-    address: z.string().trim().min(5, "Address is required"),
+  city: z.string().trim().min(2, "City is required"),
 
-    city: z.string().trim().min(2, "City is required"),
+  state: z.string().trim().min(2, "State is required"),
 
-    state: z.string().trim().min(2, "State is required"),
-
-    pincode: z.string().trim().length(6, "Pincode must be exactly 6 digits"),
-  })
+  pincode: z.string().trim().length(6, "Pincode must be exactly 6 digits"),
+});
 export type PartnerSignupDto = z.infer<typeof partnerSignupSchema>;
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB

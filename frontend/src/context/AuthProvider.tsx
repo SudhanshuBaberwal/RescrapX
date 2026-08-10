@@ -60,7 +60,8 @@ export interface User {
         panNumber: string;
         registrationNumber: string;
         address: string;
-
+        latitude: number,
+        longitude: number,
         city?: string;
         state?: string;
         pincode?: string;

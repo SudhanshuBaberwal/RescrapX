@@ -61,7 +61,8 @@ export interface IUser extends Document {
     panNumber: string;
     registrationNumber: string;
     address: string;
-
+    latitude: number;
+    longitude: number;
     city?: string;
     state?: string;
     pincode?: string;
@@ -132,6 +133,8 @@ const companySchema = new Schema(
       type: String,
       trim: true,
     },
+    latitude: Number,
+    longitude: Number
   },
   {
     _id: false,

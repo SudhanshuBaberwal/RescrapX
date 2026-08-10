@@ -473,6 +473,8 @@ class AuthService {
       partnerStatus: PartnerStatus.PENDING,
       partnerNextStep: PartnerNextStep.UPLOAD_DOCUMENTS,
       company: {
+        latitude: data.latitude,
+        longitude: data.longitude,
         companyName: data.companyName,
         gstNumber: data.gstNumber,
         panNumber: data.panNumber,

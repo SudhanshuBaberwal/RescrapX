@@ -1,26 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Building2, ShieldCheck, Scale, TrendingUp, ChevronDown, Headphones, Loader2
+  Building2, ShieldCheck, Scale, TrendingUp, Headphones, Loader2,
+  MapPin, Crosshair, Navigation
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { partnerRegister } from '@/services/partner.service';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
 import { setUserData } from '@/store/userSlice';
-import { getCurrentUser } from '@/services/auth.service';
+import { useCurrentLocation } from '@/hooks/getCurrentUserLocation';
+import { reverseGeocode } from '@/lib/location';
+
+const LocationMap = dynamic<{ lat: number; lng: number }>(
+  () => import('@/components/location/LocationMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-44 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 font-medium text-xs">
+        Loading map...
+      </div>
+    ),
+  }
+);
 
 export default function SignUpPartnerPortal() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  const { userData } = useSelector((state: RootState) => state.user)
-  const dispatch = useDispatch<AppDispatch>()
+  const { userData } = useSelector((state: RootState) => state.user);
+  const dispatch = useDispatch<AppDispatch>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Aligned form states (Excluding basic user signup fields)
+  // Current Location Hook
+  const { location, loading: isGpsLoading, getLocation } = useCurrentLocation();
+  const [isFetchingAddress, setIsFetchingAddress] = useState<boolean>(false);
+
+  // Form State including Lat/Lng coordinates
   const [formData, setFormData] = useState({
     phoneNumber: '',
     companyName: '',
@@ -31,6 +50,8 @@ export default function SignUpPartnerPortal() {
     city: '',
     state: '',
     pincode: '',
+    latitude: 0,
+    longitude: 0,
     consent: false
   });
 
@@ -51,12 +72,69 @@ export default function SignUpPartnerPortal() {
     { label: 'Dedicated Partner Support', icon: Headphones },
   ];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Trigger GPS detection
+  const handleFetchCurrentLocation = async () => {
+    try {
+      setIsFetchingAddress(true);
+      await getLocation();
+    } catch (error) {
+      console.error('Error getting location:', error);
+      showToast('Failed to acquire GPS location. Please check browser permissions.', 'error');
+    } finally {
+      setIsFetchingAddress(false);
+    }
+  };
+
+  // Update Lat/Lng and Reverse Geocode address fields whenever location changes
+  useEffect(() => {
+    const autoFillFromLocation = async () => {
+      if (!location?.latitude || !location?.longitude) return;
+
+      // Update lat/lng in form data state
+      setFormData((prev) => ({
+        ...prev,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }));
+
+      try {
+        setIsFetchingAddress(true);
+        const geoData = await reverseGeocode(location.latitude, location.longitude);
+
+        if (geoData) {
+          const house = geoData.houseNo || '';
+          const street = geoData.street || geoData.road || '';
+          const area = geoData.area || geoData.locality || '';
+
+          const fullAddressParts = [house, street, area].filter(Boolean);
+          const fullAddress = fullAddressParts.length > 0 ? fullAddressParts.join(', ') : '';
+
+          setFormData((prev) => ({
+            ...prev,
+            address: fullAddress || prev.address,
+            pincode: geoData.pincode || geoData.postalCode || prev.pincode,
+            city: geoData.city || geoData.town || prev.city,
+            state: geoData.state || prev.state,
+          }));
+
+          showToast('Location coordinates and address updated!', 'success');
+        }
+      } catch (err) {
+        console.error('Failed to reverse geocode location:', err);
+        showToast('Coordinates updated, but address lookup failed.', 'warning');
+      } finally {
+        setIsFetchingAddress(false);
+      }
+    };
+
+    autoFillFromLocation();
+  }, [location]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
 
-    // Clear error on change
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const updated = { ...prev };
         delete updated[name];
         return updated;
@@ -71,23 +149,22 @@ export default function SignUpPartnerPortal() {
     }
   };
 
-  // Client-side structural validation
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     const phoneDigits = formData.phoneNumber.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-      newErrors.phoneNumber = "Phone number must be between 10 to 15 digits";
+      newErrors.phoneNumber = 'Phone number must be between 10 to 15 digits';
     }
 
-    if (formData.companyName.trim().length < 2) newErrors.companyName = "Company name is required";
-    if (formData.gstNumber.trim().length !== 15) newErrors.gstNumber = "Invalid GST Number (exactly 15 characters required)";
-    if (formData.panNumber.trim().length !== 10) newErrors.panNumber = "Invalid PAN Number (exactly 10 characters required)";
-    if (formData.registrationNumber.trim().length < 3) newErrors.registrationNumber = "Registration number is required";
-    if (formData.address.trim().length < 5) newErrors.address = "Address must be at least 5 characters";
-    if (formData.city.trim().length < 2) newErrors.city = "City is required";
-    if (formData.state.trim().length < 2) newErrors.state = "State is required";
-    if (formData.pincode.trim().length !== 6) newErrors.pincode = "Pincode must be exactly 6 digits";
+    if (formData.companyName.trim().length < 2) newErrors.companyName = 'Company name is required';
+    if (formData.gstNumber.trim().length !== 15) newErrors.gstNumber = 'Invalid GST Number (exactly 15 characters required)';
+    if (formData.panNumber.trim().length !== 10) newErrors.panNumber = 'Invalid PAN Number (exactly 10 characters required)';
+    if (formData.registrationNumber.trim().length < 3) newErrors.registrationNumber = 'Registration number is required';
+    if (formData.address.trim().length < 5) newErrors.address = 'Address must be at least 5 characters';
+    if (formData.city.trim().length < 2) newErrors.city = 'City is required';
+    if (formData.state.trim().length < 2) newErrors.state = 'State is required';
+    if (formData.pincode.trim().length !== 6) newErrors.pincode = 'Pincode must be exactly 6 digits';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -109,6 +186,7 @@ export default function SignUpPartnerPortal() {
     try {
       setIsLoading(true);
 
+      // Backend Payload with explicit Latitude and Longitude values
       const payload = {
         phoneNumber: formData.phoneNumber,
         companyName: formData.companyName,
@@ -119,15 +197,14 @@ export default function SignUpPartnerPortal() {
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
+        latitude: formData.latitude || location?.latitude || 0,
+        longitude: formData.longitude || location?.longitude || 0,
       };
+
       const result = await partnerRegister(payload);
-      console.log(result)
       dispatch(setUserData(result?.data));
-      showToast(
-        "Profile registered successfully",
-        "success"
-      );
-      router.replace("/partner/verify-documents");
+      showToast('Profile registered successfully', 'success');
+      router.replace('/partner/verify-documents');
     } catch (err: any) {
       console.error(err);
       showToast(
@@ -187,225 +264,244 @@ export default function SignUpPartnerPortal() {
         </div>
 
         {/* RIGHT COLUMN: DETAILED PARTNER SIGN UP */}
-        <div className="flex-1 p-6 sm:p-12 md:p-16 flex flex-col justify-between space-y-12 bg-white">
+        <div className="flex-1 p-6 sm:p-12 md:p-16 flex flex-col justify-between space-y-10 bg-white">
           <div className="text-right hidden sm:block self-end">
             <span className="text-xs font-black text-gray-900 block tracking-tight uppercase">India's Digital Platform</span>
             <span className="text-[11px] text-gray-400 font-bold block mt-0.5">for Responsible Vehicle Scrapping</span>
           </div>
 
-          <div className="w-full max-w-3xl mx-auto space-y-10">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create Your RVSF Account</h2>
-              <p className="text-sm text-gray-400 font-semibold">Register your RVSF and authorized contact details</p>
+          <div className="max-w-3xl space-y-8">
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">Partner Business Registration</h2>
+              <p className="text-xs font-bold text-gray-400">
+                Register your RVSF facility or scrapping facility to access verified vehicle scrap listings.
+              </p>
             </div>
 
-            <form className="space-y-8" onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* SECTION 1: SYSTEM CONTROLS & CONTACT */}
-              <div className="space-y-4">
-                <h4 className="font-black text-[#0B5B32] text-xs border-b border-gray-150 pb-2.5 uppercase tracking-widest">1. Contact Verification</h4>
-                <div className="grid grid-cols-1 gap-4">
+              {/* COMPANY & CONTACT DETAILS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">Company / Business Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="companyName"
+                    value={formData.companyName}
+                    onChange={handleChange}
+                    placeholder="Enter business name"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.companyName && <p className="text-[10px] text-red-500 font-bold">{errors.companyName}</p>}
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Phone Number <span className="text-red-500">*</span></label>
-                    <div className={`flex rounded-xl overflow-hidden border ${errors.phoneNumber ? 'border-red-500' : 'border-gray-200'} bg-gray-50/50 shadow-3xs focus-within:ring-2 focus-within:ring-emerald-700/20 focus-within:border-emerald-700 transition-all`}>
-                      <div className="px-4 bg-gray-100 border-r border-gray-200 text-gray-600 font-black flex items-center gap-1.5 text-sm select-none">
-                        <span>+91</span>
-                        <ChevronDown size={14} className="text-gray-400" />
-                      </div>
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        placeholder="Enter 10-digit phone number"
-                        className="w-full bg-transparent px-4 py-3 text-base text-gray-900 font-bold focus:outline-none"
-                        required
-                      />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">Business Phone Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    placeholder="Enter business phone"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.phoneNumber && <p className="text-[10px] text-red-500 font-bold">{errors.phoneNumber}</p>}
+                </div>
+              </div>
+
+              {/* IDENTIFICATION NUMBERS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">GST Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="gstNumber"
+                    maxLength={15}
+                    value={formData.gstNumber}
+                    onChange={handleChange}
+                    placeholder="15 character GSTIN"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32] uppercase"
+                  />
+                  {errors.gstNumber && <p className="text-[10px] text-red-500 font-bold">{errors.gstNumber}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">PAN Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="panNumber"
+                    maxLength={10}
+                    value={formData.panNumber}
+                    onChange={handleChange}
+                    placeholder="10 character PAN"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32] uppercase"
+                  />
+                  {errors.panNumber && <p className="text-[10px] text-red-500 font-bold">{errors.panNumber}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">RVSF Reg. Number <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="registrationNumber"
+                    value={formData.registrationNumber}
+                    onChange={handleChange}
+                    placeholder="Facility Reg Number"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.registrationNumber && <p className="text-[10px] text-red-500 font-bold">{errors.registrationNumber}</p>}
+                </div>
+              </div>
+
+              {/* CURRENT LOCATION / GPS MAP INTEGRATION */}
+              <div className="p-4 bg-emerald-50/30 border border-emerald-100 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} className="text-[#0B5B32]" />
+                    <span className="text-xs font-black text-gray-800">Facility GPS Location</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleFetchCurrentLocation}
+                    disabled={isGpsLoading || isFetchingAddress}
+                    className="flex items-center gap-2 border border-gray-200 rounded-xl px-3.5 py-2 bg-white font-bold text-[11px] hover:bg-gray-50 transition-all text-[#0B5B32] shadow-2xs disabled:opacity-60 cursor-pointer"
+                  >
+                    {isGpsLoading || isFetchingAddress ? (
+                      <Loader2 size={13} className="animate-spin text-[#0B5B32]" />
+                    ) : (
+                      <Crosshair size={13} />
+                    )}
+                    <span>{isGpsLoading ? 'Detecting Location...' : 'Use Current Location'}</span>
+                  </button>
+                </div>
+
+                {formData.latitude && formData.longitude ? (
+                  <div className="space-y-2">
+                    <div className="w-full h-44 rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
+                      <LocationMap lat={formData.latitude} lng={formData.longitude} />
                     </div>
-                    {errors.phoneNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.phoneNumber}</p>}
+                    <div className="flex items-center gap-4 text-[10px] text-gray-500 font-semibold bg-white p-2 rounded-lg border border-gray-100">
+                      <span>Latitude: {formData.latitude.toFixed(6)}</span>
+                      <span>Longitude: {formData.longitude.toFixed(6)}</span>
+                    </div>
                   </div>
-
-                </div>
+                ) : (
+                  <div className="w-full h-28 rounded-xl bg-white border border-dashed border-gray-200 flex flex-col items-center justify-center p-3 text-center">
+                    <Navigation size={18} className="text-gray-400 mb-1" />
+                    <p className="font-bold text-gray-600 text-xs">No GPS coordinates captured</p>
+                    <p className="text-gray-400 text-[10px]">Click 'Use Current Location' to record latitude and longitude for backend storage.</p>
+                  </div>
+                )}
               </div>
 
-              {/* SECTION 2: COMPANY DETAILS */}
-              <div className="space-y-5">
-                <h4 className="font-black text-[#0B5B32] text-xs border-b border-gray-150 pb-2.5 uppercase tracking-widest">2. RVSF / Company Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Name <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="companyName"
-                      value={formData.companyName}
-                      onChange={handleChange}
-                      placeholder="Enter company legal name"
-                      className={`w-full bg-gray-50/50 border ${errors.companyName ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.companyName && <p className="text-xs text-red-500 font-bold mt-1">{errors.companyName}</p>}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">GST Number <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="gstNumber"
-                      value={formData.gstNumber}
-                      onChange={handleChange}
-                      maxLength={15}
-                      placeholder="15-character GSTIN"
-                      className={`w-full bg-gray-50/50 border ${errors.gstNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs uppercase`}
-                      required
-                    />
-                    {errors.gstNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.gstNumber}</p>}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">PAN Number <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="panNumber"
-                      value={formData.panNumber}
-                      onChange={handleChange}
-                      maxLength={10}
-                      placeholder="10-character PAN"
-                      className={`w-full bg-gray-50/50 border ${errors.panNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs uppercase`}
-                      required
-                    />
-                    {errors.panNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.panNumber}</p>}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Company Registration Number <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="registrationNumber"
-                      value={formData.registrationNumber}
-                      onChange={handleChange}
-                      placeholder="Enter registration or CIN number"
-                      className={`w-full bg-gray-50/50 border ${errors.registrationNumber ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.registrationNumber && <p className="text-xs text-red-500 font-bold mt-1">{errors.registrationNumber}</p>}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Registered Address <span className="text-red-500">*</span></label>
-                    <textarea
-                      rows={3}
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      placeholder="Enter office / RVSF site address"
-                      className={`w-full bg-gray-50/50 border ${errors.address ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 resize-none transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.address && <p className="text-xs text-red-500 font-bold mt-1">{errors.address}</p>}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">City <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      placeholder="Enter City"
-                      className={`w-full bg-gray-50/50 border ${errors.city ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.city && <p className="text-xs text-red-500 font-bold mt-1">{errors.city}</p>}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">State <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      placeholder="Enter State"
-                      className={`w-full bg-gray-50/50 border ${errors.state ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.state && <p className="text-xs text-red-500 font-bold mt-1">{errors.state}</p>}
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs text-gray-500 font-black block uppercase tracking-wider">Pincode <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="pincode"
-                      value={formData.pincode}
-                      onChange={handleChange}
-                      maxLength={6}
-                      placeholder="6-digit postal code"
-                      className={`w-full bg-gray-50/50 border ${errors.pincode ? 'border-red-500' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-700/20 focus:border-emerald-700 transition-all shadow-3xs`}
-                      required
-                    />
-                    {errors.pincode && <p className="text-xs text-red-500 font-bold mt-1">{errors.pincode}</p>}
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Consent and Action Buttons */}
-              <div className="flex items-start gap-3 pt-2">
+              {/* ADDRESS FIELD */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-gray-700 block">Facility Address <span className="text-red-500">*</span></label>
                 <input
-                  type="checkbox"
-                  id="signup-consent"
-                  name="consent"
-                  checked={formData.consent}
+                  type="text"
+                  name="address"
+                  value={formData.address}
                   onChange={handleChange}
-                  className="mt-1 rounded-sm border-gray-300 text-emerald-700 focus:ring-emerald-700 h-4 w-4 cursor-pointer"
-                  required
+                  placeholder="Street / Premises Address"
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
                 />
-                <label htmlFor="signup-consent" className="text-xs text-gray-500 font-bold leading-relaxed select-none cursor-pointer">
-                  I confirm that all the information provided above is true and correct under standard authorized RVSF compliance declarations.
+                {errors.address && <p className="text-[10px] text-red-500 font-bold">{errors.address}</p>}
+              </div>
+
+              {/* CITY, STATE & PINCODE */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">City <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="Enter city"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.city && <p className="text-[10px] text-red-500 font-bold">{errors.city}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">State <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    placeholder="Enter state"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.state && <p className="text-[10px] text-red-500 font-bold">{errors.state}</p>}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">Pincode <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="pincode"
+                    maxLength={6}
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    placeholder="6 digit pincode"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                  />
+                  {errors.pincode && <p className="text-[10px] text-red-500 font-bold">{errors.pincode}</p>}
+                </div>
+              </div>
+
+              {/* COMPLIANCE CONSENT CHECKBOX */}
+              <div className="pt-2">
+                <label className="flex items-start gap-2.5 cursor-pointer font-bold text-gray-600 text-xs select-none">
+                  <input
+                    type="checkbox"
+                    name="consent"
+                    checked={formData.consent}
+                    onChange={handleChange}
+                    className="accent-[#0B5B32] w-4 h-4 rounded-md shrink-0 mt-0.5"
+                  />
+                  <span className="leading-relaxed">
+                    I confirm that our facility is an authorized RVSF / scrapping unit compliant with Ministry of Road Transport & Highways guidelines.
+                  </span>
                 </label>
               </div>
 
-              <div className="space-y-4 pt-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#0B5B32] hover:bg-[#073d21] text-white font-black py-4 rounded-xl shadow-xs transition-all text-center text-sm uppercase tracking-wide cursor-pointer disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Verifying & Creating...</span>
-                    </>
-                  ) : (
-                    <span>Create Account</span>
-                  )}
-                </button>
-                <p className="text-center text-sm text-gray-400 font-bold">
-                  Already have an account? <a href="/login" className="text-[#0B5B32] font-black hover:underline">Login</a>
-                </p>
-              </div>
+              {/* SUBMIT BUTTON */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-[#0B5B32] hover:bg-[#084827] text-white font-black py-3.5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Registering Partner Profile...</span>
+                  </>
+                ) : (
+                  <span>Complete Partner Registration</span>
+                )}
+              </button>
+
             </form>
           </div>
 
-          {/* LOWER COMPLIANCE FOOTER MARKS */}
-          <div className="border-t border-gray-150 pt-6 mt-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              {footerHighlights.map((hl, itemIdx) => {
-                const HlIcon = hl.icon;
-                return (
-                  <div key={itemIdx} className="flex flex-col sm:flex-row items-center justify-center gap-2 text-gray-400 font-bold text-xs">
-                    <HlIcon size={14} className="text-gray-400 shrink-0" />
-                    <span className="leading-tight">{hl.label}</span>
-                  </div>
-                );
-              })}
-            </div>
+          {/* FOOTER HIGHLIGHTS */}
+          <div className="pt-8 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {footerHighlights.map((hl, idx) => {
+              const Icon = hl.icon;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-gray-500">
+                  <Icon size={14} className="text-[#0B5B32] shrink-0" />
+                  <span className="text-[10px] font-bold leading-tight">{hl.label}</span>
+                </div>
+              );
+            })}
           </div>
 
         </div>
+
       </div>
     </div>
   );

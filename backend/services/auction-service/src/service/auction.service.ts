@@ -86,69 +86,25 @@ class AuctionService {
       throw new ApiError(404, "No partners are ready for auction.");
     }
 
-    /*
-     * ============================================================
-     * 3. PREPARE VEHICLES
-     *
-     * Supports:
-     *
-     * A. {
-     *      latitude: 15.45,
-     *      longitude: 75.00
-     *    }
-     *
-     * B. GeoJSON:
-     *
-     *    {
-     *      type: "Point",
-     *      coordinates: [longitude, latitude]
-     *    }
-     * ============================================================
-     */
-
     const auctionVehicles = vehicles
-      .map((vehicle: any) => {
-        let latitude: number;
-        let longitude: number;
+      .filter((vehicle: any) => {
+        const latitude = Number(vehicle.pickup?.latitude);
+        const longitude = Number(vehicle.pickup?.longitude);
 
-        // GeoJSON
-        if (
-          Array.isArray(vehicle.location?.coordinates) &&
-          vehicle.location.coordinates.length >= 2
-        ) {
-          longitude = Number(vehicle.location.coordinates[0]);
-
-          latitude = Number(vehicle.location.coordinates[1]);
-        }
-
-        // Normal latitude/longitude
-        else {
-          latitude = Number(vehicle.location?.latitude);
-
-          longitude = Number(vehicle.location?.longitude);
-        }
-
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-          return null;
-        }
-
-        return {
-          vehicleId: String(vehicle._id),
-
-          sellerId: String(vehicle.owner),
-
-          model: vehicle.vehicleDetails?.model ?? vehicle.model ?? null,
-
-          latitude,
-
-          longitude,
-
-          state: vehicle.location?.state ?? null,
-
-          district:
-            vehicle.location?.district ?? vehicle.location?.city ?? null,
-        };
+        return Number.isFinite(latitude) && Number.isFinite(longitude);
       })
+      .map((vehicle: any) => ({
+        vehicleId: String(vehicle._id),
+        sellerId: String(vehicle.owner),
+
+        model: vehicle.vehicleDetails?.model ?? null,
+
+        latitude: Number(vehicle.pickup.latitude),
+        longitude: Number(vehicle.pickup.longitude),
+
+        state: vehicle.pickup?.state ?? null,
+        district: vehicle.pickup?.city ?? null,
+      }))
       .filter(
         (vehicle): vehicle is NonNullable<typeof vehicle> => vehicle !== null,
       );
@@ -157,43 +113,12 @@ class AuctionService {
       throw new ApiError(400, "No vehicles have valid latitude and longitude.");
     }
 
-    /*
-     * ============================================================
-     * 4. MATCH PARTNERS WITH VEHICLES
-     *
-     * MAXIMUM RADIUS = 150 KM
-     * ============================================================
-     */
-
     const auctionPartners: any[] = [];
 
     for (const partner of partners) {
-      let partnerLatitude: number;
-      let partnerLongitude: number;
+      const partnerLatitude = Number(partner.company?.latitude);
+      const partnerLongitude = Number(partner.company?.longitude);
 
-      /*
-       * Partner GeoJSON location
-       */
-      if (
-        Array.isArray(partner.company?.location?.coordinates) &&
-        partner.company.location.coordinates.length >= 2
-      ) {
-        partnerLongitude = Number(partner.company.location.coordinates[0]);
-
-        partnerLatitude = Number(partner.company.location.coordinates[1]);
-      } else {
-
-      /*
-       * Partner normal latitude/longitude
-       */
-        partnerLatitude = Number(partner.company?.location?.latitude);
-
-        partnerLongitude = Number(partner.company?.location?.longitude);
-      }
-
-      /*
-       * Partner doesn't have valid location
-       */
       if (
         !Number.isFinite(partnerLatitude) ||
         !Number.isFinite(partnerLongitude)
@@ -201,14 +126,8 @@ class AuctionService {
         continue;
       }
 
-      const eligibleVehicles: {
-        vehicleId: string;
-        distanceInKm: number;
-      }[] = [];
+      const eligibleVehicles: any[] = [];
 
-      /*
-       * Compare this partner with every vehicle
-       */
       for (const vehicle of auctionVehicles) {
         const distance = calculateDistanceInKm(
           partnerLatitude,
@@ -217,9 +136,6 @@ class AuctionService {
           vehicle.longitude,
         );
 
-        /*
-         * Vehicle is inside partner's 150 KM radius
-         */
         if (distance <= MAX_RADIUS_KM) {
           eligibleVehicles.push({
             vehicleId: vehicle.vehicleId,
@@ -228,10 +144,6 @@ class AuctionService {
         }
       }
 
-      /*
-       * Add partner only if at least one vehicle
-       * is within 150 KM
-       */
       if (eligibleVehicles.length > 0) {
         auctionPartners.push({
           partnerId: String(partner._id),
@@ -239,12 +151,10 @@ class AuctionService {
           companyName: partner.company?.companyName ?? null,
 
           latitude: partnerLatitude,
-
           longitude: partnerLongitude,
 
           state: partner.company?.state ?? null,
-
-          district: partner.company?.city ?? partner.company?.district ?? null,
+          district: partner.company?.city ?? null,
 
           vehicleIds: eligibleVehicles,
         });
