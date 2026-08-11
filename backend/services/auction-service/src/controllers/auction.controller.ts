@@ -5,6 +5,7 @@ import auctionService from "../service/auction.service.js";
 import {
   configureAuctionVehicleSchema,
   createAuctionSchema,
+  PlaceBidDtoSchema,
 } from "../validations/auction.validation.js";
 // auction.controller.ts
 export const createAuction = asyncHandler(async (req, res) => {
@@ -150,4 +151,15 @@ export const rejectAuctionStart = asyncHandler(async (req, res) => {
   const auction = await auctionService.rejectAuctionStart(auctionId, adminId);
 
   return ApiResponse.success(res, 201, "Auction Start Rejected", auction);
+});
+
+export const placeBid = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+  const dto = PlaceBidDtoSchema.parse({
+    auctionId: req.body.auctionId,
+    vehicleId: req.body.vehicleId,
+    bidAmount: Number(req.body.bidAmount),
+  });
+  const result = await auctionService.placeBid(dto, partnerId);
+  return ApiResponse.success(res, 201, "Bid Place Successfully", result);
 });

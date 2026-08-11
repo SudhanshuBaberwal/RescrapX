@@ -45,6 +45,14 @@ export const configureAuctionVehicleSchema = z
     }
   });
 
+export const PlaceBidDtoSchema = z.object({
+  auctionId: z.string().min(1, "Auction ID is required."),
+  vehicleId: z.string().min(1, "Vehicle ID is required."),
+  bidAmount: z.number().positive("Bid amount must be greater than 0."),
+});
+
+export type PlaceBidDto = z.infer<typeof PlaceBidDtoSchema>;
+
 export type ConfigureAuctionVehicleDto = z.infer<
   typeof configureAuctionVehicleSchema
 >;

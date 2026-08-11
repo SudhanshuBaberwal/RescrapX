@@ -12,6 +12,7 @@ import { RootState } from '@/store/store';
 import { getPartnerAuctionData } from '@/hooks/getPartnerAuctionData';
 import { getVehicle } from '@/services/vehicle.service';
 import axios from 'axios';
+import { placeBid } from '@/services/auction/auctionPartner.service';
 
 const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
 
@@ -76,6 +77,7 @@ interface FullVehicle {
 
 interface FormattedAuctionItem {
   id: string;
+  auctionId: string;
   name: string;
   engine: string;
   tags: string[];
@@ -130,10 +132,12 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
+  // Mount setup
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Sync Redux Data safely
   useEffect(() => {
     if (PartnerAuctionData) {
       const dataArray = Array.isArray(PartnerAuctionData) ? PartnerAuctionData : [PartnerAuctionData];
@@ -142,11 +146,13 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     }
   }, [PartnerAuctionData]);
 
+  // Live countdown timer ticker
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Resolved signed photo URLs for drawer
   useEffect(() => {
     if (!selectedVehicleDetails) {
       setResolvedPhotos([]);
@@ -203,6 +209,41 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     fetchSignedUrls();
   }, [selectedVehicleDetails]);
 
+  /**
+   * Bidding submission API helper
+   */
+  const submitBidApi = async (auctionId: string, vehicleId: string, amount: number) => {
+    try {
+      const response = placeBid({ auctionId, vehicleId, bidAmount: amount })
+      return response
+    } catch (error: any) {
+      console.error("Bid Placement Error:", error);
+      throw error?.response?.data || error;
+    }
+  };
+
+  /**
+   * Primary Place Bid Handler
+   */
+  const handlePlaceBid = async (auctionId: string, vehicleId: string, minBidOrIncrement: number) => {
+    const amountStr = prompt(`Enter your bid amount for vehicle ID (${vehicleId}):`, String(minBidOrIncrement || 1000));
+    if (!amountStr) return;
+
+    const bidAmount = Number(amountStr);
+    if (isNaN(bidAmount) || bidAmount <= 0) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
+
+    try {
+      const result = await submitBidApi(auctionId, vehicleId, bidAmount);
+      console.log("Bid Placed Successfully:", result);
+      alert(`Bid of ₹${bidAmount.toLocaleString('en-IN')} placed successfully!`);
+    } catch (err: any) {
+      alert(`Failed to place bid: ${err?.message || 'Something went wrong.'}`);
+    }
+  };
+
   const handleViewVehicleDetails = async (vehicleId: string) => {
     if (!vehicleId || !isValidObjectId(vehicleId)) {
       setFetchVehicleError(`Invalid Vehicle ID: "${vehicleId}". Cannot fetch details.`);
@@ -239,6 +280,8 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
     rawAuctions.forEach((auction) => {
       if (!auction) return;
+
+      const parentAuctionId = String(auction.auctionId || auction._id || auction.id);
 
       const currentPartnerObj = (auction.partners || []).find(
         (p: any) => String(p.partnerId || p._id || p.id) === String(loggedPartnerId)
@@ -306,13 +349,13 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           const title = [details.manufacturer || details.make, details.model, details.manufacturingYear].filter(Boolean).join(' ') || `Vehicle #${vId.slice(-6)}`;
           const locationStr = [vehicleObj.district || pickup.city, vehicleObj.state || pickup.state].filter(Boolean).join(', ') || 'N/A';
 
-          // Extract and format bid values from vehicle object
           const minBidVal = vehicleObj.minimumBid;
           const reserveVal = vehicleObj.reservePrice;
           const incrementVal = vehicleObj.bidIncrement;
 
           formattedList.push({
             id: vId,
+            auctionId: parentAuctionId,
             name: title,
             engine: `${details.fuelType || 'Petrol'} • ${details.transmission || 'Manual'} • ${details.kmsDriven ? `${details.kmsDriven} km` : '1st Owner'}`,
             tags: [details.registrationNumber ? 'RC Available' : 'No RC'],
@@ -546,12 +589,10 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                         </div>
                       </td>
 
-                      {/* BIDDING PARAMETERS COLUMNS */}
                       <td className="py-4 px-2 text-right font-black text-gray-800">{item.minimumBid}</td>
                       <td className="py-4 px-2 text-right font-black text-gray-800">{item.reservePrice}</td>
                       <td className="py-4 px-2 text-right font-bold text-gray-600">+{item.bidIncrement}</td>
 
-                      {/* TIME LEFT & STATUS */}
                       <td className="py-4 px-2 text-center">
                         <div className="inline-flex flex-col items-center">
                           <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
@@ -586,7 +627,11 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                               Auction Starts Soon
                             </div>
                           ) : (
-                            <button className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer">
+                            <button
+                              type="button"
+                              onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
+                              className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer"
+                            >
                               Place Bid
                             </button>
                           )}
@@ -653,7 +698,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     </div>
                   </div>
 
-                  {/* MOBILE BID PARAMETERS BADGE */}
                   <div className="grid grid-cols-3 gap-2 bg-gray-50/80 border border-gray-200/60 p-2 rounded-xl text-center">
                     <div>
                       <span className="text-[9px] text-gray-400 font-bold block">Min Bid</span>
@@ -705,7 +749,11 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                           Auction Starts Soon
                         </span>
                       ) : (
-                        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer">
+                        <button
+                          type="button"
+                          onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
+                          className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer"
+                        >
                           Place Bid
                         </button>
                       )}
@@ -783,7 +831,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
               {!isFetchingVehicle && selectedVehicleDetails && (
                 <>
-                  {/* Basic Info */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Basic Info</span>
                     <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200/70">
@@ -806,7 +853,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     </div>
                   </div>
 
-                  {/* Vehicle Photos Gallery */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vehicle Photos</span>
                     {resolvedPhotos.length > 0 ? (
@@ -850,7 +896,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     )}
                   </div>
 
-                  {/* Major Components */}
                   {selectedVehicleDetails.majorComponents && (
                     <div className="space-y-2">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Major Components</span>
@@ -868,7 +913,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     </div>
                   )}
 
-                  {/* Vehicle Condition */}
                   {selectedVehicleDetails.vehicleCondition && (
                     <div className="space-y-2">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Condition Assessment</span>

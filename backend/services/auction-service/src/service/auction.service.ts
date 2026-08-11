@@ -7,6 +7,7 @@ import { AuctionStatus } from "../models/auction.model.js";
 import {
   ConfigureAuctionVehicleDto,
   CreateAuctionDto,
+  PlaceBidDto,
 } from "../validations/auction.validation.js";
 
 import { calculateDistanceInKm } from "../utils/distance.js";
@@ -472,6 +473,107 @@ class AuctionService {
     }
 
     return count;
+  }
+
+  async placeBid(dto: PlaceBidDto, partnerId: string) {
+    const { auctionId, vehicleId, bidAmount } = dto;
+
+    const auction = await auctionRepository.findByAuctionId(auctionId);
+
+    if (!auction) {
+      throw new ApiError(404, "Auction not found.");
+    }
+
+    if (auction.status !== AuctionStatus.LIVE) {
+      throw new ApiError(400, "Bidding is allowed only when auction is LIVE.");
+    }
+    const now = new Date();
+
+    if (now >= auction.endTime) {
+      throw new ApiError(400, "Auction has already ended.");
+    }
+    const partner = auction.partners.find(
+      (partner) => partner.partnerId === partnerId,
+    );
+
+    if (!partner) {
+      throw new ApiError(403, "You are not a participant in this auction.");
+    }
+    const partnerVehicle = partner.vehicleIds.find(
+      (vehicle) => vehicle.vehicleId === vehicleId,
+    );
+
+    if (!partnerVehicle) {
+      throw new ApiError(403, "This vehicle is not assigned to your account.");
+    }
+    const vehicle = auction.vehicles.find(
+      (vehicle) => vehicle.vehicleId === vehicleId,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found in this auction.");
+    }
+    if (vehicle.minimumBid == null) {
+      throw new ApiError(
+        400,
+        "Minimum bid has not been configured for this vehicle.",
+      );
+    }
+    if (vehicle.bidIncrement == null || vehicle.bidIncrement <= 0) {
+      throw new ApiError(
+        400,
+        "Bid increment has not been configured correctly.",
+      );
+    }
+
+    if (bidAmount < vehicle.minimumBid) {
+      throw new ApiError(400, `Bid must be at least ₹${vehicle.minimumBid}.`);
+    }
+    const currentHighestBid = vehicle.currentHighestBid ?? 0;
+
+    let minimumNextBid: number;
+
+    if (currentHighestBid <= 0) {
+      minimumNextBid = vehicle.minimumBid;
+    } else {
+      minimumNextBid = currentHighestBid + vehicle.bidIncrement;
+    }
+
+    if (bidAmount < minimumNextBid) {
+      throw new ApiError(400, `Your bid must be at least ₹${minimumNextBid}.`);
+    }
+
+    if (vehicle.highestBidder === partnerId) {
+      throw new ApiError(400, "You are already the highest bidder.");
+    }
+
+    const updatedAuction = await auctionRepository.placeBid(
+      auctionId,
+      vehicleId,
+      partnerId,
+      bidAmount,
+      currentHighestBid,
+    );
+
+    if (!updatedAuction) {
+      throw new ApiError(
+        409,
+        "Another bid was placed just before yours. Please refresh and place your bid again.",
+      );
+    }
+    const updatedVehicle = updatedAuction.vehicles.find(
+      (vehicle) => vehicle.vehicleId === vehicleId,
+    );
+
+    return {
+      auctionId: updatedAuction._id.toString(),
+      vehicleId,
+      bidAmount,
+      currentHighestBid: updatedVehicle?.currentHighestBid,
+      highestBidder: updatedVehicle?.highestBidder,
+      totalBids: updatedVehicle?.totalBids,
+      message: "Bid placed successfully.",
+    };
   }
 }
 

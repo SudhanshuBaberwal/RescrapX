@@ -48,9 +48,49 @@ class AuctionRepository {
     return Auction.find().sort({ createdAt: -1 });
   }
 
-  // =========================================================
-  // SCHEDULED AUCTIONS
-  // =========================================================
+  async placeBid(
+    auctionId: string,
+    vehicleId: string,
+    partnerId: string,
+    bidAmount: number,
+    currentHighestBid: number,
+  ) {
+    return Auction.findOneAndUpdate(
+      {
+        _id: auctionId,
+
+        status: AuctionStatus.LIVE,
+
+        // Partner must be part of this auction
+        partners: {
+          $elemMatch: {
+            partnerId,
+            "vehicleIds.vehicleId": vehicleId,
+          },
+        },
+        vehicles: {
+          $elemMatch: {
+            vehicleId,
+            currentHighestBid,
+          },
+        },
+      },
+      {
+        $set: {
+          "vehicles.$.currentHighestBid": bidAmount,
+          "vehicles.$.highestBidder": partnerId,
+        },
+
+        $inc: {
+          "vehicles.$.totalBids": 1,
+        },
+      },
+      {
+        returnDocument: "after",
+        runValidators: true,
+      },
+    );
+  }
 
   async findScheduledAuctions() {
     return Auction.find({
