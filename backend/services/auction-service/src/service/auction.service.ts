@@ -1,12 +1,14 @@
 import axios from "axios";
 
 import ApiError from "../lib/ApiError.js";
-import { AuctionStatus, WinnerStatus } from "../models/auction.model.js";
+import { AuctionStatus } from "../models/auction.model.js";
 import { CreateAuctionDto } from "../validations/auction.validation.js";
 import { calculateDistanceInKm } from "../utils/distance.js";
 import auctionRepository from "../repositories/auction.repository.js";
 import { env } from "../config/env.js";
+
 const MAX_RADIUS_KM = 150;
+
 class AuctionService {
   async createAuction(dto: CreateAuctionDto, adminId: string) {
     let vehicles: any[] = [];
@@ -67,18 +69,21 @@ class AuctionService {
         const longitude = Number(vehicle.pickup?.longitude);
 
         return (
-          Number.isFinite(latitude) &&
-          Number.isFinite(longitude) &&
           vehicle._id &&
-          vehicle.owner
+          vehicle.owner &&
+          Number.isFinite(latitude) &&
+          Number.isFinite(longitude)
         );
       })
       .map((vehicle: any) => ({
         vehicleId: String(vehicle._id),
         sellerId: String(vehicle.owner),
+
         model: vehicle.vehicleDetails?.model ?? null,
+
         latitude: Number(vehicle.pickup.latitude),
         longitude: Number(vehicle.pickup.longitude),
+
         state: vehicle.pickup?.state ?? null,
         district: vehicle.pickup?.city ?? null,
       }));
@@ -107,10 +112,10 @@ class AuctionService {
 
       for (const vehicle of auctionVehicles) {
         const distance = calculateDistanceInKm(
-          partnerLatitude,
-          partnerLongitude,
           vehicle.latitude,
           vehicle.longitude,
+          partnerLatitude,
+          partnerLongitude,
         );
 
         if (distance <= MAX_RADIUS_KM) {
@@ -124,11 +129,15 @@ class AuctionService {
       if (eligibleVehicles.length > 0) {
         auctionPartners.push({
           partnerId: String(partner._id),
+
           companyName: partner.company?.companyName ?? null,
+
           latitude: partnerLatitude,
           longitude: partnerLongitude,
+
           state: partner.company?.state ?? null,
           district: partner.company?.city ?? null,
+
           vehicleIds: eligibleVehicles,
         });
       }
@@ -153,7 +162,6 @@ class AuctionService {
       autoExtend: dto.autoExtend,
 
       status: AuctionStatus.SCHEDULED,
-      // winnerStatus: WinnerStatus.PENDING,
 
       totalParticipants: auctionPartners.length,
 
@@ -163,9 +171,25 @@ class AuctionService {
     return auction;
   }
 
-  async getAuctionData(){
-    const result = await auctionRepository.findActiveAuction()
+  async getAuctionData() {
+    const result = await auctionRepository.findActiveAuction();
+
+    if (!result) {
+      throw new ApiError(404, "No active auction found.");
+    }
+
     return result;
+  }
+
+  async getAuctionDataForPartner(partnerId: string) {
+    const auction =
+      await auctionRepository.findActiveAuctionForPartner(partnerId);
+
+    if (!auction) {
+      throw new ApiError(404, "No active auction found for this partner.");
+    }
+
+    return auction;
   }
 }
 

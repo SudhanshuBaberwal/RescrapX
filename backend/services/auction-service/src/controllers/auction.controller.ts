@@ -21,10 +21,7 @@ export const createAuction = asyncHandler(async (req, res) => {
   if (!authHeader) {
     throw new ApiError(401, "Authorization token is required");
   }
-  const auction = await auctionService.createAuction(
-    validation.data,
-    adminId,
-  );
+  const auction = await auctionService.createAuction(validation.data, adminId);
   return res.status(201).json({
     success: true,
     message: "Auction created successfully",
@@ -35,4 +32,26 @@ export const createAuction = asyncHandler(async (req, res) => {
 export const getAuctionData = asyncHandler(async (req, res) => {
   const data = await auctionService.getAuctionData();
   return ApiResponse.success(res, 201, "Get Live Auction", data);
+});
+
+export const getAuctionDataForPartner = asyncHandler(async (req, res) => {
+  // const partnerId = req.user?.userId;
+
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+
+  const auction = await auctionService.getAuctionDataForPartner(partnerId);
+
+  return ApiResponse.success(
+    res,
+    201,
+    "Partner auction data fetched successfully",
+    auction,
+  );
 });

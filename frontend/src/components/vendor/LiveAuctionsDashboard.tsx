@@ -1,35 +1,341 @@
 'use client';
 
-import React from 'react';
-import { 
-  Gavel, Clock, Trophy, Wallet, Search, SlidersHorizontal, 
-  MapPin, Calendar, Fuel, Scale, ChevronDown, RotateCcw, 
-  ChevronLeft, ChevronRight, LayoutGrid, List
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Gavel, Clock, Trophy, Wallet, Search,
+  MapPin, Calendar, Fuel, Scale, ChevronDown, RotateCcw,
+  ChevronLeft, ChevronRight, LayoutGrid, List, Eye, X
 } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { getPartnerAuctionData } from '@/hooks/getPartnerAuctionData';
+import { getVehicle } from '@/services/vehicle.service';
+import axios from 'axios';
 
-export default function LiveAuctionsDashboard() {
-  // Metric Cards Dataset
-  const metrics = [
-    { title: 'Live Auctions', count: '14', meta: 'Join active auctions', dotColor: 'bg-emerald-500', icon: Gavel, iconColor: 'text-emerald-600 bg-emerald-50' },
-    { title: 'Ending Soon', count: '5', meta: 'Within 15 minutes', dotColor: 'bg-amber-500', icon: Clock, iconColor: 'text-purple-600 bg-purple-50' },
-    { title: 'My Active Bids', count: '7', meta: 'On live auctions', dotColor: 'bg-emerald-500', icon: Trophy, iconColor: 'text-amber-600 bg-amber-50' },
-    { title: 'Bids Won Today', count: '3', meta: 'Total value ₹1,24,300', dotColor: 'bg-blue-500', icon: Trophy, iconColor: 'text-blue-600 bg-blue-50' },
-    { title: 'Total Auction Value', count: '₹18,56,000', meta: 'Across all live auctions', dotColor: 'bg-emerald-500', icon: Wallet, iconColor: 'text-emerald-600 bg-emerald-50' },
-  ];
+const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
 
-  // Auction Items Dataset
-  const auctionItems = [
-    { id: 1, name: 'Maruti Swift Dzire 2014', engine: 'Petrol • Manual • 1st Owner', tags: ['RC Available'], year: '2014', fuel: 'Petrol', location: 'Gurugram, Haryana', distance: '12 km from you', weight: '865 kg', scrapValue: '₹32,000 – ₹38,000', timeLeft: '00:17:32', status: 'Active', timerColor: 'text-red-600 border-red-500', highestBid: '₹28,500', bidsCount: '5 bids', yourBid: '-' },
-    { id: 2, name: 'Hyundai i20 2016', engine: 'Petrol • Manual • 2nd Owner', tags: ['RC Available', 'Fitness Expired'], year: '2016', fuel: 'Petrol', location: 'Gurugram, Haryana', distance: '15 km from you', weight: '920 kg', scrapValue: '₹36,000 – ₹42,000', timeLeft: '00:22:45', status: 'Active', timerColor: 'text-red-600 border-red-500', highestBid: '₹32,000', bidsCount: '8 bids', yourBid: '₹31,000', yourBidStatus: 'Your bid' },
-    { id: 3, name: 'Honda City 2012', engine: 'Petrol • Manual • 2nd Owner', tags: ['RC Available'], year: '2012', fuel: 'Petrol', location: 'Faridabad, Haryana', distance: '22 km from you', weight: '980 kg', scrapValue: '₹31,000 – ₹37,000', timeLeft: '00:28:10', status: 'Active', timerColor: 'text-red-600 border-red-500', highestBid: '₹30,000', bidsCount: '6 bids', yourBid: '-' },
-    { id: 4, name: 'Tata Indica Vista 2011', engine: 'Diesel • Manual • 2nd Owner', tags: ['RC Available', 'Pollution Expired'], year: '2011', fuel: 'Diesel', location: 'Rewari, Haryana', distance: '28 km from you', weight: '875 kg', scrapValue: '₹28,000 – ₹34,000', timeLeft: '00:35:50', status: 'Active', timerColor: 'text-amber-500 border-amber-500', highestBid: '₹25,500', bidsCount: '7 bids', yourBid: '₹24,000', yourBidStatus: 'Your bid' },
-    { id: 5, name: 'Mahindra XUV500 2013', engine: 'Diesel • Manual • 2nd Owner', tags: ['RC Available'], year: '2013', fuel: 'Diesel', location: 'Sonipat, Haryana', distance: '35 km from you', weight: '1250 kg', scrapValue: '₹45,000 – ₹55,000', timeLeft: '00:41:20', status: 'Active', timerColor: 'text-amber-500 border-amber-500', highestBid: '₹42,000', bidsCount: '4 bids', yourBid: '-' },
-    { id: 6, name: 'Toyota Etios Liva 2015', engine: 'Petrol • Manual • 1st Owner', tags: ['RC Available'], year: '2015', fuel: 'Petrol', location: 'Delhi, Delhi', distance: '18 km from you', weight: '760 kg', scrapValue: '₹26,000 – ₹31,000', timeLeft: '01:05:30', status: 'Active', timerColor: 'text-emerald-600 border-emerald-500', highestBid: '₹24,000', bidsCount: '3 bids', yourBid: '-' },
-  ];
+const getMediaUrl = (pathObj: any): string | null => {
+  if (!pathObj) return null;
+  let rawPath = '';
+  if (typeof pathObj === 'string') rawPath = pathObj;
+  else if (typeof pathObj === 'object') {
+    rawPath = pathObj.url || pathObj.path?.path || pathObj.path || pathObj.fullPath || pathObj.key || '';
+  }
+  if (!rawPath || typeof rawPath !== 'string') return null;
+  if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('data:')) return rawPath;
+  const cleanPath = rawPath.replace(/^partner-documents\//i, '').replace(/^\/+/, '');
+  return cleanPath ? `${SUPABASE_PROJECT_URL}/storage/v1/object/public/partner-documents/${cleanPath}` : null;
+};
+
+const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id);
+
+interface FullVehicle {
+  _id: string;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isRegistered?: boolean;
+  vehicleDetails?: {
+    registrationNumber?: string;
+    manufacturer?: string;
+    model?: string;
+    manufacturingYear?: number;
+    fuelType?: string;
+    transmission?: string;
+    chassisNumber?: string;
+    engineNumber?: string;
+    kmsDriven?: number;
+  };
+  pickup?: {
+    houseNumber?: string;
+    street?: string;
+    area?: string;
+    landmark?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    formattedAddress?: string;
+  };
+  vehicleCondition?: {
+    accidentType?: string;
+    structure?: string;
+    airbagsDeployed?: boolean;
+    engineCondition?: string;
+  };
+  majorComponents?: {
+    engine?: string;
+    radiator?: string;
+    fuelSystem?: string;
+    gearbox?: string;
+  };
+  photos?: any;
+  documents?: Record<string, any>;
+  [key: string]: any;
+}
+
+interface FormattedAuctionItem {
+  id: string;
+  name: string;
+  engine: string;
+  tags: string[];
+  year: string;
+  fuel: string;
+  location: string;
+  distance: string;
+  weight: string;
+  scrapValue: string;
+  timeLeft: string;
+  status: string;
+  timerColor: string;
+  highestBid: string;
+  bidsCount: string;
+  yourBid: string;
+  yourBidStatus?: string;
+  photoUrl?: string;
+  totalPhotosCount: number;
+  endTimeIso: string;
+}
+
+interface LiveAuctionsDashboardProps {
+  loggedPartnerId?: string;
+}
+
+export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19aa120f168dfe" }: LiveAuctionsDashboardProps) {
+  getPartnerAuctionData();
+
+  const { PartnerAuctionData } = useSelector((state: RootState) => (state as any).partner || {});
+
+  const [loading, setLoading] = useState(true);
+  const [rawAuctions, setRawAuctions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFuel, setSelectedFuel] = useState('All');
+  const [now, setNow] = useState(Date.now());
+
+  // Drawer / Sidebar states
+  const [isMounted, setIsMounted] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<FullVehicle | null>(null);
+  const [loadingVehicleId, setLoadingVehicleId] = useState<string | null>(null);
+  const [isFetchingVehicle, setIsFetchingVehicle] = useState(false);
+  const [fetchVehicleError, setFetchVehicleError] = useState<string | null>(null);
+
+  // Resolved media state for drawer photos
+  const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
+  const [activePhoto, setActivePhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (PartnerAuctionData) {
+      const dataArray = Array.isArray(PartnerAuctionData) ? PartnerAuctionData : [PartnerAuctionData];
+      setRawAuctions(dataArray);
+      setLoading(false);
+    }
+  }, [PartnerAuctionData]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Signed URL resolution for drawer photos
+  useEffect(() => {
+    if (!selectedVehicleDetails) {
+      setResolvedPhotos([]);
+      setActivePhoto(null);
+      return;
+    }
+
+    const rawPhotos = selectedVehicleDetails.photos || {};
+    const initialList: { label: string; rawPath: string; url: string }[] = [];
+
+    if (Array.isArray(rawPhotos)) {
+      rawPhotos.forEach((item: any) => {
+        const url = getMediaUrl(item);
+        const rawPath = typeof item === 'string' ? item : item?.path || item?.fullPath || '';
+        if (url) initialList.push({ label: item?.name || 'Photo', rawPath, url });
+      });
+    } else if (rawPhotos && typeof rawPhotos === 'object') {
+      Object.entries(rawPhotos).forEach(([key, photoObj]) => {
+        const url = getMediaUrl(photoObj);
+        const rawPath = typeof photoObj === 'string' ? photoObj : photoObj?.path || '';
+        if (url) {
+          initialList.push({
+            label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
+            rawPath,
+            url,
+          });
+        }
+      });
+    }
+
+    const fetchSignedUrls = async () => {
+      const updatedList = await Promise.all(
+        initialList.map(async (item) => {
+          try {
+            const res = await axios.post(
+              "http://localhost:8000/api/vehicle/register/view-document",
+              { path: item.rawPath },
+              { withCredentials: true }
+            );
+            const signedUrl = res.data?.data?.url || res.data?.url || res.data?.data || res.data || item.url;
+            return { label: item.label, url: signedUrl };
+          } catch {
+            return { label: item.label, url: item.url };
+          }
+        })
+      );
+
+      setResolvedPhotos(updatedList);
+      if (updatedList.length > 0) {
+        setActivePhoto(updatedList[0].url);
+      }
+    };
+
+    fetchSignedUrls();
+  }, [selectedVehicleDetails]);
+
+  const handleViewVehicleDetails = async (vehicleId: string) => {
+    if (!vehicleId || !isValidObjectId(vehicleId)) {
+      setFetchVehicleError(`Invalid Vehicle ID: "${vehicleId}". Cannot fetch details.`);
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    setLoadingVehicleId(vehicleId);
+    setIsFetchingVehicle(true);
+    setFetchVehicleError(null);
+    setIsDrawerOpen(true);
+
+    try {
+      const response = await getVehicle(vehicleId);
+      const actualVehicle = response?.data?.data || response?.data || response;
+      setSelectedVehicleDetails(actualVehicle);
+    } catch (error: any) {
+      console.error('Error fetching vehicle details:', error);
+      setFetchVehicleError(error?.message || 'Failed to fetch vehicle details.');
+    } finally {
+      setIsFetchingVehicle(false);
+      setLoadingVehicleId(null);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedVehicleDetails(null);
+    setFetchVehicleError(null);
+  };
+
+  const partnerAuctionItems = useMemo(() => {
+    const formattedList: FormattedAuctionItem[] = [];
+
+    rawAuctions.forEach((auction) => {
+      if (!auction) return;
+
+      const currentPartnerObj = (auction.partners || []).find(
+        (p: any) => String(p.partnerId || p._id || p.id) === String(loggedPartnerId)
+      );
+
+      const assignedVehicleIds = new Set<string>();
+      if (currentPartnerObj?.vehicleIds) {
+        currentPartnerObj.vehicleIds.forEach((vObj: any) => {
+          const vId = typeof vObj === 'string' ? vObj : vObj.vehicleId || vObj._id || vObj.id;
+          if (vId) assignedVehicleIds.add(String(vId));
+        });
+      }
+
+      const vehiclesList = auction.vehicles || (auction.vehicle ? [auction.vehicle] : []);
+
+      vehiclesList.forEach((v: any) => {
+        const vehicleObj = typeof v === 'object' ? v : {};
+        const vId = String(vehicleObj._id || vehicleObj.id || vehicleObj.vehicleId || v);
+
+        if (assignedVehicleIds.size === 0 || assignedVehicleIds.has(vId)) {
+          const details = vehicleObj.vehicleDetails || vehicleObj.details || {};
+          const pickup = vehicleObj.pickup || {};
+
+          const rawPhotos = vehicleObj.photos || details.photos || {};
+          let photosArray: string[] = [];
+          if (Array.isArray(rawPhotos)) {
+            photosArray = rawPhotos.map(getMediaUrl).filter(Boolean) as string[];
+          } else if (typeof rawPhotos === 'object') {
+            photosArray = Object.values(rawPhotos).map(getMediaUrl).filter(Boolean) as string[];
+          }
+
+          const endTime = new Date(auction.endTime || Date.now()).getTime();
+          const diffMs = Math.max(0, endTime - now);
+          const hours = Math.floor(diffMs / (1000 * 60 * 60)).toString().padStart(2, '0');
+          const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+          const secs = Math.floor((diffMs % (1000 * 60)) / 1000).toString().padStart(2, '0');
+          const timeLeftStr = `${hours}:${mins}:${secs}`;
+
+          let timerColor = 'text-emerald-600 border-emerald-500';
+          if (diffMs < 15 * 60 * 1000) timerColor = 'text-red-600 border-red-500';
+          else if (diffMs < 30 * 60 * 1000) timerColor = 'text-amber-500 border-amber-500';
+
+          const title = [details.manufacturer || details.make, details.model, details.manufacturingYear].filter(Boolean).join(' ') || `Vehicle #${vId.slice(-6)}`;
+          const locationStr = [pickup.city, pickup.state].filter(Boolean).join(', ') || 'N/A';
+
+          formattedList.push({
+            id: vId,
+            name: title,
+            engine: `${details.fuelType || 'Petrol'} • ${details.transmission || 'Manual'} • ${details.kmsDriven ? `${details.kmsDriven} km` : '1st Owner'}`,
+            tags: [details.registrationNumber ? 'RC Available' : 'No RC'],
+            year: String(details.manufacturingYear || 'N/A'),
+            fuel: details.fuelType || 'N/A',
+            location: locationStr,
+            distance: pickup.area ? `${pickup.area}` : 'Local',
+            weight: details.chassisNumber ? 'Standard' : 'N/A',
+            scrapValue: vehicleObj.estimatedScrapValue ? `₹${vehicleObj.estimatedScrapValue.toLocaleString('en-IN')}` : '₹30,000 – ₹40,000',
+            timeLeft: timeLeftStr,
+            status: auction.status || 'Active',
+            timerColor,
+            highestBid: vehicleObj.highestBid ? `₹${vehicleObj.highestBid.toLocaleString('en-IN')}` : '₹0',
+            bidsCount: `${vehicleObj.bidsCount || auction.totalBids || 0} bids`,
+            yourBid: vehicleObj.yourBid ? `₹${vehicleObj.yourBid.toLocaleString('en-IN')}` : '-',
+            yourBidStatus: vehicleObj.yourBid ? 'Your bid' : undefined,
+            photoUrl: photosArray[0],
+            totalPhotosCount: photosArray.length,
+            endTimeIso: auction.endTime,
+          });
+        }
+      });
+    });
+
+    return formattedList;
+  }, [rawAuctions, loggedPartnerId, now]);
+
+  const filteredAuctionItems = useMemo(() => {
+    return partnerAuctionItems.filter((item) => {
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFuel = selectedFuel === 'All' || item.fuel.toLowerCase() === selectedFuel.toLowerCase();
+      return matchesSearch && matchesFuel;
+    });
+  }, [partnerAuctionItems, searchQuery, selectedFuel]);
+
+  const metrics = useMemo(() => {
+    const liveCount = partnerAuctionItems.length;
+    const endingSoonCount = partnerAuctionItems.filter(i => {
+      const diff = new Date(i.endTimeIso).getTime() - now;
+      return diff > 0 && diff <= 15 * 60 * 1000;
+    }).length;
+    const activeBidsCount = partnerAuctionItems.filter(i => i.yourBid !== '-').length;
+
+    return [
+      { title: 'Live Auctions', count: String(liveCount), meta: 'Assigned to your profile', dotColor: 'bg-emerald-500', icon: Gavel, iconColor: 'text-emerald-600 bg-emerald-50' },
+      { title: 'Ending Soon', count: String(endingSoonCount), meta: 'Within 15 minutes', dotColor: 'bg-amber-500', icon: Clock, iconColor: 'text-purple-600 bg-purple-50' },
+      { title: 'My Active Bids', count: String(activeBidsCount), meta: 'On live auctions', dotColor: 'bg-emerald-500', icon: Trophy, iconColor: 'text-amber-600 bg-amber-50' },
+      { title: 'Bids Won Today', count: '3', meta: 'Total value ₹1,24,300', dotColor: 'bg-blue-500', icon: Trophy, iconColor: 'text-blue-600 bg-blue-50' },
+      { title: 'Total Assigned Value', count: `₹${(liveCount * 35000).toLocaleString('en-IN')}`, meta: 'Across assigned vehicles', dotColor: 'bg-emerald-500', icon: Wallet, iconColor: 'text-emerald-600 bg-emerald-50' },
+    ];
+  }, [partnerAuctionItems, now]);
 
   return (
-    <div className="space-y-6 w-full text-xs">
-      
+    <div className="relative space-y-6 w-full text-xs">
       {/* 1. TOP STATS OVERVIEW MATRIX */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {metrics.map((metric, idx) => {
@@ -55,48 +361,67 @@ export default function LiveAuctionsDashboard() {
       {/* 2. DYNAMIC FILTERS TOOLBAR ROW */}
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-3xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          
-          {/* Search bar input container */}
-          <div className="relative xl:col-span-1">
+          <div className="relative xl:col-span-2">
             <span className="text-[10px] text-gray-400 font-black block mb-1">Search Vehicle</span>
             <div className="relative">
-              <input type="text" placeholder="Search by make, model or year..." className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-700 font-medium placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-700 focus:bg-white" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by make, model or city..."
+                className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-700 font-medium placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-700 focus:bg-white"
+              />
               <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
             </div>
           </div>
 
-          {/* Select inputs dropdown layouts */}
-          {[
-            { label: 'Vehicle Type', value: 'All Types' },
-            { label: 'Fuel Type', value: 'All Fuel Types' },
-            { label: 'Location', value: 'All Locations' },
-            { label: 'Est. Value Range', value: 'All Ranges' }
-          ].map((filter, idx) => (
-            <div key={idx}>
-              <span className="text-[10px] text-gray-400 font-black block mb-1">{filter.label}</span>
-              <button className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-700 font-bold flex items-center justify-between hover:bg-gray-100/50 transition-all">
-                <span>{filter.value}</span>
-                <ChevronDown size={12} className="text-gray-400" />
-              </button>
-            </div>
-          ))}
+          <div>
+            <span className="text-[10px] text-gray-400 font-black block mb-1">Fuel Type</span>
+            <select
+              value={selectedFuel}
+              onChange={(e) => setSelectedFuel(e.target.value)}
+              className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-700 font-bold hover:bg-gray-100/50 transition-all outline-none"
+            >
+              <option value="All">All Fuel Types</option>
+              <option value="Petrol">Petrol</option>
+              <option value="Diesel">Diesel</option>
+              <option value="CNG">CNG</option>
+              <option value="Electric">Electric</option>
+            </select>
+          </div>
 
-          {/* Action buttons controls inside inputs stack */}
-          <div className="flex items-end gap-2">
-            <button className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl px-3 py-2 font-black text-gray-700 flex items-center justify-center gap-1.5 h-[34px] shadow-3xs cursor-pointer">
-              <SlidersHorizontal size={12} /> <span>Filters</span>
-            </button>
-            <button className="text-gray-400 hover:text-gray-600 font-bold flex items-center justify-center gap-1 text-[11px] h-[34px] px-2 cursor-pointer">
-              <RotateCcw size={11} /> <span>Clear All</span>
+          <div>
+            <span className="text-[10px] text-gray-400 font-black block mb-1">Location</span>
+            <button className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-700 font-bold flex items-center justify-between hover:bg-gray-100/50 transition-all">
+              <span>All Locations</span>
+              <ChevronDown size={12} className="text-gray-400" />
             </button>
           </div>
 
+          <div>
+            <span className="text-[10px] text-gray-400 font-black block mb-1">Est. Value Range</span>
+            <button className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-700 font-bold flex items-center justify-between hover:bg-gray-100/50 transition-all">
+              <span>All Ranges</span>
+              <ChevronDown size={12} className="text-gray-400" />
+            </button>
+          </div>
+
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedFuel('All'); }}
+              className="w-full text-gray-400 hover:text-gray-600 font-bold flex items-center justify-center gap-1 text-[11px] h-[34px] border border-gray-200 rounded-xl bg-white shadow-3xs hover:bg-gray-50 cursor-pointer"
+            >
+              <RotateCcw size={11} /> <span>Reset</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* 3. CONTROL TABLE HEADER INFO SECTION */}
       <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-        <h3 className="font-black text-gray-900 text-sm"><span className="text-emerald-700 font-black">14</span> Live Auctions</h3>
+        <h3 className="font-black text-gray-900 text-sm">
+          <span className="text-emerald-700 font-black">{filteredAuctionItems.length}</span> Assigned Vehicles Live
+        </h3>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-gray-50/50 border border-gray-200 rounded-xl px-2 py-1">
             <span className="text-gray-400 font-bold text-[10px]">Sort by:</span>
@@ -111,208 +436,398 @@ export default function LiveAuctionsDashboard() {
         </div>
       </div>
 
-      {/* 4. AUCTIONS MASTER CONTAINER DESKTOP + MOBILE FORMS */}
+      {/* 4. AUCTIONS MASTER CONTAINER */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-3xs overflow-hidden">
-        
-        {/* DESKTOP TABLE SHEET: Hidden on small layout viewport view brackets */}
-        <div className="hidden xl:block overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead>
-              <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-3 px-4 font-black">Vehicle Details</th>
-                <th className="py-3 px-2 font-black">Vehicle Info</th>
-                <th className="py-3 px-2 font-black">Location / Distance</th>
-                <th className="py-3 px-2 font-black">Est. Weight</th>
-                <th className="py-3 px-2 font-black">Est. Scrap Value</th>
-                <th className="py-3 px-2 font-black text-center">Time Left</th>
-                <th className="py-3 px-2 font-black text-right">Highest Bid</th>
-                <th className="py-3 px-2 font-black text-right">Your Bid</th>
-                <th className="py-3 px-4 font-black text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
-              {auctionItems.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50/40 transition-colors">
-                  
-                  {/* Vehicle details summary info */}
-                  <td className="py-4 px-4 max-w-xs">
-                    <div className="flex gap-3">
-                      <div className="w-20 h-14 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200/60 relative">
-                        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center font-bold text-gray-400">IMG</div>
-                        <span className="absolute bottom-1 right-1 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-sm">📷 12</span>
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="font-black text-gray-900 text-[13px] tracking-tight leading-tight">{item.name}</h4>
-                        <p className="text-[10px] text-gray-400 font-bold">{item.engine}</p>
-                        <div className="flex flex-wrap gap-1 pt-0.5">
-                          {item.tags.map((tag, i) => (
-                            <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${
-                              tag.includes('Expired') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
-                            }`}>{tag}</span>
-                          ))}
+        {loading ? (
+          <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
+            <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-400 font-bold">Loading assigned vehicles...</p>
+          </div>
+        ) : filteredAuctionItems.length === 0 ? (
+          <div className="py-20 text-center text-gray-400 font-bold">
+            No live auction vehicles found assigned to your partner profile.
+          </div>
+        ) : (
+          <>
+            {/* DESKTOP TABLE SHEET */}
+            <div className="hidden xl:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[1000px]">
+                <thead>
+                  <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-4 font-black">Vehicle Details</th>
+                    <th className="py-3 px-2 font-black">Vehicle Info</th>
+                    <th className="py-3 px-2 font-black">Location / Area</th>
+                    <th className="py-3 px-2 font-black">Chassis</th>
+                    <th className="py-3 px-2 font-black">Est. Scrap Value</th>
+                    <th className="py-3 px-2 font-black text-center">Time Left</th>
+                    <th className="py-3 px-2 font-black text-right">Highest Bid</th>
+                    <th className="py-3 px-2 font-black text-right">Your Bid</th>
+                    <th className="py-3 px-4 font-black text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
+                  {filteredAuctionItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50/40 transition-colors">
+                      <td className="py-4 px-4 max-w-xs">
+                        <div className="flex gap-3 items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleViewVehicleDetails(item.id)}
+                            className="w-20 h-14 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200/60 relative group cursor-pointer text-left"
+                          >
+                            {item.photoUrl ? (
+                              <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            ) : (
+                              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center font-bold text-gray-400">IMG</div>
+                            )}
+                            <span className="absolute bottom-1 right-1 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-sm">📷 {item.totalPhotosCount || 1}</span>
+                          </button>
+                          <div className="space-y-1">
+                            <button
+                              type="button"
+                              onClick={() => handleViewVehicleDetails(item.id)}
+                              className="font-black text-gray-900 text-[13px] tracking-tight leading-tight hover:text-emerald-700 text-left cursor-pointer transition-colors"
+                            >
+                              {item.name}
+                            </button>
+                            <p className="text-[10px] text-gray-400 font-bold">{item.engine}</p>
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {item.tags.map((tag, i) => (
+                                <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
+                                  }`}>{tag}</span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
+                      </td>
+
+                      <td className="py-4 px-2 text-gray-600">
+                        <div className="space-y-1">
+                          <p className="flex items-center gap-1"><Calendar size={12} className="text-gray-400" /> <span>{item.year}</span></p>
+                          <p className="flex items-center gap-1"><Fuel size={12} className="text-gray-400" /> <span>{item.fuel}</span></p>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-2">
+                        <div className="space-y-0.5">
+                          <p className="flex items-center gap-1 font-bold text-gray-800"><MapPin size={12} className="text-gray-400" /> <span>{item.location}</span></p>
+                          <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-2 font-mono text-gray-600 font-bold">
+                        <div className="flex items-center gap-1"><Scale size={12} className="text-gray-400" /> <span>{item.weight}</span></div>
+                      </td>
+
+                      <td className="py-4 px-2 font-black text-gray-900">{item.scrapValue}</td>
+
+                      <td className="py-4 px-2 text-center">
+                        <div className="inline-flex flex-col items-center">
+                          <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
+                            <div className="w-2 h-2 rounded-full border border-current border-t-transparent animate-spin shrink-0" />
+                            <span>{item.timeLeft}</span>
+                          </div>
+                          <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider mt-0.5">{item.status}</span>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-2 text-right">
+                        <p className="font-black text-emerald-700 text-[13px]">{item.highestBid}</p>
+                        <p className="text-[9px] text-gray-400 font-bold">{item.bidsCount}</p>
+                      </td>
+
+                      <td className="py-4 px-2 text-right">
+                        {item.yourBid !== '-' ? (
+                          <div>
+                            <p className="font-black text-emerald-700 text-[13px]">{item.yourBid}</p>
+                            <span className="text-[8px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-1 py-0.2 rounded-sm">{item.yourBidStatus}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 font-bold">—</span>
+                        )}
+                      </td>
+
+                      <td className="py-4 px-4 text-center">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <button className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer">
+                            Place Bid
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loadingVehicleId === item.id}
+                            onClick={() => handleViewVehicleDetails(item.id)}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-emerald-700 transition-colors cursor-pointer"
+                          >
+                            <Eye size={11} />
+                            <span>{loadingVehicleId === item.id ? 'Loading...' : 'View Details'}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE GRID LAYOUT LIST */}
+            <div className="xl:hidden divide-y divide-gray-100">
+              {filteredAuctionItems.map((item) => (
+                <div key={item.id} className="p-4 space-y-4 hover:bg-gray-50/30 transition-all">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleViewVehicleDetails(item.id)}
+                      className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200/50 relative cursor-pointer text-left"
+                    >
+                      {item.photoUrl ? (
+                        <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center font-bold text-gray-300 bg-gray-200">IMG</div>
+                      )}
+                      <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-xs">📷 {item.totalPhotosCount || 1}</span>
+                    </button>
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => handleViewVehicleDetails(item.id)}
+                        className="font-black text-gray-900 text-sm tracking-tight truncate text-left hover:text-emerald-700 cursor-pointer block w-full"
+                      >
+                        {item.name}
+                      </button>
+                      <p className="text-[10px] text-gray-400 font-bold truncate">{item.engine}</p>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {item.tags.map((tag, i) => (
+                          <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
+                            }`}>{tag}</span>
+                        ))}
                       </div>
                     </div>
-                  </td>
+                  </div>
 
-                  {/* Vehicle base statistics column */}
-                  <td className="py-4 px-2 text-gray-600">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-gray-50/60 border border-gray-100/50 p-2.5 rounded-xl text-gray-600">
                     <div className="space-y-1">
-                      <p className="flex items-center gap-1"><Calendar size={12} className="text-gray-400" /> <span>{item.year}</span></p>
-                      <p className="flex items-center gap-1"><Fuel size={12} className="text-gray-400" /> <span>{item.fuel}</span></p>
+                      <p className="flex items-center gap-1"><Calendar size={11} className="text-gray-400" /> <span>Year: <strong>{item.year}</strong></span></p>
+                      <p className="flex items-center gap-1"><Fuel size={11} className="text-gray-400" /> <span>Fuel: <strong>{item.fuel}</strong></span></p>
                     </div>
-                  </td>
-
-                  {/* Geolocation mapping tracking values */}
-                  <td className="py-4 px-2">
-                    <div className="space-y-0.5">
-                      <p className="flex items-center gap-1 font-bold text-gray-800"><MapPin size={12} className="text-gray-400" /> <span>{item.location}</span></p>
+                    <div className="space-y-1">
+                      <p className="font-bold text-gray-800 flex items-start gap-1"><MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" /> <span className="truncate">{item.location}</span></p>
                       <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
                     </div>
-                  </td>
+                  </div>
 
-                  {/* Mass scale indicators weights column */}
-                  <td className="py-4 px-2 font-mono text-gray-600 font-bold">
-                    <div className="flex items-center gap-1"><Scale size={12} className="text-gray-400" /> <span>{item.weight}</span></div>
-                  </td>
-
-                  {/* Pricing metrics calculations rows */}
-                  <td className="py-4 px-2 font-black text-gray-900">{item.scrapValue}</td>
-
-                  {/* Clock timers with color state triggers */}
-                  <td className="py-4 px-2 text-center">
-                    <div className="inline-flex flex-col items-center">
-                      <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
-                        <div className="w-2 h-2 rounded-full border border-current border-t-transparent animate-spin shrink-0" />
-                        <span>{item.timeLeft}</span>
-                      </div>
-                      <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider mt-0.5">{item.status}</span>
+                  <div className="flex items-center justify-between text-left border-b border-gray-50 pb-2">
+                    <div>
+                      <span className="text-[10px] text-gray-400 font-bold block">Est. Scrap Value</span>
+                      <span className="font-black text-gray-900">{item.scrapValue}</span>
                     </div>
-                  </td>
-
-                  {/* Dynamic auction action variables parameters */}
-                  <td className="py-4 px-2 text-right">
-                    <p className="font-black text-emerald-700 text-[13px]">{item.highestBid}</p>
-                    <p className="text-[9px] text-gray-400 font-bold">{item.bidsCount}</p>
-                  </td>
-
-                  <td className="py-4 px-2 text-right">
-                    {item.yourBid !== '-' ? (
-                      <div>
-                        <p className="font-black text-emerald-700 text-[13px]">{item.yourBid}</p>
-                        <span className="text-[8px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-1 py-0.2 rounded-sm">{item.yourBidStatus}</span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-300 font-bold">—</span>
-                    )}
-                  </td>
-
-                  {/* Grid trigger button executions */}
-                  <td className="py-4 px-4 text-center">
-                    <div className="inline-flex flex-col items-center gap-1.5">
-                      <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-1.5 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer">Place Bid</button>
-                      <a href="#" className="text-emerald-700 font-black text-[10px] hover:underline">View Details</a>
+                    <div className="text-right">
+                      <span className="text-[10px] text-gray-400 font-bold block">Highest Bid</span>
+                      <span className="font-black text-emerald-700 text-sm">{item.highestBid}</span>
+                      <span className="text-[9px] text-gray-400 font-bold block">{item.bidsCount}</span>
                     </div>
-                  </td>
+                  </div>
 
-                </tr>
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
+                      <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
+                      <span>{item.timeLeft}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={loadingVehicleId === item.id}
+                        onClick={() => handleViewVehicleDetails(item.id)}
+                        className="border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-3 py-2 rounded-xl text-[11px] cursor-pointer transition-colors"
+                      >
+                        {loadingVehicleId === item.id ? 'Loading...' : 'View Details'}
+                      </button>
+                      <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer">
+                        Place Bid
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* MOBILE GRID LAYOUT LIST: Displays on mobile devices and small tablets */}
-        <div className="xl:hidden divide-y divide-gray-100">
-          {auctionItems.map((item) => (
-            <div key={item.id} className="p-4 space-y-4 hover:bg-gray-50/30 transition-all">
-              
-              {/* Top Summary Block */}
-              <div className="flex gap-3">
-                <div className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200/50 relative">
-                  <div className="absolute inset-0 flex items-center justify-center font-bold text-gray-300 bg-gray-200">IMG</div>
-                  <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-xs">📷 12</span>
-                </div>
-                <div className="space-y-0.5 min-w-0 flex-1">
-                  <h4 className="font-black text-gray-900 text-sm tracking-tight truncate">{item.name}</h4>
-                  <p className="text-[10px] text-gray-400 font-bold truncate">{item.engine}</p>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {item.tags.map((tag, i) => (
-                      <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${
-                        tag.includes('Expired') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
-                      }`}>{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Specs & Location Grid Strip */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-gray-50/60 border border-gray-100/50 p-2.5 rounded-xl text-gray-600">
-                <div className="space-y-1">
-                  <p className="flex items-center gap-1"><Calendar size={11} className="text-gray-400" /> <span>Year: <strong>{item.year}</strong></span></p>
-                  <p className="flex items-center gap-1"><Fuel size={11} className="text-gray-400" /> <span>Fuel: <strong>{item.fuel}</strong></span></p>
-                  <p className="flex items-center gap-1"><Scale size={11} className="text-gray-400" /> <span>Weight: <strong>{item.weight}</strong></span></p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-bold text-gray-800 flex items-start gap-1"><MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" /> <span className="truncate">{item.location}</span></p>
-                  <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
-                </div>
-              </div>
-
-              {/* Value & Bid Status Blocks */}
-              <div className="flex items-center justify-between text-left border-b border-gray-50 pb-2">
-                <div>
-                  <span className="text-[10px] text-gray-400 font-bold block">Est. Scrap Value</span>
-                  <span className="font-black text-gray-900">{item.scrapValue}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-gray-400 font-bold block">Highest Bid</span>
-                  <span className="font-black text-emerald-700 text-sm">{item.highestBid}</span>
-                  <span className="text-[9px] text-gray-400 font-bold block">{item.bidsCount}</span>
-                </div>
-              </div>
-
-              {/* Timers & Interactive Call-to-Actions Bar */}
-              <div className="flex items-center justify-between gap-4 pt-1">
-                <div className="flex items-center gap-2">
-                  <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
-                    <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
-                    <span>{item.timeLeft}</span>
-                  </div>
-                  {item.yourBid !== '-' && (
-                    <div className="text-right bg-emerald-50 border border-emerald-100 rounded-xl px-2 py-0.5">
-                      <span className="text-[9px] font-black text-emerald-700">Your: {item.yourBid}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <a href="#" className="text-emerald-700 font-black text-[11px] hover:underline">Details</a>
-                  <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer">Place Bid</button>
-                </div>
-              </div>
-
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
         {/* 5. RESPONSIVE COMPACT PAGINATION CONTROL SLAT */}
         <div className="bg-white border-t border-gray-100 px-4 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-400 font-bold text-[11px]">
-          <span>Showing <strong className="text-gray-800 font-black">1 to 10</strong> of <strong className="text-gray-800 font-black">14</strong> auctions</span>
-          
+          <span>Showing <strong className="text-gray-800 font-black">{filteredAuctionItems.length}</strong> assigned vehicle auctions</span>
+
           <div className="flex items-center gap-1.5">
             <button className="w-7 h-7 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all disabled:opacity-40" disabled>
               <ChevronLeft size={14} />
             </button>
             <button className="w-7 h-7 rounded-lg flex items-center justify-center font-black bg-[#0B5B32] text-white shadow-3xs">1</button>
-            <button className="w-7 h-7 rounded-lg flex items-center justify-center font-black border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all">2</button>
             <button className="w-7 h-7 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all">
               <ChevronRight size={14} />
             </button>
           </div>
         </div>
-
       </div>
 
+      {/* 6. VEHICLE DETAILS SIDEBAR / DRAWER PORTAL */}
+      {isMounted && isDrawerOpen && createPortal(
+        <div
+          onClick={handleCloseDrawer}
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end cursor-pointer transition-opacity"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-lg h-full shadow-2xl flex flex-col border-l border-slate-200 cursor-default overflow-hidden animate-in slide-in-from-right duration-200"
+          >
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  {selectedVehicleDetails
+                    ? [selectedVehicleDetails.vehicleDetails?.manufacturer, selectedVehicleDetails.vehicleDetails?.model].filter(Boolean).join(' ') || 'Vehicle Details'
+                    : 'Loading Details...'}
+                </h3>
+                {selectedVehicleDetails && (
+                  <p className="text-[11px] font-mono text-slate-400 mt-0.5">
+                    ID: {selectedVehicleDetails._id}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleCloseDrawer}
+                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Sidebar Content */}
+            <div className="p-5 space-y-6 overflow-y-auto flex-1 text-xs text-slate-700">
+
+              {isFetchingVehicle && (
+                <div className="flex flex-col items-center justify-center py-20 space-y-3">
+                  <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-slate-500 text-xs font-medium">Fetching vehicle details...</p>
+                </div>
+              )}
+
+              {fetchVehicleError && !isFetchingVehicle && (
+                <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium">
+                  {fetchVehicleError}
+                </div>
+              )}
+
+              {!isFetchingVehicle && selectedVehicleDetails && (
+                <>
+                  {/* Basic Info */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Basic Info</span>
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200/70">
+                      <div>
+                        <div className="text-[10px] text-slate-400">Reg Number</div>
+                        <div className="font-mono font-bold text-slate-800">{selectedVehicleDetails.vehicleDetails?.registrationNumber || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400">Mfg Year</div>
+                        <div className="font-bold text-slate-800">{selectedVehicleDetails.vehicleDetails?.manufacturingYear || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400">Fuel Type</div>
+                        <div className="font-bold text-slate-800">{selectedVehicleDetails.vehicleDetails?.fuelType || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400">Transmission</div>
+                        <div className="font-bold text-slate-800">{selectedVehicleDetails.vehicleDetails?.transmission || 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vehicle Photos Gallery */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vehicle Photos</span>
+                    {resolvedPhotos.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="bg-slate-900 rounded-lg h-52 overflow-hidden flex items-center justify-center relative border border-slate-200">
+                          <img
+                            src={activePhoto || resolvedPhotos[0]?.url}
+                            alt="Vehicle Preview"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2">
+                          {resolvedPhotos.map((p, idx) => {
+                            const isSelected = (activePhoto || resolvedPhotos[0]?.url) === p.url;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setActivePhoto(p.url)}
+                                className={`relative aspect-square rounded-lg border overflow-hidden transition-all cursor-pointer bg-slate-100 ${isSelected ? 'border-emerald-600 ring-2 ring-emerald-600/20' : 'border-slate-200 hover:border-slate-400'
+                                  }`}
+                              >
+                                <img
+                                  src={p.url}
+                                  alt={p.label}
+                                  className="w-full h-full object-cover"
+                                />
+                                <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] font-bold py-0.5 px-1 truncate text-center">
+                                  {p.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-lg p-6 text-center text-slate-400 font-bold">
+                        No vehicle photos uploaded.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Major Components */}
+                  {selectedVehicleDetails.majorComponents && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Major Components</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(selectedVehicleDetails.majorComponents).map(([key, val]) => (
+                          <div key={key} className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/70 flex justify-between items-center">
+                            <span className="capitalize text-slate-500">{key}</span>
+                            <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${val === 'GOOD' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                              {val}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Vehicle Condition */}
+                  {selectedVehicleDetails.vehicleCondition && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Condition Assessment</span>
+                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/70 space-y-1.5">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Accident History:</span>
+                          <span className="font-semibold">{selectedVehicleDetails.vehicleCondition.accidentType || 'NO_ACCIDENT'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Structure Condition:</span>
+                          <span className="font-semibold">{selectedVehicleDetails.vehicleCondition.structure || 'NO_DAMAGE'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

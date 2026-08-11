@@ -12,10 +12,7 @@ class AuctionRepository {
   async findActiveAuction() {
     return Auction.findOne({
       status: {
-        $in: [
-          AuctionStatus.SCHEDULED,
-          AuctionStatus.LIVE,
-        ],
+        $in: [AuctionStatus.SCHEDULED, AuctionStatus.LIVE],
       },
     });
   }
@@ -60,10 +57,7 @@ class AuctionRepository {
     }).sort({ endTime: 1 });
   }
 
-  async findAuctionForPartner(
-    auctionId: string,
-    partnerId: string,
-  ) {
+  async findAuctionForPartner(auctionId: string, partnerId: string) {
     return Auction.findOne({
       auctionId,
       status: AuctionStatus.LIVE,
@@ -150,10 +144,7 @@ class AuctionRepository {
     );
   }
 
-  async updateStatus(
-    auctionId: string,
-    status: AuctionStatus,
-  ) {
+  async updateStatus(auctionId: string, status: AuctionStatus) {
     return Auction.findOneAndUpdate(
       { auctionId },
       {
@@ -172,6 +163,69 @@ class AuctionRepository {
     return Auction.findOneAndDelete({
       auctionId,
     });
+  }
+
+  async findActiveAuctionForPartner(partnerId: string) {
+    const auction = await Auction.findOne({
+      status: {
+        $in: [AuctionStatus.SCHEDULED, AuctionStatus.LIVE],
+      },
+      "partners.partnerId": partnerId,
+    }).lean();
+
+    if (!auction) {
+      return null;
+    }
+
+    const partner = auction.partners.find(
+      (partner) => partner.partnerId === partnerId,
+    );
+
+    if (!partner) {
+      return null;
+    }
+
+    const allowedVehicleIds = new Set(
+      partner.vehicleIds.map((vehicle) => vehicle.vehicleId),
+    );
+
+    const vehicles = auction.vehicles.filter((vehicle) =>
+      allowedVehicleIds.has(vehicle.vehicleId),
+    );
+
+    return {
+      auctionId: auction.auctionId,
+      type: auction.type,
+      status: auction.status,
+
+      startTime: auction.startTime,
+      endTime: auction.endTime,
+
+      autoExtend: auction.autoExtend,
+      autoExtendDuration: auction.autoExtendDuration,
+
+      visibility: auction.visibility,
+
+      partner: {
+        partnerId: partner.partnerId,
+        companyName: partner.companyName,
+        latitude: partner.latitude,
+        longitude: partner.longitude,
+        state: partner.state,
+        district: partner.district,
+      },
+
+      vehicles: vehicles.map((vehicle) => {
+        const partnerVehicle = partner.vehicleIds.find(
+          (item) => item.vehicleId === vehicle.vehicleId,
+        );
+
+        return {
+          ...vehicle,
+          distanceInKm: partnerVehicle?.distanceInKm ?? null,
+        };
+      }),
+    };
   }
 }
 

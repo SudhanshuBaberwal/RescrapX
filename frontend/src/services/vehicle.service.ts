@@ -193,7 +193,7 @@ export const pickupLocation = async (
 
 export const getAllVehiclesData = async () => {
   try {
-    const res = await api.get("/api/vehicle/register/vehicles");
+    const res = await api.get("/api/vehicle/register/user-vehicles");
     return res.data;
   } catch (error) {
     console.error("getAllVehiclesData error:", error);

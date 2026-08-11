@@ -126,7 +126,7 @@ export default function AuctionsPage() {
   getAuctionData();
 
   const { auctionData } = useSelector((state: RootState) => state.admin) as { auctionData: AuctionData | AuctionData[] | null };
-
+  console.log(auctionData)
   const [activeTab, setActiveTab] = useState<'auctionDetails' | 'vehicles' | 'partners'>('auctionDetails');
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
   const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
