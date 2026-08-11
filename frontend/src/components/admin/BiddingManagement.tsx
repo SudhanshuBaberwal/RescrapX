@@ -1,8 +1,83 @@
 'use client'
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation'; // Import Next.js router
+import { createAuction } from '@/services/auction/auction.service';
+
+// 1. API Helper Function
 
 export const BiddingManagement: React.FC = () => {
+  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const getExactNowString = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
+  const [formData, setFormData] = useState({
+    startTime: '',
+    endTime: '',
+    visibility: 'PUBLIC' as 'PUBLIC' | 'PRIVATE',
+    autoExtend: true,
+  });
+
+  const handleOpenModal = () => {
+    setSubmitError(null);
+    setFormData(prev => ({
+      ...prev,
+      startTime: getExactNowString(),
+      endTime: '',
+    }));
+    setIsModalOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // 2. Handle Form Submission with API call & Navigation
+  const handleCreateAuction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Call the API endpoint with form payload
+      const response = await createAuction({
+        startTime: new Date(formData.startTime).toISOString(),
+        endTime: new Date(formData.endTime).toISOString(),
+        visibility: formData.visibility,
+        autoExtend: formData.autoExtend,
+      });
+
+      console.log('Auction created successfully:', response);
+      setIsModalOpen(false);
+
+      // Navigate directly to the Auction List / Allocation Page
+      router.push('/auctions');
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to create auction. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const auctionKPIs = [
     { title: 'Live Auctions', value: '28', change: '+4 today', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Upcoming Auctions', value: '15', change: '+3 today', color: 'text-blue-600 bg-blue-50' },
@@ -44,27 +119,29 @@ export const BiddingManagement: React.FC = () => {
   ];
 
   return (
-    // Outer min-h-screen and absolute layout spaces removed 
     <div className="w-full flex flex-col justify-between">
       
-      {/* Dashboard Dynamic Route Canvas Area */}
+      {/* Dashboard Content Container */}
       <main className="flex-1 p-4 md:p-6 space-y-6 w-full mx-auto">
         
         {/* Action Header Title Ribbon */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
           <div>
             <h2 className="text-xl font-bold text-slate-900">Bidding Management</h2>
             <p className="text-xs text-slate-500">Monitor, create and manage all vehicle auctions across the platform.</p>
           </div>
-          <button className="bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-emerald-700 shadow-sm self-start sm:self-auto shrink-0">
+          <button 
+            onClick={handleOpenModal}
+            className="bg-emerald-600 text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:bg-emerald-700 shadow-xs self-start sm:self-auto shrink-0 transition-colors cursor-pointer"
+          >
             + Create Auction
           </button>
         </div>
 
-        {/* Quick Metrics KPI Counters Layout Grid Row */}
+        {/* Quick Metrics KPI Counters Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
           {auctionKPIs.map((kpi, index) => (
-            <div key={index} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between">
+            <div key={index} className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs flex flex-col justify-between">
               <span className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase truncate">{kpi.title}</span>
               <div className="mt-2">
                 <div className="text-xl font-bold text-slate-900 tracking-tight">{kpi.value}</div>
@@ -76,36 +153,33 @@ export const BiddingManagement: React.FC = () => {
           ))}
         </div>
 
-        {/* Table Controls / Filters Row Panel */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+        {/* Filters Row */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
               <span className="absolute left-3.5 top-2.5 text-slate-400 text-sm">🔍</span>
               <input 
                 type="text" 
-                placeholder="Search by Vehicle, RC Number, Request ID..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:border-slate-300" 
+                placeholder="Search by Vehicle, Request ID..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs outline-hidden focus:border-slate-300" 
               />
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-wrap">
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none"><option>All Status</option></select>
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none"><option>All Types</option></select>
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none"><option>All States</option></select>
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none"><option>All Durations</option></select>
+              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden"><option>All Status</option></select>
+              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden"><option>All Types</option></select>
+              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden"><option>All States</option></select>
+              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden"><option>All Durations</option></select>
             </div>
           </div>
         </div>
 
-        {/* Main Content Splitting Structure */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          
-          {/* Primary Auctions Table Section Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm xl:col-span-9 space-y-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs xl:col-span-9 space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">All Auctions <span className="text-slate-400 font-normal">(86)</span></h3>
             </div>
             
-            {/* Responsive Scrollable Container Shield */}
             <div className="overflow-x-auto w-full border border-slate-100 rounded-lg">
               <table className="w-full text-left text-xs text-slate-600 min-w-[850px]">
                 <thead>
@@ -141,7 +215,7 @@ export const BiddingManagement: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <button className="border border-slate-200 rounded px-2.5 py-1 text-[11px] font-semibold hover:bg-slate-50">
+                        <button className="border border-slate-200 rounded-sm px-2.5 py-1 text-[11px] font-semibold hover:bg-slate-50">
                           View
                         </button>
                       </td>
@@ -152,14 +226,11 @@ export const BiddingManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Live Activity Feed Block Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm xl:col-span-3 space-y-4">
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs xl:col-span-3 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">Live Activity Feed</h3>
-              <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">● Live</span>
+              <span className="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded-sm font-bold uppercase tracking-wider">● Live</span>
             </div>
-            
-            {/* Activities Stack list */}
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
               <div className="text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-100">
                 <div className="flex justify-between text-[10px] text-slate-400 mb-1">
@@ -168,90 +239,120 @@ export const BiddingManagement: React.FC = () => {
                 </div>
                 <p className="text-slate-700"><span className="font-semibold text-slate-900">Green Auto RVSF</span> increased bid on Maruti Swift 2016</p>
               </div>
-              <div className="text-xs p-2.5 rounded-lg bg-slate-50 border border-slate-100">
-                <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                  <span>11:31 AM</span>
-                  <span className="text-emerald-600 font-bold">₹57,800</span>
-                </div>
-                <p className="text-slate-700"><span className="font-semibold text-slate-900">EcoScrap Pvt. Ltd.</span> placed bid on Maruti Swift 2016</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sub-Panel Layout Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          
-          {/* Vehicle Analytics Metadata Block */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Auction Details & Vehicle Info</h4>
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Registration No</span>
-                <span className="font-semibold text-slate-800">DL8CAK1234</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Fuel Type</span>
-                <span className="font-semibold text-slate-800">Petrol</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Manufacturing Year</span>
-                <span className="font-semibold text-slate-800">2016</span>
-              </div>
-              <div>
-                <span className="text-slate-400 text-[10px] block uppercase font-medium">Transmission</span>
-                <span className="font-semibold text-slate-800">Manual</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Live Bidding History Ledger Component */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Active Live Auction Progress</h4>
-            <div className="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-lg">
-              <div>
-                <span className="text-[10px] text-slate-400 block uppercase">Current Highest Bid</span>
-                <span className="text-xl font-black text-emerald-600">₹82,400</span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 block uppercase">Ends In</span>
-                <span className="text-sm font-bold text-red-500 font-mono">00:17:31</span>
-              </div>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-2">
-              <div className="bg-emerald-500 h-2 rounded-full w-[78%]"></div>
-            </div>
-          </div>
-
-          {/* Financial Ledger Summary Panel Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm md:col-span-2 xl:col-span-1 space-y-4">
-            <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">Financial Summary</h4>
-            <div className="space-y-2.5 text-xs text-slate-600">
-              <div className="flex justify-between"><span>Highest Bid Recieved</span><span className="font-semibold text-slate-900">₹82,400</span></div>
-              <div className="flex justify-between"><span>Pickup Charge (Admin)</span><span className="text-red-500 font-medium">- ₹2,500</span></div>
-              <div className="flex justify-between"><span>Documentation Fee</span><span className="text-red-500 font-medium">- ₹500</span></div>
-              <div className="flex justify-between pt-2.5 border-t border-slate-100 text-sm font-bold text-slate-900">
-                <span>Customer Receives (Est.)</span>
-                <span className="text-emerald-600 font-black text-base">₹79,400</span>
-              </div>
             </div>
           </div>
         </div>
 
       </main>
 
-      {/* Control Action Bar Footer Drawer */}
-      <footer className="mt-auto border-t border-slate-200 bg-white px-6 py-4 flex flex-wrap gap-2 items-center justify-end w-full shrink-0">
-        <button className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-100 font-bold text-xs px-4 py-2 rounded-lg transition-colors">
-          Cancel Auction
-        </button>
-        <button className="bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 font-bold text-xs px-4 py-2 rounded-lg transition-colors">
-          Pause Auction
-        </button>
-        <button className="bg-emerald-600 text-white hover:bg-emerald-700 font-black text-xs px-5 py-2 rounded-lg transition-all shadow-sm shadow-emerald-600/10">
-          Declare Winner
-          </button>
-      </footer>
+      {/* FULL-VIEWPORT PORTAL MODAL DIALOG */}
+      {isMounted && isModalOpen && createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">Create New Auction</h3>
+              <button 
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAuction} className="p-4 space-y-4 text-xs">
+              
+              {submitError && (
+                <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium">
+                  {submitError}
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-slate-700">
+                  Start Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  name="startTime"
+                  required
+                  value={formData.startTime}
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-hidden focus:border-emerald-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-slate-700">
+                  End Time <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  name="endTime"
+                  required
+                  value={formData.endTime}
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-hidden focus:border-emerald-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block font-semibold text-slate-700">
+                  Visibility
+                </label>
+                <select
+                  name="visibility"
+                  value={formData.visibility}
+                  onChange={handleInputChange}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 outline-hidden focus:border-emerald-500 focus:bg-white transition-all"
+                >
+                  <option value="PUBLIC">PUBLIC</option>
+                  <option value="PRIVATE">PRIVATE</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 pb-1 border-t border-slate-100">
+                <div>
+                  <label htmlFor="autoExtend" className="font-semibold text-slate-700 block cursor-pointer">
+                    Auto Extend
+                  </label>
+                  <span className="text-[10px] text-slate-400">Extends duration if bids occur near closing</span>
+                </div>
+                <input
+                  type="checkbox"
+                  id="autoExtend"
+                  name="autoExtend"
+                  checked={formData.autoExtend}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 rounded-sm text-emerald-600 focus:ring-emerald-500 border-slate-300 accent-emerald-600 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 shadow-xs transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Auction'}
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );

@@ -45,10 +45,9 @@ class VehicleRepository {
     return await Vehicle.find({ isRegistered: true });
   }
 
-  async findVehicleByVehicleId(userId: string, vehicleId: string) {
+  async findVehicleByVehicleId( vehicleId: string) {
     return await Vehicle.findOne({
       _id: vehicleId,
-      owner: userId,
     });
   }
 

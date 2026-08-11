@@ -2,22 +2,13 @@ import axios from "axios";
 
 import ApiError from "../lib/ApiError.js";
 import { AuctionStatus, WinnerStatus } from "../models/auction.model.js";
-
 import { CreateAuctionDto } from "../validations/auction.validation.js";
 import { calculateDistanceInKm } from "../utils/distance.js";
 import auctionRepository from "../repositories/auction.repository.js";
 import { env } from "../config/env.js";
-
 const MAX_RADIUS_KM = 150;
-
 class AuctionService {
   async createAuction(dto: CreateAuctionDto, adminId: string) {
-    /*
-     * ============================================================
-     * 1. GET VEHICLES READY FOR AUCTION
-     * ============================================================
-     */
-
     let vehicles: any[] = [];
 
     try {
@@ -30,11 +21,6 @@ class AuctionService {
         },
       );
 
-      // Expected:
-      // {
-      //   success: true,
-      //   data: [...]
-      // }
       vehicles = response.data?.data ?? [];
     } catch (error: any) {
       throw new ApiError(
@@ -49,12 +35,6 @@ class AuctionService {
       throw new ApiError(404, "No vehicles are ready for auction.");
     }
 
-    /*
-     * ============================================================
-     * 2. GET PARTNERS READY FOR AUCTION
-     * ============================================================
-     */
-
     let partners: any[] = [];
 
     try {
@@ -67,11 +47,6 @@ class AuctionService {
         },
       );
 
-      // Expected:
-      // {
-      //   success: true,
-      //   data: [...]
-      // }
       partners = response.data?.data ?? [];
     } catch (error: any) {
       throw new ApiError(
@@ -91,23 +66,22 @@ class AuctionService {
         const latitude = Number(vehicle.pickup?.latitude);
         const longitude = Number(vehicle.pickup?.longitude);
 
-        return Number.isFinite(latitude) && Number.isFinite(longitude);
+        return (
+          Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          vehicle._id &&
+          vehicle.owner
+        );
       })
       .map((vehicle: any) => ({
         vehicleId: String(vehicle._id),
         sellerId: String(vehicle.owner),
-
         model: vehicle.vehicleDetails?.model ?? null,
-
         latitude: Number(vehicle.pickup.latitude),
         longitude: Number(vehicle.pickup.longitude),
-
         state: vehicle.pickup?.state ?? null,
         district: vehicle.pickup?.city ?? null,
-      }))
-      .filter(
-        (vehicle): vehicle is NonNullable<typeof vehicle> => vehicle !== null,
-      );
+      }));
 
     if (auctionVehicles.length === 0) {
       throw new ApiError(400, "No vehicles have valid latitude and longitude.");
@@ -126,7 +100,10 @@ class AuctionService {
         continue;
       }
 
-      const eligibleVehicles: any[] = [];
+      const eligibleVehicles: {
+        vehicleId: string;
+        distanceInKm: number;
+      }[] = [];
 
       for (const vehicle of auctionVehicles) {
         const distance = calculateDistanceInKm(
@@ -147,25 +124,15 @@ class AuctionService {
       if (eligibleVehicles.length > 0) {
         auctionPartners.push({
           partnerId: String(partner._id),
-
           companyName: partner.company?.companyName ?? null,
-
           latitude: partnerLatitude,
           longitude: partnerLongitude,
-
           state: partner.company?.state ?? null,
           district: partner.company?.city ?? null,
-
           vehicleIds: eligibleVehicles,
         });
       }
     }
-
-    /*
-     * ============================================================
-     * 5. CHECK ELIGIBLE PARTNERS
-     * ============================================================
-     */
 
     if (auctionPartners.length === 0) {
       throw new ApiError(
@@ -174,47 +141,31 @@ class AuctionService {
       );
     }
 
-    /*
-     * ============================================================
-     * 6. CREATE ONE AUCTION
-     * ============================================================
-     */
-
     const auction = await auctionRepository.createAuction({
       vehicles: auctionVehicles,
 
       partners: auctionPartners,
 
-      minimumBid: dto.minimumBid,
-
-      reservePrice: dto.reservePrice,
-
-      bidIncrement: dto.bidIncrement,
-
       startTime: dto.startTime,
-
       endTime: dto.endTime,
 
       visibility: dto.visibility,
-
       autoExtend: dto.autoExtend,
 
       status: AuctionStatus.SCHEDULED,
-
-      winnerStatus: WinnerStatus.PENDING,
+      // winnerStatus: WinnerStatus.PENDING,
 
       totalParticipants: auctionPartners.length,
 
       createdBy: adminId,
     });
 
-    /*
-     * ============================================================
-     * 7. RETURN AUCTION
-     * ============================================================
-     */
-
     return auction;
+  }
+
+  async getAuctionData(){
+    const result = await auctionRepository.findActiveAuction()
+    return result;
   }
 }
 

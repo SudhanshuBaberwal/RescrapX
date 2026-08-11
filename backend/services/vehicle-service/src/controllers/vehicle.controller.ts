@@ -139,9 +139,8 @@ export const reviewVehicle = asyncHandler(async (req, res) => {
 
 export const findVehicle = asyncHandler(async (req, res) => {
   const vehicleId = req.query.vehicleId as string;
-  const userId = req.user?.userId as string;
+  // const userId = req.user?.userId as string;
   const vehicle = await vehicleRepository.findVehicleByVehicleId(
-    userId,
     vehicleId,
   );
   return ApiResponse.success(res, 201, "Vehicle Data", vehicle);

@@ -1,4 +1,8 @@
-import Auction, { AuctionStatus, IAuction } from "../models/auction.model.js";
+import Auction, {
+  AuctionStatus,
+  IAuction,
+  WinnerStatus,
+} from "../models/auction.model.js";
 
 class AuctionRepository {
   async createAuction(data: Partial<IAuction>) {
@@ -8,7 +12,10 @@ class AuctionRepository {
   async findActiveAuction() {
     return Auction.findOne({
       status: {
-        $in: [AuctionStatus.DRAFT, AuctionStatus.SCHEDULED, AuctionStatus.LIVE],
+        $in: [
+          AuctionStatus.SCHEDULED,
+          AuctionStatus.LIVE,
+        ],
       },
     });
   }
@@ -21,7 +28,11 @@ class AuctionRepository {
     return Auction.findOne({
       "vehicles.vehicleId": vehicleId,
       status: {
-        $ne: AuctionStatus.CANCELLED,
+        $nin: [
+          AuctionStatus.CANCELLED,
+          AuctionStatus.ENDED,
+          AuctionStatus.COMPLETED,
+        ],
       },
     });
   }
@@ -42,7 +53,107 @@ class AuctionRepository {
     }).sort({ startTime: 1 });
   }
 
-  async updateStatus(auctionId: string, status: AuctionStatus) {
+  async findLiveAuctionsForPartner(partnerId: string) {
+    return Auction.find({
+      status: AuctionStatus.LIVE,
+      "partners.partnerId": partnerId,
+    }).sort({ endTime: 1 });
+  }
+
+  async findAuctionForPartner(
+    auctionId: string,
+    partnerId: string,
+  ) {
+    return Auction.findOne({
+      auctionId,
+      status: AuctionStatus.LIVE,
+      "partners.partnerId": partnerId,
+    });
+  }
+
+  async updateVehicleAuctionRules(
+    auctionId: string,
+    vehicleId: string,
+    minimumBid: number,
+    reservePrice: number,
+    bidIncrement: number,
+  ) {
+    return Auction.findOneAndUpdate(
+      {
+        auctionId,
+        "vehicles.vehicleId": vehicleId,
+      },
+      {
+        $set: {
+          "vehicles.$.minimumBid": minimumBid,
+          "vehicles.$.reservePrice": reservePrice,
+          "vehicles.$.bidIncrement": bidIncrement,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
+
+  async updateVehicleBid(
+    auctionId: string,
+    vehicleId: string,
+    currentHighestBid: number,
+    highestBidder: string,
+  ) {
+    return Auction.findOneAndUpdate(
+      {
+        auctionId,
+        "vehicles.vehicleId": vehicleId,
+      },
+      {
+        $set: {
+          "vehicles.$.currentHighestBid": currentHighestBid,
+          "vehicles.$.highestBidder": highestBidder,
+        },
+        $inc: {
+          "vehicles.$.totalBids": 1,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
+
+  async updateVehicleWinner(
+    auctionId: string,
+    vehicleId: string,
+    winnerBid: number,
+    winnerPartner: string,
+    winnerStatus: WinnerStatus,
+  ) {
+    return Auction.findOneAndUpdate(
+      {
+        auctionId,
+        "vehicles.vehicleId": vehicleId,
+      },
+      {
+        $set: {
+          "vehicles.$.winnerBid": winnerBid,
+          "vehicles.$.winnerPartner": winnerPartner,
+          "vehicles.$.winnerStatus": winnerStatus,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
+
+  async updateStatus(
+    auctionId: string,
+    status: AuctionStatus,
+  ) {
     return Auction.findOneAndUpdate(
       { auctionId },
       {
@@ -55,6 +166,12 @@ class AuctionRepository {
         runValidators: true,
       },
     );
+  }
+
+  async deleteAuction(auctionId: string) {
+    return Auction.findOneAndDelete({
+      auctionId,
+    });
   }
 }
 
