@@ -52,7 +52,7 @@ export const BiddingManagement: React.FC = () => {
   };
 
   // 2. Handle Form Submission with API call & Navigation
-  const handleCreateAuction = async (e: React.FormEvent) => {
+ const handleCreateAuction = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitError(null);
@@ -65,19 +65,26 @@ export const BiddingManagement: React.FC = () => {
         visibility: formData.visibility,
         autoExtend: formData.autoExtend,
       });
-
+      
       console.log('Auction created successfully:', response);
+
+      // Extract the created auction ID (handles response._id, response.id, or response.data.id)
+      const newAuctionId = response?._id || response?.id || response?.data?._id || response?.data?.id;
+
+      if (!newAuctionId) {
+        throw new Error('Auction ID not found in server response.');
+      }
+
       setIsModalOpen(false);
 
-      // Navigate directly to the Auction List / Allocation Page
-      router.push('/auctions');
+      // Navigate directly to the specific auction detail page
+      router.push(`/auctions/${newAuctionId}`);
     } catch (err: any) {
       setSubmitError(err.message || 'Failed to create auction. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const auctionKPIs = [
     { title: 'Live Auctions', value: '28', change: '+4 today', color: 'text-emerald-600 bg-emerald-50' },
     { title: 'Upcoming Auctions', value: '15', change: '+3 today', color: 'text-blue-600 bg-blue-50' },

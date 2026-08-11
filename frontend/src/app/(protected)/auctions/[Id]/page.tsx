@@ -3,14 +3,21 @@
 import { getAuctionData } from '@/hooks/getAuctionData';
 import { getVehicle } from '@/services/vehicle.service';
 import { RootState } from '@/store/store';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { useParams } from 'next/navigation';
+import { approveAuction, approveAuctionStart } from '@/services/auction/auction.service';
+import { useToast } from '@/lib/ui/toast/ToastContext';
+import { configureAuctionVehicle } from '@/services/auction/auctionVehicle.service';
 
 interface FullVehicle {
   _id: string;
   status: string;
+  minimumBid?: number;
+  reservePrice?: number;
+  bidIncrement?: number;
   createdAt?: string;
   updatedAt?: string;
   isRegistered?: boolean;
@@ -86,6 +93,12 @@ interface AuctionData {
   partners: Array<Partner | string>;
 }
 
+interface VehicleConfigInputs {
+  minimumBid: number;
+  reservePrice: number;
+  bidIncrement: number;
+}
+
 const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
 
 const getMediaUrl = (pathObj: any): string | null => {
@@ -125,12 +138,18 @@ const isValidObjectId = (id: string) => /^[0-9a-fA-F]{24}$/.test(id);
 export default function AuctionsPage() {
   getAuctionData();
 
+  const params = useParams();
+  const auctionId = params.Id as string;
+
   const { auctionData } = useSelector((state: RootState) => state.admin) as { auctionData: AuctionData | AuctionData[] | null };
-  console.log(auctionData)
   const [activeTab, setActiveTab] = useState<'auctionDetails' | 'vehicles' | 'partners'>('auctionDetails');
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>([]);
   const [selectedPartnerIds, setSelectedPartnerIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Per-vehicle bidding configuration state
+  const [vehicleConfigs, setVehicleConfigs] = useState<Record<string, VehicleConfigInputs>>({});
+  const [savingVehicleId, setSavingVehicleId] = useState<string | null>(null);
 
   // Sidebar / Drawer states
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -148,11 +167,128 @@ export default function AuctionsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Auction launch countdown & auto-popup triggers
+  const [timeLeft, setTimeLeft] = useState<{ minutes: number; seconds: number; totalSeconds: number } | null>(null);
+  const [hasPromptedApproval, setHasPromptedApproval] = useState(false);
+  const [auctionStatusOverride, setAuctionStatusOverride] = useState<string | null>(null);
+
   const currentAuction: AuctionData | null = Array.isArray(auctionData) ? auctionData[0] || null : auctionData;
+  const activeAuctionStatus = auctionStatusOverride || currentAuction?.status;
+
+  const { showToast } = useToast();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Monitor start time and trigger popup at <= 3 minutes left
+  useEffect(() => {
+    if (!currentAuction?.startTime || activeAuctionStatus === 'LIVE' || activeAuctionStatus === 'APPROVED' || activeAuctionStatus === 'REJECTED') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const start = new Date(currentAuction.startTime).getTime();
+      const difference = start - now;
+
+      if (difference <= 0) {
+        setTimeLeft({ minutes: 0, seconds: 0, totalSeconds: 0 });
+        clearInterval(interval);
+        return;
+      }
+
+      const totalSeconds = Math.floor(difference / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+
+      setTimeLeft({ minutes, seconds, totalSeconds });
+
+      // Automatically open approval modal when 3 minutes (180s) or fewer remain
+      if (totalSeconds <= 180 && !hasPromptedApproval) {
+        setHasPromptedApproval(true);
+        setIsModalOpen(true);
+        showToast("Auction starts in less than 3 minutes! Please approve or reject.", "info");
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentAuction?.startTime, activeAuctionStatus, hasPromptedApproval, showToast]);
+
+  const vehiclesList: FullVehicle[] = React.useMemo(() => {
+    if (!currentAuction || !Array.isArray(currentAuction.vehicles)) return [];
+
+    return currentAuction.vehicles
+      .map((v: any) => {
+        if (typeof v === 'string') {
+          return { _id: v, status: 'READY_FOR_BIDDING' };
+        }
+        if (v && typeof v === 'object') {
+          const extractedId = v._id || v.id || v.vehicleId;
+          return { ...v, _id: extractedId };
+        }
+        return null;
+      })
+      .filter((v): v is FullVehicle => Boolean(v && v._id && isValidObjectId(v._id)));
+  }, [currentAuction]);
+
+  // Sync initial configuration state from vehicles payload
+  useEffect(() => {
+    if (vehiclesList.length > 0) {
+      const initialConfigs: Record<string, VehicleConfigInputs> = {};
+      vehiclesList.forEach((v) => {
+        initialConfigs[v._id] = {
+          minimumBid: v.minimumBid ?? 0,
+          reservePrice: v.reservePrice ?? 0,
+          bidIncrement: v.bidIncrement ?? 500,
+        };
+      });
+      setVehicleConfigs((prev) => ({ ...initialConfigs, ...prev }));
+    }
+  }, [vehiclesList]);
+
+  // Handle configuration input changes
+  const handleConfigChange = (vehicleId: string, field: keyof VehicleConfigInputs, value: string) => {
+    const numericVal = value === '' ? 0 : Number(value);
+    setVehicleConfigs((prev) => ({
+      ...prev,
+      [vehicleId]: {
+        ...(prev[vehicleId] || { minimumBid: 0, reservePrice: 0, bidIncrement: 500 }),
+        [field]: numericVal,
+      },
+    }));
+  };
+
+  // Save vehicle configuration request handler
+  const handleSaveConfiguration = async (vehicleId: string) => {
+    const targetAuctionId = (params.id as string) || currentAuction?._id || currentAuction?.auctionId;
+
+    if (!targetAuctionId) {
+      showToast("Auction ID is missing.", "error");
+      return;
+    }
+
+    const config = vehicleConfigs[vehicleId] || { minimumBid: 0, reservePrice: 0, bidIncrement: 500 };
+
+    setSavingVehicleId(vehicleId);
+    try {
+      const payload = {
+        vehicleId,
+        minimumBid: config.minimumBid,
+        reservePrice: config.reservePrice,
+        bidIncrement: config.bidIncrement,
+      };
+
+      const response = await configureAuctionVehicle(targetAuctionId, payload);
+      console.log('Vehicle configured successfully:', response);
+      showToast("Vehicle configuration saved successfully!", "success");
+    } catch (error: any) {
+      console.error('Failed to configure vehicle:', error);
+      showToast(error?.message || "Failed to save configuration.", "error");
+    } finally {
+      setSavingVehicleId(null);
+    }
+  };
 
   // Resolve Signed URLs whenever drawer vehicle changes
   useEffect(() => {
@@ -230,23 +366,6 @@ export default function AuctionsPage() {
     }
   };
 
-  const vehiclesList: FullVehicle[] = React.useMemo(() => {
-    if (!currentAuction || !Array.isArray(currentAuction.vehicles)) return [];
-
-    return currentAuction.vehicles
-      .map((v: any) => {
-        if (typeof v === 'string') {
-          return { _id: v, status: 'READY_FOR_BIDDING' };
-        }
-        if (v && typeof v === 'object') {
-          const extractedId = v._id || v.id || v.vehicleId;
-          return { ...v, _id: extractedId };
-        }
-        return null;
-      })
-      .filter((v): v is FullVehicle => Boolean(v && v._id && isValidObjectId(v._id)));
-  }, [currentAuction]);
-
   const partnersList: Partner[] = (currentAuction && Array.isArray(currentAuction.partners) && typeof currentAuction.partners[0] === 'object')
     ? (currentAuction.partners as Partner[])
     : [];
@@ -295,30 +414,66 @@ export default function AuctionsPage() {
     setIsModalOpen(true);
   };
 
-  const handleApproveAuction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentAuction) return;
+  // Last-minute Admin Approval Handler
+  const handleApproveAuction = async () => {
+    const targetAuctionId = auctionId || currentAuction?._id || currentAuction?.auctionId;
+
+    if (!targetAuctionId) {
+      setSubmitError('Auction ID is missing.');
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      const response = await fetch(`/api/auction/approve/${currentAuction._id || currentAuction.auctionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'APPROVED',
-          scheduledStartTime: currentAuction.startTime,
-        }),
-      });
+      // Check if within the 3-minute (180s) start approval window
+      const isLastMinuteApproval = timeLeft !== null && timeLeft.totalSeconds <= 180 && timeLeft.totalSeconds > 0;
 
-      if (!response.ok) {
-        throw new Error('Failed to approve auction.');
+      let response;
+      if (isLastMinuteApproval) {
+        // Endpoint: /api/auction/start-approval/approve
+        response = await approveAuctionStart(targetAuctionId);
+        console.log('Last-minute start approval executed:', response);
+      } else {
+        // Endpoint: /api/auction/approve
+        response = await approveAuction(targetAuctionId);
+        console.log('Standard auction approval executed:', response);
       }
 
+      setAuctionStatusOverride('APPROVED');
+      showToast(
+        isLastMinuteApproval
+          ? "Auction Start Approved Successfully!"
+          : "Auction Approved Successfully!",
+        'success'
+      );
       setIsModalOpen(false);
     } catch (err: any) {
-      setSubmitError(err.message || 'Failed to approve auction. Please try again.');
+      console.error('Approval error:', err);
+      setSubmitError(err?.message || 'Failed to approve auction. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectAuction = async () => {
+    const targetAuctionId = auctionId || currentAuction?._id || currentAuction?.auctionId;
+
+    if (!targetAuctionId) {
+      setSubmitError('Auction ID is missing.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      setAuctionStatusOverride('REJECTED');
+      showToast("Auction Rejected. Launch paused.", 'error');
+      setIsModalOpen(false);
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Failed to reject auction.');
     } finally {
       setIsSubmitting(false);
     }
@@ -349,7 +504,6 @@ export default function AuctionsPage() {
     });
   };
 
-  // Process Document List for Drawer
   const rawDocs = (selectedVehicleDetails?.documents || {}) as Record<string, any>;
   const docKeys = [
     { key: 'rcbook', label: 'RC Book' },
@@ -369,6 +523,22 @@ export default function AuctionsPage() {
   return (
     <div className="w-full min-h-screen bg-slate-50 text-slate-800 p-4 md:p-6 space-y-6">
 
+      {/* Countdown Warning Banner when <= 3 minutes left */}
+      {timeLeft && timeLeft.totalSeconds <= 180 && timeLeft.totalSeconds > 0 && activeAuctionStatus !== 'APPROVED' && activeAuctionStatus !== 'REJECTED' && (
+        <div className="bg-amber-500 text-white p-3 rounded-xl shadow-md flex items-center justify-between animate-pulse">
+          <div className="flex items-center gap-2 text-xs md:text-sm font-bold">
+            <span>⏰ ATTENTION:</span>
+            <span>Auction starts in {timeLeft.minutes}m {timeLeft.seconds}s! Action required.</span>
+          </div>
+          <button
+            onClick={handleOpenApproveModal}
+            className="bg-white text-amber-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors shadow-xs"
+          >
+            Review Launch Now
+          </button>
+        </div>
+      )}
+
       {/* Workspace Header */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -386,10 +556,10 @@ export default function AuctionsPage() {
           </div>
           <button
             onClick={handleOpenApproveModal}
-            disabled={!currentAuction || currentAuction.status === 'LIVE'}
+            disabled={!currentAuction || activeAuctionStatus === 'LIVE' || activeAuctionStatus === 'APPROVED'}
             className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold text-xs px-4 py-2.5 rounded-lg transition-colors shadow-xs cursor-pointer disabled:cursor-not-allowed"
           >
-            ✓ Approve Auction
+            {activeAuctionStatus === 'APPROVED' ? '✓ Approved' : '✓ Approve / Decision'}
           </button>
         </div>
       </div>
@@ -400,11 +570,13 @@ export default function AuctionsPage() {
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-1">
             <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Auction Status</div>
             <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${currentAuction.status === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                  currentAuction.status === 'LIVE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                    'bg-slate-100 text-slate-800'
+              <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${activeAuctionStatus === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                  activeAuctionStatus === 'LIVE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    activeAuctionStatus === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' :
+                      activeAuctionStatus === 'REJECTED' ? 'bg-red-100 text-red-800 border border-red-200' :
+                        'bg-slate-100 text-slate-800'
                 }`}>
-                {currentAuction.status}
+                {activeAuctionStatus}
               </span>
               <span className="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
                 {currentAuction.type}
@@ -511,7 +683,7 @@ export default function AuctionsPage() {
         </div>
       )}
 
-      {/* VEHICLES TAB TABLE */}
+      {/* VEHICLES TAB TABLE WITH CONFIGURATION INPUTS */}
       {activeTab === 'vehicles' && (
         <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
@@ -519,17 +691,19 @@ export default function AuctionsPage() {
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase text-[10px] font-semibold tracking-wider">
                   <th className="p-3.5 text-center w-10">Select</th>
-                  <th className="p-3.5">Vehicle ID / Model</th>
+                  <th className="p-3.5 min-w-[160px]">Vehicle ID / Model</th>
                   <th className="p-3.5">Registration</th>
-                  <th className="p-3.5">Location</th>
+                  <th className="p-3.5">Min Bid (₹)</th>
+                  <th className="p-3.5">Reserve Price (₹)</th>
+                  <th className="p-3.5">Bid Increment (₹)</th>
                   <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Action</th>
+                  <th className="p-3.5 text-right min-w-[180px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredVehicles.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-slate-400">
+                    <td colSpan={8} className="p-6 text-center text-slate-400">
                       No valid vehicles found for this auction.
                     </td>
                   </tr>
@@ -538,9 +712,16 @@ export default function AuctionsPage() {
                     const id = vehicle._id;
                     const isSelected = selectedVehicleIds.includes(id);
                     const details = vehicle.vehicleDetails || {};
-                    const pickup = vehicle.pickup || {};
 
                     const vehicleTitle = [details.manufacturer, details.model].filter(Boolean).join(' ') || `Vehicle (${id.slice(0, 8)}...)`;
+
+                    const currentConfig = vehicleConfigs[id] || {
+                      minimumBid: vehicle.minimumBid ?? 0,
+                      reservePrice: vehicle.reservePrice ?? 0,
+                      bidIncrement: vehicle.bidIncrement ?? 500,
+                    };
+
+                    const isSaving = savingVehicleId === id;
 
                     return (
                       <tr key={id} className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-emerald-50/30' : ''}`}>
@@ -559,23 +740,68 @@ export default function AuctionsPage() {
                         <td className="p-3.5 font-mono font-semibold text-slate-700">
                           {details.registrationNumber || 'N/A'}
                         </td>
-                        <td className="p-3.5 text-slate-600">
-                          {[pickup.area, pickup.city, pickup.state].filter(Boolean).join(', ') || 'N/A'}
+
+                        {/* Minimum Bid Input */}
+                        <td className="p-3.5">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={currentConfig.minimumBid || ''}
+                            onChange={(e) => handleConfigChange(id, 'minimumBid', e.target.value)}
+                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs font-medium focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                          />
                         </td>
+
+                        {/* Reserve Price Input */}
+                        <td className="p-3.5">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={currentConfig.reservePrice || ''}
+                            onChange={(e) => handleConfigChange(id, 'reservePrice', e.target.value)}
+                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs font-medium focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                          />
+                        </td>
+
+                        {/* Bid Increment Input */}
+                        <td className="p-3.5">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="500"
+                            value={currentConfig.bidIncrement || ''}
+                            onChange={(e) => handleConfigChange(id, 'bidIncrement', e.target.value)}
+                            className="w-24 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs font-medium focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                          />
+                        </td>
+
                         <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${vehicle.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
                             }`}>
                             {vehicle.status || 'READY_FOR_BIDDING'}
                           </span>
                         </td>
+
+                        {/* Action Buttons */}
                         <td className="p-3.5 text-right">
-                          <button
-                            disabled={loadingVehicleId === id}
-                            onClick={() => handleViewVehicleDetails(id)}
-                            className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer"
-                          >
-                            {loadingVehicleId === id ? 'Loading...' : '👁 View'}
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              disabled={isSaving}
+                              onClick={() => handleSaveConfiguration(id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-semibold px-2.5 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer shadow-2xs"
+                            >
+                              {isSaving ? 'Saving...' : '💾 Save Config'}
+                            </button>
+                            <button
+                              disabled={loadingVehicleId === id}
+                              onClick={() => handleViewVehicleDetails(id)}
+                              className="bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 text-slate-700 font-semibold px-2.5 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer"
+                            >
+                              {loadingVehicleId === id ? '...' : '👁 View'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -841,7 +1067,7 @@ export default function AuctionsPage() {
         document.body
       )}
 
-      {/* APPROVE AUCTION MODAL PORTAL */}
+      {/* APPROVE / REJECT AUCTION MODAL PORTAL */}
       {isMounted && isModalOpen && createPortal(
         <div
           onClick={() => setIsModalOpen(false)}
@@ -852,7 +1078,7 @@ export default function AuctionsPage() {
             className="bg-white rounded-xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden cursor-default"
           >
             <div className="flex items-center justify-between p-4 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">Approve Auction Schedule</h3>
+              <h3 className="text-sm font-bold text-slate-900">Admin Approval Decision</h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -862,15 +1088,24 @@ export default function AuctionsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleApproveAuction} className="p-4 space-y-4 text-xs">
+            <div className="p-4 space-y-4 text-xs">
               {submitError && (
                 <div className="p-2.5 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-medium">
                   {submitError}
                 </div>
               )}
 
+              {timeLeft && timeLeft.totalSeconds <= 180 && (
+                <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center justify-between font-semibold text-amber-800">
+                  <span>⏱️ Time Remaining:</span>
+                  <span className="font-mono font-extrabold text-sm text-amber-900">
+                    {timeLeft.minutes}m {timeLeft.seconds}s
+                  </span>
+                </div>
+              )}
+
               <p className="text-slate-600 leading-relaxed">
-                Are you sure you want to approve this auction? It will automatically go LIVE at the designated start time.
+                Please confirm if you want to approve this auction to start automatically at the scheduled launch time.
               </p>
 
               {currentAuction && (
@@ -894,20 +1129,21 @@ export default function AuctionsPage() {
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                  onClick={handleRejectAuction}
+                  className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg font-semibold hover:bg-red-100 transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  Cancel
+                  {isSubmitting ? 'Processing...' : 'Reject Auction'}
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   disabled={isSubmitting}
+                  onClick={handleApproveAuction}
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmitting ? 'Approving...' : 'Confirm Approval'}
+                  {isSubmitting ? 'Approving...' : 'Approve Auction'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>,
         document.body

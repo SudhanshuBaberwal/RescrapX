@@ -4,6 +4,8 @@ import { v4 as uuid } from "uuid";
 export enum AuctionStatus {
   DRAFT = "DRAFT",
   SCHEDULED = "SCHEDULED",
+  APPROVAL_PENDING = "APPROVAL_PENDING",
+  START_APPROVED = "START_APPROVED",
   LIVE = "LIVE",
   ENDED = "ENDED",
   COMPLETED = "COMPLETED",
@@ -86,7 +88,10 @@ export interface IAuction extends Document {
 
   startTime: Date;
   endTime: Date;
-
+  startApprovalPending: boolean;
+  startApprovalRequestedAt?: Date;
+  startApprovedAt?: Date;
+  startApprovedBy?: string;
   autoExtend: boolean;
   autoExtendDuration: number;
   extensionCount: number;
@@ -349,6 +354,27 @@ const auctionSchema = new Schema(
       default: "PUBLIC",
     },
 
+    startApprovalPending: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    startApprovalRequestedAt: {
+      type: Date,
+      default: null,
+    },
+
+    startApprovedAt: {
+      type: Date,
+      default: null,
+    },
+
+    startApprovedBy: {
+      type: String,
+      default: null,
+    },
+
     cancellationReason: {
       type: String,
       default: null,
@@ -379,30 +405,6 @@ const auctionSchema = new Schema(
     versionKey: false,
   },
 );
-
-auctionSchema.index({
-  startTime: 1,
-});
-
-auctionSchema.index({
-  endTime: 1,
-});
-
-auctionSchema.index({
-  "vehicles.vehicleId": 1,
-});
-
-auctionSchema.index({
-  "vehicles.sellerId": 1,
-});
-
-auctionSchema.index({
-  "partners.partnerId": 1,
-});
-
-auctionSchema.index({
-  "partners.vehicleIds.vehicleId": 1,
-});
 
 auctionSchema.index({
   status: 1,

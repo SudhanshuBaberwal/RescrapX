@@ -85,8 +85,13 @@ interface FormattedAuctionItem {
   distance: string;
   weight: string;
   scrapValue: string;
+  minimumBid: string;
+  reservePrice: string;
+  bidIncrement: string;
   timeLeft: string;
   status: string;
+  auctionType: string;
+  rawStatus: string;
   timerColor: string;
   highestBid: string;
   bidsCount: string;
@@ -95,6 +100,8 @@ interface FormattedAuctionItem {
   photoUrl?: string;
   totalPhotosCount: number;
   endTimeIso: string;
+  startTimeIso: string;
+  formattedStartTime: string;
 }
 
 interface LiveAuctionsDashboardProps {
@@ -112,7 +119,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
   const [selectedFuel, setSelectedFuel] = useState('All');
   const [now, setNow] = useState(Date.now());
 
-  // Drawer / Sidebar states
+  // Drawer states
   const [isMounted, setIsMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedVehicleDetails, setSelectedVehicleDetails] = useState<FullVehicle | null>(null);
@@ -120,7 +127,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
   const [isFetchingVehicle, setIsFetchingVehicle] = useState(false);
   const [fetchVehicleError, setFetchVehicleError] = useState<string | null>(null);
 
-  // Resolved media state for drawer photos
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
@@ -141,7 +147,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     return () => clearInterval(timer);
   }, []);
 
-  // Signed URL resolution for drawer photos
   useEffect(() => {
     if (!selectedVehicleDetails) {
       setResolvedPhotos([]);
@@ -265,8 +270,30 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
             photosArray = Object.values(rawPhotos).map(getMediaUrl).filter(Boolean) as string[];
           }
 
-          const endTime = new Date(auction.endTime || Date.now()).getTime();
-          const diffMs = Math.max(0, endTime - now);
+          const auctionType = auction.type || 'LIVE';
+          const auctionStatus = auction.status || 'DRAFT';
+
+          const startDate = auction.startTime ? new Date(auction.startTime) : new Date();
+          const endDate = auction.endTime ? new Date(auction.endTime) : new Date();
+
+          const startTimeMs = startDate.getTime();
+          const endTimeMs = endDate.getTime();
+
+          const formattedStartTime = startDate.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          let diffMs = 0;
+          let statusLabel = auctionStatus;
+
+          if (auctionType === 'LIVE' && auctionStatus === 'DRAFT') {
+            diffMs = Math.max(0, startTimeMs - now);
+            statusLabel = 'Starts At';
+          } else {
+            diffMs = Math.max(0, endTimeMs - now);
+          }
+
           const hours = Math.floor(diffMs / (1000 * 60 * 60)).toString().padStart(2, '0');
           const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
           const secs = Math.floor((diffMs % (1000 * 60)) / 1000).toString().padStart(2, '0');
@@ -277,7 +304,12 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           else if (diffMs < 30 * 60 * 1000) timerColor = 'text-amber-500 border-amber-500';
 
           const title = [details.manufacturer || details.make, details.model, details.manufacturingYear].filter(Boolean).join(' ') || `Vehicle #${vId.slice(-6)}`;
-          const locationStr = [pickup.city, pickup.state].filter(Boolean).join(', ') || 'N/A';
+          const locationStr = [vehicleObj.district || pickup.city, vehicleObj.state || pickup.state].filter(Boolean).join(', ') || 'N/A';
+
+          // Extract and format bid values from vehicle object
+          const minBidVal = vehicleObj.minimumBid;
+          const reserveVal = vehicleObj.reservePrice;
+          const incrementVal = vehicleObj.bidIncrement;
 
           formattedList.push({
             id: vId,
@@ -290,16 +322,23 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
             distance: pickup.area ? `${pickup.area}` : 'Local',
             weight: details.chassisNumber ? 'Standard' : 'N/A',
             scrapValue: vehicleObj.estimatedScrapValue ? `₹${vehicleObj.estimatedScrapValue.toLocaleString('en-IN')}` : '₹30,000 – ₹40,000',
+            minimumBid: minBidVal != null ? `₹${Number(minBidVal).toLocaleString('en-IN')}` : 'N/A',
+            reservePrice: reserveVal != null ? `₹${Number(reserveVal).toLocaleString('en-IN')}` : 'N/A',
+            bidIncrement: incrementVal != null ? `₹${Number(incrementVal).toLocaleString('en-IN')}` : 'N/A',
             timeLeft: timeLeftStr,
-            status: auction.status || 'Active',
+            status: statusLabel,
+            auctionType,
+            rawStatus: auctionStatus,
             timerColor,
-            highestBid: vehicleObj.highestBid ? `₹${vehicleObj.highestBid.toLocaleString('en-IN')}` : '₹0',
-            bidsCount: `${vehicleObj.bidsCount || auction.totalBids || 0} bids`,
+            highestBid: vehicleObj.currentHighestBid ? `₹${vehicleObj.currentHighestBid.toLocaleString('en-IN')}` : '₹0',
+            bidsCount: `${vehicleObj.totalBids || auction.totalBids || 0} bids`,
             yourBid: vehicleObj.yourBid ? `₹${vehicleObj.yourBid.toLocaleString('en-IN')}` : '-',
             yourBidStatus: vehicleObj.yourBid ? 'Your bid' : undefined,
             photoUrl: photosArray[0],
             totalPhotosCount: photosArray.length,
             endTimeIso: auction.endTime,
+            startTimeIso: auction.startTime,
+            formattedStartTime,
           });
         }
       });
@@ -451,14 +490,14 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           <>
             {/* DESKTOP TABLE SHEET */}
             <div className="hidden xl:block overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[1000px]">
+              <table className="w-full text-left border-collapse min-w-[1200px]">
                 <thead>
                   <tr className="bg-gray-50/70 border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
                     <th className="py-3 px-4 font-black">Vehicle Details</th>
-                    <th className="py-3 px-2 font-black">Vehicle Info</th>
                     <th className="py-3 px-2 font-black">Location / Area</th>
-                    <th className="py-3 px-2 font-black">Chassis</th>
-                    <th className="py-3 px-2 font-black">Est. Scrap Value</th>
+                    <th className="py-3 px-2 font-black text-right">Min Bid</th>
+                    <th className="py-3 px-2 font-black text-right">Reserve Price</th>
+                    <th className="py-3 px-2 font-black text-right">Increment</th>
                     <th className="py-3 px-2 font-black text-center">Time Left</th>
                     <th className="py-3 px-2 font-black text-right">Highest Bid</th>
                     <th className="py-3 px-2 font-black text-right">Your Bid</th>
@@ -500,14 +539,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                           </div>
                         </div>
                       </td>
-
-                      <td className="py-4 px-2 text-gray-600">
-                        <div className="space-y-1">
-                          <p className="flex items-center gap-1"><Calendar size={12} className="text-gray-400" /> <span>{item.year}</span></p>
-                          <p className="flex items-center gap-1"><Fuel size={12} className="text-gray-400" /> <span>{item.fuel}</span></p>
-                        </div>
-                      </td>
-
                       <td className="py-4 px-2">
                         <div className="space-y-0.5">
                           <p className="flex items-center gap-1 font-bold text-gray-800"><MapPin size={12} className="text-gray-400" /> <span>{item.location}</span></p>
@@ -515,12 +546,12 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                         </div>
                       </td>
 
-                      <td className="py-4 px-2 font-mono text-gray-600 font-bold">
-                        <div className="flex items-center gap-1"><Scale size={12} className="text-gray-400" /> <span>{item.weight}</span></div>
-                      </td>
+                      {/* BIDDING PARAMETERS COLUMNS */}
+                      <td className="py-4 px-2 text-right font-black text-gray-800">{item.minimumBid}</td>
+                      <td className="py-4 px-2 text-right font-black text-gray-800">{item.reservePrice}</td>
+                      <td className="py-4 px-2 text-right font-bold text-gray-600">+{item.bidIncrement}</td>
 
-                      <td className="py-4 px-2 font-black text-gray-900">{item.scrapValue}</td>
-
+                      {/* TIME LEFT & STATUS */}
                       <td className="py-4 px-2 text-center">
                         <div className="inline-flex flex-col items-center">
                           <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
@@ -528,6 +559,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                             <span>{item.timeLeft}</span>
                           </div>
                           <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider mt-0.5">{item.status}</span>
+                          <span className="text-[9px] font-bold text-gray-500 mt-0.5">{item.formattedStartTime}</span>
                         </div>
                       </td>
 
@@ -549,9 +581,15 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
                       <td className="py-4 px-4 text-center">
                         <div className="flex flex-col items-center gap-1.5">
-                          <button className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer">
-                            Place Bid
-                          </button>
+                          {item.auctionType === 'LIVE' && item.rawStatus === 'DRAFT' ? (
+                            <div className="w-full py-2 px-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-[11px] text-center">
+                              Auction Starts Soon
+                            </div>
+                          ) : (
+                            <button className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer">
+                              Place Bid
+                            </button>
+                          )}
                           <button
                             type="button"
                             disabled={loadingVehicleId === item.id}
@@ -615,6 +653,22 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     </div>
                   </div>
 
+                  {/* MOBILE BID PARAMETERS BADGE */}
+                  <div className="grid grid-cols-3 gap-2 bg-gray-50/80 border border-gray-200/60 p-2 rounded-xl text-center">
+                    <div>
+                      <span className="text-[9px] text-gray-400 font-bold block">Min Bid</span>
+                      <span className="font-black text-gray-800 text-[11px]">{item.minimumBid}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-gray-400 font-bold block">Reserve Price</span>
+                      <span className="font-black text-gray-800 text-[11px]">{item.reservePrice}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-gray-400 font-bold block">Increment</span>
+                      <span className="font-bold text-gray-600 text-[11px]">+{item.bidIncrement}</span>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between text-left border-b border-gray-50 pb-2">
                     <div>
                       <span className="text-[10px] text-gray-400 font-bold block">Est. Scrap Value</span>
@@ -628,9 +682,12 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                   </div>
 
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
-                      <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
-                      <span>{item.timeLeft}</span>
+                    <div className="flex flex-col items-start">
+                      <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
+                        <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
+                        <span>{item.timeLeft}</span>
+                      </div>
+                      <span className="text-[9px] font-bold text-gray-400 mt-0.5">{item.status} ({item.formattedStartTime})</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -642,9 +699,16 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                       >
                         {loadingVehicleId === item.id ? 'Loading...' : 'View Details'}
                       </button>
-                      <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer">
-                        Place Bid
-                      </button>
+
+                      {item.auctionType === 'LIVE' && item.rawStatus === 'DRAFT' ? (
+                        <span className="bg-amber-50 border border-amber-200 text-amber-800 font-bold px-3 py-2 rounded-xl text-[11px]">
+                          Auction Starts Soon
+                        </span>
+                      ) : (
+                        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer">
+                          Place Bid
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

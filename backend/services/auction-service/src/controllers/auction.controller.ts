@@ -2,7 +2,10 @@ import ApiError from "../lib/ApiError.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import asyncHandler from "../lib/asyncHandler.js";
 import auctionService from "../service/auction.service.js";
-import { createAuctionSchema } from "../validations/auction.validation.js";
+import {
+  configureAuctionVehicleSchema,
+  createAuctionSchema,
+} from "../validations/auction.validation.js";
 // auction.controller.ts
 export const createAuction = asyncHandler(async (req, res) => {
   const validation = createAuctionSchema.safeParse(req.body);
@@ -54,4 +57,97 @@ export const getAuctionDataForPartner = asyncHandler(async (req, res) => {
     "Partner auction data fetched successfully",
     auction,
   );
+});
+
+export const approveAuction = asyncHandler(async (req, res) => {
+  const auctionId = req.query.auctionId as string;
+  const adminId = req.headers["x-user-id"] as string;
+  if (!adminId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+  if (!auctionId) {
+    return res.status(400).json({
+      success: false,
+      message: "Auction ID is required.",
+    });
+  }
+  const auction = await auctionService.approveAuction(auctionId, adminId);
+  return res.status(200).json({
+    success: true,
+    message: "Auction approved successfully.",
+    data: auction,
+  });
+});
+
+export const condifureAuctionVehicle = asyncHandler(async (req, res) => {
+  const auctionId = req.query.auctionId as string;
+  if (!auctionId) {
+    throw new ApiError(400, "Auction Id Not Found");
+  }
+  const data = configureAuctionVehicleSchema.parse(req.body);
+  const adminId = req.headers["x-user-id"] as string;
+  const auction = await auctionService.configureAuctionVehicle(
+    auctionId,
+    data,
+    adminId,
+  );
+  return ApiResponse.success(
+    res,
+    201,
+    "Auction vehicle configured successfully.",
+    auction,
+  );
+});
+
+export const getPendingApprovalAuctions = asyncHandler(async (req, res) => {
+  const auctions = await auctionService.getPendingApprovalAuctions();
+
+  return ApiResponse.success(res, 201, "update status", auctions);
+});
+
+export const checkStartApproval = asyncHandler(async (req, res) => {
+  const count = await auctionService.checkAuctionsForStartApproval();
+
+  return res.status(200).json({
+    success: true,
+    message: "Start approval check completed.",
+    count,
+  });
+});
+
+export const getPendingStartApproval = asyncHandler(async (req, res) => {
+  const auctions = await auctionService.getPendingApprovalAuctions();
+
+  return ApiResponse.success(res, 201, "", auctions);
+});
+
+export const approveAuctionStart = asyncHandler(async (req, res) => {
+  const auctionId = req.query.auctionId as string;
+
+  const adminId = req.headers["x-user-id"] as string;
+
+  if (!adminId) {
+    throw new ApiError(401, "Unauthorized.");
+  }
+
+  const auction = await auctionService.approveAuctionStart(auctionId, adminId);
+
+  return ApiResponse.success(res, 201, "Auction Start Successfully");
+});
+
+export const rejectAuctionStart = asyncHandler(async (req, res) => {
+  const auctionId = req.query.auctionId as string;
+
+  const adminId = req.headers["x-user-id"] as string;
+
+  if (!adminId) {
+    throw new ApiError(401, "Unauthorized.");
+  }
+
+  const auction = await auctionService.rejectAuctionStart(auctionId, adminId);
+
+  return ApiResponse.success(res, 201, "Auction Start Rejected", auction);
 });
