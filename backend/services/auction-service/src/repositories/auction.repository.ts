@@ -437,35 +437,45 @@ class AuctionRepository {
       },
     );
   }
-  async updateVehicleBid(
+   async updateVehicleBid(
     auctionId: string,
     vehicleId: string,
-    currentHighestBid: number,
-    highestBidder: string,
+    newVehiclePrice: number,
+    partnerId: string,
   ) {
-    return Auction.findOneAndUpdate(
+    console.log("========== UPDATE VEHICLE BID ==========");
+    console.log("auctionId:", auctionId);
+    console.log("vehicleId:", vehicleId);
+    console.log("newVehiclePrice:", newVehiclePrice);
+    console.log("partnerId:", partnerId);
+
+    const updatedAuction = await Auction.findOneAndUpdate(
       {
         _id: auctionId,
         "vehicles.vehicleId": vehicleId,
       },
-
       {
         $set: {
-          "vehicles.$.currentHighestBid": currentHighestBid,
-
-          "vehicles.$.highestBidder": highestBidder,
+          "vehicles.$.currentHighestBid": newVehiclePrice,
+          "vehicles.$.highestBidder": partnerId,
         },
 
         $inc: {
           "vehicles.$.totalBids": 1,
         },
       },
-
       {
-        returnDocument: "after",
+        new: true,
         runValidators: true,
       },
     );
+
+    console.log(
+      "Updated Auction:",
+      updatedAuction ? "FOUND" : "NOT FOUND",
+    );
+
+    return updatedAuction;
   }
   async updateVehicleWinner(
     auctionId: string,

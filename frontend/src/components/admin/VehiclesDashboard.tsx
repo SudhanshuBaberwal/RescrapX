@@ -8,7 +8,16 @@ import axios from 'axios';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-export type VehicleStatus = "VERIFIED" | "REJECTED";
+export enum VehicleStatus {
+  DRAFT = "DRAFT",
+  SUBMITTED = "SUBMITTED",
+  UNDER_VERIFICATION = "UNDER_VERIFICATION",
+  VERIFIED = "VERIFIED",
+  REJECTED = "REJECTED",
+  READY_FOR_BIDDING = "READY_FOR_BIDDING",
+  SOLD = "SOLD",
+  CANCELLED = "CANCELLED",
+}
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'N/A';
@@ -131,9 +140,8 @@ const VehicleThumbnailButton: React.FC<{
     <button
       type="button"
       onClick={onClick}
-      className={`aspect-video rounded overflow-hidden border relative cursor-pointer bg-slate-100 flex items-center justify-center ${
-        isActive ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-400'
-      }`}
+      className={`aspect-video rounded overflow-hidden border relative cursor-pointer bg-slate-100 flex items-center justify-center ${isActive ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-slate-200 hover:border-slate-400'
+        }`}
     >
       {loading ? (
         <span className="text-[9px] text-slate-400">...</span>
@@ -148,28 +156,24 @@ const VehicleThumbnailButton: React.FC<{
 
 const getStatusStyle = (status?: string) => {
   switch (status?.toUpperCase()) {
-    case 'AUCTION_LIVE':
-    case 'AUCTION LIVE':
-      return { label: 'Auction Live', color: 'bg-purple-50 text-purple-700 border-purple-200' };
-    case 'OFFER_ACCEPTED':
-    case 'OFFER ACCEPTED':
-      return { label: 'Offer Accepted', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-    case 'PICKUP_SCHEDULED':
-    case 'PICKUP SCHEDULED':
-      return { label: 'Pickup Scheduled', color: 'bg-blue-50 text-blue-700 border-blue-200' };
-    case 'IN_TRANSIT':
-    case 'IN TRANSIT':
-      return { label: 'In Transit', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
-    case 'VERIFIED':
-    case 'APPROVED':
-    case 'COMPLETED':
-      return { label: 'VERIFIED', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    case 'REJECTED':
+    case VehicleStatus.DRAFT:
+      return { label: 'Draft', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+    case VehicleStatus.SUBMITTED:
+      return { label: 'Submitted', color: 'bg-sky-50 text-sky-700 border-sky-200' };
+    case VehicleStatus.UNDER_VERIFICATION:
+      return { label: 'Under Verification', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+    case VehicleStatus.VERIFIED:
+      return { label: 'Verified', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    case VehicleStatus.REJECTED:
       return { label: 'Rejected', color: 'bg-rose-50 text-rose-700 border-rose-200' };
-    case 'DRAFT':
-    case 'PENDING':
+    case VehicleStatus.READY_FOR_BIDDING:
+      return { label: 'Ready for Bidding', color: 'bg-purple-50 text-purple-700 border-purple-200' };
+    case VehicleStatus.SOLD:
+      return { label: 'Sold', color: 'bg-blue-50 text-blue-700 border-blue-200' };
+    case VehicleStatus.CANCELLED:
+      return { label: 'Cancelled', color: 'bg-gray-100 text-gray-500 border-gray-200' };
     default:
-      return { label: 'Draft / Pending', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+      return { label: status || 'Unknown', color: 'bg-slate-100 text-slate-700 border-slate-200' };
   }
 };
 
@@ -177,13 +181,13 @@ export default function VehiclesDashboard() {
   getAllVehiclesForAdmin();
 
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle) || { allVehiclesData: [] };
-  
+
   const [vehiclesList, setVehiclesList] = useState<any[]>([]);
 
   useEffect(() => {
     if (allVehiclesData?.length) {
       const registeredAndNotRejected = allVehiclesData.filter(
-        (item: IVehicle) => item.isRegistered === true && item.status?.toUpperCase() !== 'REJECTED'
+        (item: IVehicle) => item.isRegistered === true && item.status?.toUpperCase() !== VehicleStatus.REJECTED
       );
       setVehiclesList(registeredAndNotRejected);
     }
@@ -202,7 +206,7 @@ export default function VehiclesDashboard() {
   const [stateFilter, setStateFilter] = useState('ALL');
 
   useEffect(() => {
-    if (vehiclesList.length > 0 && (!selectedVehicle || selectedVehicle.status?.toUpperCase() === 'REJECTED')) {
+    if (vehiclesList.length > 0 && (!selectedVehicle || selectedVehicle.status?.toUpperCase() === VehicleStatus.REJECTED)) {
       setSelectedVehicle(vehiclesList[0]);
     } else if (vehiclesList.length === 0) {
       setSelectedVehicle(null);
@@ -228,9 +232,7 @@ export default function VehiclesDashboard() {
         item._id?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'VERIFIED' && (item.status === 'VERIFIED' || item.status === 'APPROVED')) ||
-        (statusFilter === 'PENDING' && (item.status === 'PENDING' || item.status === 'DRAFT' || !item.status));
+        statusFilter === 'ALL' || item.status?.toUpperCase() === statusFilter.toUpperCase();
 
       const matchesFuel = fuelTypeFilter === 'ALL' || details.fuelType?.toUpperCase() === fuelTypeFilter.toUpperCase();
       const matchesState = stateFilter === 'ALL' || pickup.state?.toUpperCase() === stateFilter.toUpperCase();
@@ -311,18 +313,18 @@ export default function VehiclesDashboard() {
   const activeVehicleDetails = selectedVehicle?.vehicleDetails || {};
   const activeStatus = getStatusStyle(selectedVehicle?.status);
 
-  const isVehicleVerified = selectedVehicle?.status?.toUpperCase() === 'VERIFIED' || selectedVehicle?.status?.toUpperCase() === 'APPROVED';
+  const isVehicleVerified = selectedVehicle?.status?.toUpperCase() === VehicleStatus.VERIFIED || VehicleStatus.READY_FOR_BIDDING;
 
   // Approve Handler
   const handleApprove = async () => {
     if (!selectedVehicle?._id) return;
     try {
       setIsUpdatingStatus(true);
-      await updateVehicleStatus(selectedVehicle._id, 'VERIFIED');
+      await updateVehicleStatus(selectedVehicle._id, VehicleStatus.VERIFIED);
       setVehiclesList((prev) =>
-        prev.map((v) => (v._id === selectedVehicle._id ? { ...v, status: 'VERIFIED' } : v))
+        prev.map((v) => (v._id === selectedVehicle._id ? { ...v, status: VehicleStatus.VERIFIED } : v))
       );
-      setSelectedVehicle((prev: any) => (prev ? { ...prev, status: 'VERIFIED' } : null));
+      setSelectedVehicle((prev: any) => (prev ? { ...prev, status: VehicleStatus.VERIFIED } : null));
     } catch (error) {
       console.error('Error approving vehicle:', error);
     } finally {
@@ -338,7 +340,7 @@ export default function VehiclesDashboard() {
 
     try {
       setIsUpdatingStatus(true);
-      await updateVehicleStatus(selectedVehicle._id, 'REJECTED', reason);
+      await updateVehicleStatus(selectedVehicle._id, VehicleStatus.REJECTED, reason);
       setVehiclesList((prev) => {
         const updated = prev.filter((v) => v._id !== selectedVehicle._id);
         if (updated.length > 0) {
@@ -456,8 +458,11 @@ export default function VehiclesDashboard() {
                     className="bg-white border border-slate-200 rounded-lg p-2 text-slate-600 outline-none"
                   >
                     <option value="ALL">All Status</option>
-                    <option value="VERIFIED">Verified</option>
-                    <option value="PENDING">Draft / Pending</option>
+                    {Object.values(VehicleStatus).map((status) => (
+                      <option key={status} value={status}>
+                        {getStatusStyle(status).label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">

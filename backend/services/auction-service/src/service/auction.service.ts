@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import ApiError from "../lib/ApiError.js";
-
+import { emitBidUpdated } from "../socket/auction.event.js";
 import { AuctionStatus } from "../models/auction.model.js";
 
 import {
@@ -474,105 +474,145 @@ class AuctionService {
 
     return count;
   }
-
-  async placeBid(dto: PlaceBidDto, partnerId: string) {
-    const { auctionId, vehicleId, bidAmount } = dto;
+  async placeBid(
+    auctionId: string,
+    vehicleId: string,
+    partnerId: string,
+    bidAmount: number,
+  ) {
+    // ============================================================
+    // 1. FIND AUCTION
+    // ============================================================
 
     const auction = await auctionRepository.findByAuctionId(auctionId);
+
+    console.log("========== PLACE BID ==========");
+    console.log("auctionId:", auctionId);
+    console.log("vehicleId:", vehicleId);
+    console.log("partnerId:", partnerId);
+    console.log("partner bid:", bidAmount);
+    console.log("Auction found:", auction ? "YES" : "NO");
 
     if (!auction) {
       throw new ApiError(404, "Auction not found.");
     }
 
+    // ============================================================
+    // 2. AUCTION MUST BE LIVE
+    // ============================================================
+
     if (auction.status !== AuctionStatus.LIVE) {
-      throw new ApiError(400, "Bidding is allowed only when auction is LIVE.");
+      throw new ApiError(400, "Auction is not live.");
     }
-    const now = new Date();
 
-    if (now >= auction.endTime) {
-      throw new ApiError(400, "Auction has already ended.");
-    }
-    const partner = auction.partners.find(
-      (partner) => partner.partnerId === partnerId,
-    );
+    // ============================================================
+    // 3. FIND VEHICLE
+    // ============================================================
 
-    if (!partner) {
-      throw new ApiError(403, "You are not a participant in this auction.");
-    }
-    const partnerVehicle = partner.vehicleIds.find(
-      (vehicle) => vehicle.vehicleId === vehicleId,
-    );
-
-    if (!partnerVehicle) {
-      throw new ApiError(403, "This vehicle is not assigned to your account.");
-    }
     const vehicle = auction.vehicles.find(
-      (vehicle) => vehicle.vehicleId === vehicleId,
+      (item) => item.vehicleId === vehicleId,
     );
+
+    console.log("Vehicle found:", vehicle ? "YES" : "NO");
 
     if (!vehicle) {
-      throw new ApiError(404, "Vehicle not found in this auction.");
+      throw new ApiError(404, "Vehicle does not belong to this auction.");
     }
-    if (vehicle.minimumBid == null) {
-      throw new ApiError(
-        400,
-        "Minimum bid has not been configured for this vehicle.",
-      );
-    }
+
+    // ============================================================
+    // 4. VALIDATE BID INCREMENT
+    // ============================================================
+
     if (vehicle.bidIncrement == null || vehicle.bidIncrement <= 0) {
-      throw new ApiError(
-        400,
-        "Bid increment has not been configured correctly.",
-      );
+      throw new ApiError(400, "Bid increment is not configured.");
     }
 
-    if (bidAmount < vehicle.minimumBid) {
-      throw new ApiError(400, `Bid must be at least ₹${vehicle.minimumBid}.`);
-    }
-    const currentHighestBid = vehicle.currentHighestBid ?? 0;
+    // ============================================================
+    // 5. BID MUST BE >= ADMIN INCREMENT
+    // ============================================================
 
-    let minimumNextBid: number;
-
-    if (currentHighestBid <= 0) {
-      minimumNextBid = vehicle.minimumBid;
-    } else {
-      minimumNextBid = currentHighestBid + vehicle.bidIncrement;
+    if (bidAmount < vehicle.bidIncrement) {
+      throw new ApiError(400, `Bid must be at least ₹${vehicle.bidIncrement}.`);
     }
 
-    if (bidAmount < minimumNextBid) {
-      throw new ApiError(400, `Your bid must be at least ₹${minimumNextBid}.`);
-    }
+    // ============================================================
+    // 6. GET CURRENT VEHICLE PRICE
+    // ============================================================
 
-    if (vehicle.highestBidder === partnerId) {
-      throw new ApiError(400, "You are already the highest bidder.");
-    }
+    const currentVehiclePrice =
+      vehicle.currentHighestBid && vehicle.currentHighestBid > 0
+        ? vehicle.currentHighestBid
+        : (vehicle.minimumBid ?? 0);
 
-    const updatedAuction = await auctionRepository.placeBid(
+    // ============================================================
+    // 7. CALCULATE NEW VEHICLE PRICE
+    // ============================================================
+
+    const newVehiclePrice = currentVehiclePrice + bidAmount;
+
+    console.log("--------------------------------");
+    console.log("Current Vehicle Price:", currentVehiclePrice);
+    console.log("Partner Bid:", bidAmount);
+    console.log("Bid Increment:", vehicle.bidIncrement);
+    console.log("New Vehicle Price:", newVehiclePrice);
+    console.log("--------------------------------");
+
+    // ============================================================
+    // 8. UPDATE DATABASE
+    // ============================================================
+
+    const updatedAuction = await auctionRepository.updateVehicleBid(
       auctionId,
       vehicleId,
+      newVehiclePrice,
       partnerId,
-      bidAmount,
-      currentHighestBid,
     );
 
     if (!updatedAuction) {
-      throw new ApiError(
-        409,
-        "Another bid was placed just before yours. Please refresh and place your bid again.",
-      );
+      throw new ApiError(400, "Unable to place bid.");
     }
+
+    // ============================================================
+    // 9. GET UPDATED VEHICLE
+    // ============================================================
+
     const updatedVehicle = updatedAuction.vehicles.find(
-      (vehicle) => vehicle.vehicleId === vehicleId,
+      (item) => item.vehicleId === vehicleId,
     );
 
-    return {
-      auctionId: updatedAuction._id.toString(),
+    if (!updatedVehicle) {
+      throw new ApiError(500, "Updated vehicle not found.");
+    }
+
+    // ============================================================
+    // 10. REAL-TIME SOCKET UPDATE
+    // ============================================================
+
+    emitBidUpdated({
+      auctionId,
       vehicleId,
-      bidAmount,
-      currentHighestBid: updatedVehicle?.currentHighestBid,
-      highestBidder: updatedVehicle?.highestBidder,
-      totalBids: updatedVehicle?.totalBids,
-      message: "Bid placed successfully.",
+
+      currentHighestBid: updatedVehicle.currentHighestBid ?? 0,
+
+      highestBidder: updatedVehicle.highestBidder ?? null,
+
+      totalBids: updatedVehicle.totalBids ?? 0,
+    });
+
+    // ============================================================
+    // 11. RESPONSE
+    // ============================================================
+
+    return {
+      auctionId,
+      vehicleId,
+      currentHighestBid: updatedVehicle.currentHighestBid,
+      highestBidder: updatedVehicle.highestBidder,
+      totalBids: updatedVehicle.totalBids,
+      minimumBid: updatedVehicle.minimumBid,
+      bidIncrement: updatedVehicle.bidIncrement,
+      reservePrice: updatedVehicle.reservePrice,
+      partnerBid: bidAmount,
     };
   }
 }

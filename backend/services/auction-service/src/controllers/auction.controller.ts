@@ -154,12 +154,13 @@ export const rejectAuctionStart = asyncHandler(async (req, res) => {
 });
 
 export const placeBid = asyncHandler(async (req, res) => {
+  const { vehicleId, auctionId, bidAmount } = req.body;
   const partnerId = req.headers["x-user-id"] as string;
-  const dto = PlaceBidDtoSchema.parse({
-    auctionId: req.body.auctionId,
-    vehicleId: req.body.vehicleId,
-    bidAmount: Number(req.body.bidAmount),
-  });
-  const result = await auctionService.placeBid(dto, partnerId);
-  return ApiResponse.success(res, 201, "Bid Place Successfully", result);
+  const vehicle = await auctionService.placeBid(
+    auctionId,
+    vehicleId,
+    partnerId,
+    Number(bidAmount),
+  );
+  return ApiResponse.success(res, 201, "Bid Place Successfully", vehicle);
 });

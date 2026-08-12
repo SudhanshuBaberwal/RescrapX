@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Gavel, Clock, Trophy, Wallet, Search,
   MapPin, Calendar, Fuel, Scale, ChevronDown, RotateCcw,
-  ChevronLeft, ChevronRight, LayoutGrid, List, Eye, X
+  LayoutGrid, List, Eye, X
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
@@ -13,6 +13,7 @@ import { getPartnerAuctionData } from '@/hooks/getPartnerAuctionData';
 import { getVehicle } from '@/services/vehicle.service';
 import axios from 'axios';
 import { placeBid } from '@/services/auction/auctionPartner.service';
+import { useAuctionSocket } from "@/socket/useAuctionSocket";
 
 const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
 
@@ -95,6 +96,7 @@ interface FormattedAuctionItem {
   auctionType: string;
   rawStatus: string;
   timerColor: string;
+  highestBidNum: number;
   highestBid: string;
   bidsCount: string;
   yourBid: string;
@@ -112,14 +114,17 @@ interface LiveAuctionsDashboardProps {
 
 export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19aa120f168dfe" }: LiveAuctionsDashboardProps) {
   getPartnerAuctionData();
-
+  
   const { PartnerAuctionData } = useSelector((state: RootState) => (state as any).partner || {});
-
   const [loading, setLoading] = useState(true);
   const [rawAuctions, setRawAuctions] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFuel, setSelectedFuel] = useState('All');
+  const [sortBy, setSortBy] = useState<'ending_soon' | 'highest_bid_desc' | 'highest_bid_asc'>('highest_bid_desc');
   const [now, setNow] = useState(Date.now());
+
+  // Socket state to override highest bids in real-time
+  const [highestBids, setHighestBids] = useState<Record<string, number>>({});
 
   // Drawer states
   const [isMounted, setIsMounted] = useState(false);
@@ -132,19 +137,41 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
 
-  // Mount setup
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Sync Redux Data safely
+  // Sync Redux Data safely and handle empty / error states
   useEffect(() => {
-    if (PartnerAuctionData) {
-      const dataArray = Array.isArray(PartnerAuctionData) ? PartnerAuctionData : [PartnerAuctionData];
-      setRawAuctions(dataArray);
+    if (PartnerAuctionData !== undefined && PartnerAuctionData !== null) {
+      if (Array.isArray(PartnerAuctionData)) {
+        setRawAuctions(PartnerAuctionData);
+      } else if (typeof PartnerAuctionData === 'object' && !PartnerAuctionData.error) {
+        setRawAuctions([PartnerAuctionData]);
+      } else {
+        setRawAuctions([]);
+      }
       setLoading(false);
     }
   }, [PartnerAuctionData]);
+
+  // Handle updates coming through Socket.io
+  const handleBidUpdated = useCallback((data: any) => {
+    if (data?.vehicleId && data?.currentHighestBid != null) {
+      setHighestBids((previous) => ({
+        ...previous,
+        [data.vehicleId]: Number(data.currentHighestBid),
+      }));
+    }
+  }, []);
+
+  // Primary active auction ID from current state for socket listeners
+  const activeAuctionId = useMemo(() => {
+    return rawAuctions?.[0]?.auctionId || rawAuctions?.[0]?._id || rawAuctions?.[0]?.id || "";
+  }, [rawAuctions]);
+
+  // Subscribe to real-time socket events
+  useAuctionSocket(activeAuctionId, handleBidUpdated);
 
   // Live countdown timer ticker
   useEffect(() => {
@@ -214,65 +241,12 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
    */
   const submitBidApi = async (auctionId: string, vehicleId: string, amount: number) => {
     try {
-      const response = placeBid({ auctionId, vehicleId, bidAmount: amount })
-      return response
+      const response = await placeBid({ auctionId, vehicleId, bidAmount: amount });
+      return response;
     } catch (error: any) {
       console.error("Bid Placement Error:", error);
       throw error?.response?.data || error;
     }
-  };
-
-  /**
-   * Primary Place Bid Handler
-   */
-  const handlePlaceBid = async (auctionId: string, vehicleId: string, minBidOrIncrement: number) => {
-    const amountStr = prompt(`Enter your bid amount for vehicle ID (${vehicleId}):`, String(minBidOrIncrement || 1000));
-    if (!amountStr) return;
-
-    const bidAmount = Number(amountStr);
-    if (isNaN(bidAmount) || bidAmount <= 0) {
-      alert("Please enter a valid bid amount.");
-      return;
-    }
-
-    try {
-      const result = await submitBidApi(auctionId, vehicleId, bidAmount);
-      console.log("Bid Placed Successfully:", result);
-      alert(`Bid of ₹${bidAmount.toLocaleString('en-IN')} placed successfully!`);
-    } catch (err: any) {
-      alert(`Failed to place bid: ${err?.message || 'Something went wrong.'}`);
-    }
-  };
-
-  const handleViewVehicleDetails = async (vehicleId: string) => {
-    if (!vehicleId || !isValidObjectId(vehicleId)) {
-      setFetchVehicleError(`Invalid Vehicle ID: "${vehicleId}". Cannot fetch details.`);
-      setIsDrawerOpen(true);
-      return;
-    }
-
-    setLoadingVehicleId(vehicleId);
-    setIsFetchingVehicle(true);
-    setFetchVehicleError(null);
-    setIsDrawerOpen(true);
-
-    try {
-      const response = await getVehicle(vehicleId);
-      const actualVehicle = response?.data?.data || response?.data || response;
-      setSelectedVehicleDetails(actualVehicle);
-    } catch (error: any) {
-      console.error('Error fetching vehicle details:', error);
-      setFetchVehicleError(error?.message || 'Failed to fetch vehicle details.');
-    } finally {
-      setIsFetchingVehicle(false);
-      setLoadingVehicleId(null);
-    }
-  };
-
-  const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedVehicleDetails(null);
-    setFetchVehicleError(null);
   };
 
   const partnerAuctionItems = useMemo(() => {
@@ -330,7 +304,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           let diffMs = 0;
           let statusLabel = auctionStatus;
 
-          if (auctionType === 'LIVE' && auctionStatus === 'DRAFT') {
+          if (auctionStatus === 'SCHEDULED' || auctionStatus === 'DRAFT') {
             diffMs = Math.max(0, startTimeMs - now);
             statusLabel = 'Starts At';
           } else {
@@ -353,6 +327,8 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           const reserveVal = vehicleObj.reservePrice;
           const incrementVal = vehicleObj.bidIncrement;
 
+          const liveBidNum = highestBids[vId] ?? Number(vehicleObj.currentHighestBid || 0);
+
           formattedList.push({
             id: vId,
             auctionId: parentAuctionId,
@@ -373,7 +349,8 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
             auctionType,
             rawStatus: auctionStatus,
             timerColor,
-            highestBid: vehicleObj.currentHighestBid ? `₹${vehicleObj.currentHighestBid.toLocaleString('en-IN')}` : '₹0',
+            highestBidNum: liveBidNum,
+            highestBid: liveBidNum > 0 ? `₹${liveBidNum.toLocaleString('en-IN')}` : '₹0',
             bidsCount: `${vehicleObj.totalBids || auction.totalBids || 0} bids`,
             yourBid: vehicleObj.yourBid ? `₹${vehicleObj.yourBid.toLocaleString('en-IN')}` : '-',
             yourBidStatus: vehicleObj.yourBid ? 'Your bid' : undefined,
@@ -388,16 +365,96 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     });
 
     return formattedList;
-  }, [rawAuctions, loggedPartnerId, now]);
+  }, [rawAuctions, loggedPartnerId, now, highestBids]);
+
+  /**
+   * Primary Place Bid Handler with Status Verification Guard
+   */
+  const handlePlaceBid = async (auctionId: string, vehicleId: string, minBidOrIncrement: number) => {
+    const targetItem = partnerAuctionItems.find((item) => item.id === vehicleId);
+
+    if (targetItem && targetItem.rawStatus !== 'LIVE') {
+      alert("Bidding is not allowed until the auction time starts and status becomes LIVE.");
+      return;
+    }
+
+    const amountStr = prompt(`Enter your bid amount for vehicle ID (${vehicleId}):`, String(minBidOrIncrement || 1000));
+    if (!amountStr) return;
+
+    const bidAmount = Number(amountStr);
+    if (isNaN(bidAmount) || bidAmount <= 0) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
+
+    try {
+      const result = await submitBidApi(auctionId, vehicleId, bidAmount);
+
+      const updatedHighestBid = result?.data?.currentHighestBid || result?.currentHighestBid || bidAmount;
+
+      setHighestBids((prev) => ({
+        ...prev,
+        [vehicleId]: updatedHighestBid
+      }));
+
+      alert(`Bid of ₹${updatedHighestBid.toLocaleString('en-IN')} placed successfully!`);
+    } catch (err: any) {
+      alert(`Failed to place bid: ${err?.message || 'Something went wrong.'}`);
+    }
+  };
+
+  const handleViewVehicleDetails = async (vehicleId: string) => {
+    if (!vehicleId || !isValidObjectId(vehicleId)) {
+      setFetchVehicleError(`Invalid Vehicle ID: "${vehicleId}". Cannot fetch details.`);
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    setLoadingVehicleId(vehicleId);
+    setIsFetchingVehicle(true);
+    setFetchVehicleError(null);
+    setIsDrawerOpen(true);
+
+    try {
+      const response = await getVehicle(vehicleId);
+      const actualVehicle = response?.data?.data || response?.data || response;
+      setSelectedVehicleDetails(actualVehicle);
+    } catch (error: any) {
+      console.error('Error fetching vehicle details:', error);
+      setFetchVehicleError(error?.message || 'Failed to fetch vehicle details.');
+    } finally {
+      setIsFetchingVehicle(false);
+      setLoadingVehicleId(null);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setIsDrawerOpen(false);
+    setSelectedVehicleDetails(null);
+    setFetchVehicleError(null);
+  };
 
   const filteredAuctionItems = useMemo(() => {
-    return partnerAuctionItems.filter((item) => {
+    const list = partnerAuctionItems.filter((item) => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.location.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesFuel = selectedFuel === 'All' || item.fuel.toLowerCase() === selectedFuel.toLowerCase();
       return matchesSearch && matchesFuel;
     });
-  }, [partnerAuctionItems, searchQuery, selectedFuel]);
+
+    return list.sort((a, b) => {
+      if (sortBy === 'highest_bid_desc') {
+        return b.highestBidNum - a.highestBidNum;
+      }
+      if (sortBy === 'highest_bid_asc') {
+        return a.highestBidNum - b.highestBidNum;
+      }
+      if (sortBy === 'ending_soon') {
+        return new Date(a.endTimeIso).getTime() - new Date(b.endTimeIso).getTime();
+      }
+      return 0;
+    });
+  }, [partnerAuctionItems, searchQuery, selectedFuel, sortBy]);
 
   const metrics = useMemo(() => {
     const liveCount = partnerAuctionItems.length;
@@ -490,7 +547,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
           <div className="flex items-end gap-2">
             <button
-              onClick={() => { setSearchQuery(''); setSelectedFuel('All'); }}
+              onClick={() => { setSearchQuery(''); setSelectedFuel('All'); setSortBy('highest_bid_desc'); }}
               className="w-full text-gray-400 hover:text-gray-600 font-bold flex items-center justify-center gap-1 text-[11px] h-[34px] border border-gray-200 rounded-xl bg-white shadow-3xs hover:bg-gray-50 cursor-pointer"
             >
               <RotateCcw size={11} /> <span>Reset</span>
@@ -507,9 +564,15 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-gray-50/50 border border-gray-200 rounded-xl px-2 py-1">
             <span className="text-gray-400 font-bold text-[10px]">Sort by:</span>
-            <button className="font-black text-gray-700 flex items-center gap-1 text-[11px]">
-              <span>Ending Soon</span> <ChevronDown size={11} className="text-gray-400" />
-            </button>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="font-black text-gray-700 bg-transparent text-[11px] outline-none cursor-pointer"
+            >
+              <option value="highest_bid_desc">Highest Bid (High to Low)</option>
+              <option value="highest_bid_asc">Highest Bid (Low to High)</option>
+              <option value="ending_soon">Ending Soon</option>
+            </select>
           </div>
           <div className="hidden sm:flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-3xs bg-white">
             <button className="p-1.5 bg-gray-50 text-gray-700 border-r border-gray-200"><List size={13} /></button>
@@ -521,13 +584,8 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
       {/* 4. AUCTIONS MASTER CONTAINER */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-3xs overflow-hidden">
         {loading ? (
-          <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
-            <div className="w-7 h-7 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-gray-400 font-bold">Loading assigned vehicles...</p>
-          </div>
-        ) : filteredAuctionItems.length === 0 ? (
-          <div className="py-20 text-center text-gray-400 font-bold">
-            No live auction vehicles found assigned to your partner profile.
+          <div className="py-20 text-center text-gray-400 font-bold text-base">
+            No Auction
           </div>
         ) : (
           <>
@@ -622,10 +680,14 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
                       <td className="py-4 px-4 text-center">
                         <div className="flex flex-col items-center gap-1.5">
-                          {item.auctionType === 'LIVE' && item.rawStatus === 'DRAFT' ? (
-                            <div className="w-full py-2 px-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-[11px] text-center">
-                              Auction Starts Soon
-                            </div>
+                          {(item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
+                            <button
+                              type="button"
+                              disabled
+                              className="w-full py-2 px-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-[11px] text-center cursor-not-allowed opacity-90"
+                            >
+                              Auction Scheduled
+                            </button>
                           ) : (
                             <button
                               type="button"
@@ -744,10 +806,14 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                         {loadingVehicleId === item.id ? 'Loading...' : 'View Details'}
                       </button>
 
-                      {item.auctionType === 'LIVE' && item.rawStatus === 'DRAFT' ? (
-                        <span className="bg-amber-50 border border-amber-200 text-amber-800 font-bold px-3 py-2 rounded-xl text-[11px]">
-                          Auction Starts Soon
-                        </span>
+                      {(item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
+                        <button
+                          type="button"
+                          disabled
+                          className="bg-amber-50 border border-amber-200 text-amber-800 font-bold px-3 py-2 rounded-xl text-[11px] cursor-not-allowed opacity-90"
+                        >
+                          Auction Scheduled
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -765,19 +831,9 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           </>
         )}
 
-        {/* 5. RESPONSIVE COMPACT PAGINATION CONTROL SLAT */}
-        <div className="bg-white border-t border-gray-100 px-4 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-400 font-bold text-[11px]">
-          <span>Showing <strong className="text-gray-800 font-black">{filteredAuctionItems.length}</strong> assigned vehicle auctions</span>
-
-          <div className="flex items-center gap-1.5">
-            <button className="w-7 h-7 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all disabled:opacity-40" disabled>
-              <ChevronLeft size={14} />
-            </button>
-            <button className="w-7 h-7 rounded-lg flex items-center justify-center font-black bg-[#0B5B32] text-white shadow-3xs">1</button>
-            <button className="w-7 h-7 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-all">
-              <ChevronRight size={14} />
-            </button>
-          </div>
+        {/* 5. SINGLE PAGE SLAT */}
+        <div className="bg-white border-t border-gray-100 px-4 py-3.5 flex items-center justify-between text-gray-400 font-bold text-[11px]">
+          <span>Showing all <strong className="text-gray-800 font-black">{filteredAuctionItems.length}</strong> assigned vehicle auctions</span>
         </div>
       </div>
 
