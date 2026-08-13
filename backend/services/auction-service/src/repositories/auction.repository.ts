@@ -1,17 +1,25 @@
 import Auction, {
   AuctionStatus,
   IAuction,
-  WinnerStatus,
+  VehicleAssignedStatus,
 } from "../models/auction.model.js";
 
 class AuctionRepository {
-  // =========================================================
+  // ======================================================
   // CREATE
-  // =========================================================
+  // ======================================================
 
   async createAuction(data: Partial<IAuction>) {
     return Auction.create(data);
   }
+
+  async findByAuctionId(auctionId: string) {
+    return Auction.findById(auctionId);
+  }
+
+  // ======================================================
+  // FIND ACTIVE AUCTION
+  // ======================================================
 
   async findActiveAuction() {
     return Auction.findOne({
@@ -27,183 +35,204 @@ class AuctionRepository {
     }).sort({ createdAt: -1 });
   }
 
-  async findByAuctionId(auctionId: string) {
-    return Auction.findById(auctionId);
-  }
+  // ======================================================
+  // CONFIGURE VEHICLE
+  // ======================================================
 
-  async findByVehicleId(vehicleId: string) {
-    return Auction.findOne({
-      "vehicles.vehicleId": vehicleId,
-      status: {
-        $nin: [
-          AuctionStatus.CANCELLED,
-          AuctionStatus.ENDED,
-          AuctionStatus.COMPLETED,
-        ],
-      },
-    });
-  }
-
-  async findAll() {
-    return Auction.find().sort({ createdAt: -1 });
-  }
-
-  async placeBid(
+  async configureVehicle(
     auctionId: string,
     vehicleId: string,
-    partnerId: string,
-    bidAmount: number,
-    currentHighestBid: number,
+    minimumBid: number,
+    reservePrice: number,
+    bidIncrement: number,
   ) {
     return Auction.findOneAndUpdate(
       {
         _id: auctionId,
-
-        status: AuctionStatus.LIVE,
-
-        // Partner must be part of this auction
-        partners: {
-          $elemMatch: {
-            partnerId,
-            "vehicleIds.vehicleId": vehicleId,
-          },
-        },
-        vehicles: {
-          $elemMatch: {
-            vehicleId,
-            currentHighestBid,
-          },
-        },
+        "vehicles.vehicleId": vehicleId,
       },
       {
         $set: {
-          "vehicles.$.currentHighestBid": bidAmount,
-          "vehicles.$.highestBidder": partnerId,
-        },
-
-        $inc: {
-          "vehicles.$.totalBids": 1,
+          "vehicles.$.minimumBid": minimumBid,
+          "vehicles.$.reservePrice": reservePrice,
+          "vehicles.$.bidIncrement": bidIncrement,
         },
       },
       {
-        returnDocument: "after",
+        new: true,
         runValidators: true,
       },
     );
   }
 
-  async findScheduledAuctions() {
-    return Auction.find({
-      status: AuctionStatus.SCHEDULED,
-    }).sort({ startTime: 1 });
-  }
+  // ======================================================
+  // PLACE BID
+  // ======================================================
 
-  // Auctions that are exactly within 1 minute of starting
-  async findAuctionsPendingStartApproval() {
+ async updateVehicleBid(
+  auctionId: string,
+  vehicleId: string,
+  newVehiclePrice: number,
+  partnerId: string,
+) {
+  const updatedAuction = await Auction.findOneAndUpdate(
+    {
+      _id: auctionId,
+      status: AuctionStatus.LIVE,
+      "vehicles.vehicleId": vehicleId,
+    },
+    {
+      $set: {
+        "vehicles.$.currentHighestBid": newVehiclePrice,
+        "vehicles.$.highestBidder": partnerId,
+      },
+      $inc: {
+        "vehicles.$.totalBids": 1,
+        totalBids: 1,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return updatedAuction;
+}
+  // ======================================================
+  // APPROVAL
+  // Find auctions whose start time is within next 3 minutes
+  // ======================================================
+
+  async findAuctionsRequiringApproval() {
     const now = new Date();
-    const oneMinuteFromNow = new Date(now.getTime() + 60 * 1000);
+
+    const threeMinutesLater = new Date(now.getTime() + 3 * 60 * 1000);
 
     return Auction.find({
       status: AuctionStatus.SCHEDULED,
-      startApprovalPending: false,
+
       startTime: {
         $gt: now,
-        $lte: oneMinuteFromNow,
+        $lte: threeMinutesLater,
       },
-    }).sort({ startTime: 1 });
+
+      endTime: {
+        $gt: now,
+      },
+    }).sort({
+      startTime: 1,
+    });
   }
 
-  async markStartApprovalPending(auctionId: string) {
-    return Auction.findOneAndUpdate(
-      {
-        auctionId,
-        status: AuctionStatus.SCHEDULED,
-        startApprovalPending: false,
-      },
-      {
-        $set: {
-          startApprovalPending: true,
-          startApprovalRequestedAt: new Date(),
-        },
-      },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
+  // ======================================================
+  // REQUEST APPROVAL
+  // SCHEDULED → APPROVAL_PENDING
+  // ======================================================
 
-  async markApprovalPending(auctionId: string) {
-    return Auction.findOneAndUpdate(
-      {
-        auctionId,
-        status: AuctionStatus.SCHEDULED,
-      },
-      {
-        $set: {
-          status: AuctionStatus.APPROVAL_PENDING,
-          approvalRequestedAt: new Date(),
-        },
-      },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
-
-  async markAuctionsPendingApproval() {
+  async requestAuctionApproval(auctionId: string) {
     const now = new Date();
 
-    const oneMinuteLater = new Date(now.getTime() + 60 * 1000);
+    const threeMinutesLater = new Date(now.getTime() + 3 * 60 * 1000);
 
-    return Auction.updateMany(
+    return Auction.findOneAndUpdate(
       {
+        _id: auctionId,
+
         status: AuctionStatus.SCHEDULED,
-
-        approvalPending: false,
-
-        approvedForStart: false,
 
         startTime: {
           $gt: now,
-          $lte: oneMinuteLater,
+          $lte: threeMinutesLater,
+        },
+
+        endTime: {
+          $gt: now,
         },
       },
+
       {
         $set: {
-          approvalPending: true,
+          status: AuctionStatus.APPROVAL_PENDING,
+          startApprovalRequestedAt: now,
         },
+      },
+
+      {
+        new: true,
+        runValidators: true,
       },
     );
   }
 
-  async findPendingApprovalAuctions() {
-    return Auction.find({
-      status: AuctionStatus.APPROVAL_PENDING,
-    }).sort({ startTime: 1 });
+  // ======================================================
+  // ADMIN APPROVE
+  // APPROVAL_PENDING → START_APPROVED
+  // ======================================================
+
+  async approveAuctionStart(auctionId: string, adminId: string) {
+    return Auction.findOneAndUpdate(
+      {
+        _id: auctionId,
+        status: AuctionStatus.APPROVAL_PENDING,
+        endTime: {
+          $gt: new Date(),
+        },
+      },
+
+      {
+        $set: {
+          status: AuctionStatus.START_APPROVED,
+          startApprovedAt: new Date(),
+          startApprovedBy: adminId,
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
   }
 
-  async findPendingStartApprovalAuctions() {
-    return Auction.find({
-      status: AuctionStatus.SCHEDULED,
-      startApprovalPending: true,
-    }).sort({ startTime: 1 });
-  }
+  // ======================================================
+  // FIND APPROVED AUCTIONS READY TO START
+  // ======================================================
 
-  async startApprovedAuctions() {
+  async findAuctionsReadyToStart() {
     const now = new Date();
 
-    return Auction.updateMany(
+    return Auction.find({
+      status: AuctionStatus.START_APPROVED,
+
+      // Start ONLY at scheduled startTime
+      startTime: {
+        $lte: now,
+      },
+
+      // Don't start already expired auction
+      endTime: {
+        $gt: now,
+      },
+    }).sort({
+      startTime: 1,
+    });
+  }
+
+  // ======================================================
+  // START AUCTION
+  // START_APPROVED → LIVE
+  // ======================================================
+
+  async startApprovedAuction(auctionId: string) {
+    const now = new Date();
+    return Auction.findOneAndUpdate(
       {
-        status: AuctionStatus.SCHEDULED,
-
-        approvedForStart: true,
-
+        _id: auctionId,
+        status: AuctionStatus.START_APPROVED,
         startTime: {
           $lte: now,
         },
-
         endTime: {
           $gt: now,
         },
@@ -213,127 +242,136 @@ class AuctionRepository {
           status: AuctionStatus.LIVE,
         },
       },
-    );
-  }
-
-  async approveAuctionStart(auctionId: string, adminId: string) {
-    return Auction.findOneAndUpdate(
       {
-        _id: auctionId,
-        status: AuctionStatus.SCHEDULED,
-      },
-      {
-        $set: {
-          status: AuctionStatus.LIVE,
-          startApprovedAt: new Date(),
-          startApprovedBy: adminId,
-        },
-      },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
-  async approveAuction(auctionId: string, adminId: string) {
-    return Auction.findOneAndUpdate(
-      {
-        _id: auctionId,
-        status: AuctionStatus.DRAFT,
-      },
-      {
-        $set: {
-          status: AuctionStatus.SCHEDULED,
-          updatedBy: adminId,
-        },
-      },
-      {
-        returnDocument: "after",
+        new: true,
         runValidators: true,
       },
     );
   }
 
-  async findAuctionsReadyToGoLive() {
-    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+  // ======================================================
+  // FIND EXPIRED LIVE AUCTIONS
+  // ======================================================
+
+  async findExpiredAuctions() {
+    const now = new Date();
 
     return Auction.find({
-      status: AuctionStatus.START_APPROVED,
+      status: AuctionStatus.LIVE,
 
-      startApprovedAt: {
-        $lte: oneMinuteAgo,
+      endTime: {
+        $lte: now,
       },
+    }).sort({
+      endTime: 1,
     });
   }
 
-  async rejectAuctionStart(auctionId: string, adminId: string) {
+  // ======================================================
+  // CLOSE AUCTION + ASSIGN WINNERS
+  // LIVE → ENDED
+  // ======================================================
+
+  async closeAuctionAndAssignWinners(auctionId: string) {
+    const now = new Date();
+
+    // First fetch only LIVE + expired auction
+    const auction = await Auction.findOne({
+      _id: auctionId,
+
+      status: AuctionStatus.LIVE,
+
+      endTime: {
+        $lte: now,
+      },
+    });
+
+    if (!auction) {
+      return null;
+    }
+
+    // ==================================================
+    // ASSIGN WINNERS
+    // ==================================================
+
+    for (const vehicle of auction.vehicles) {
+      // ----------------------------------------------
+      // No bidder
+      // ----------------------------------------------
+
+      if (!vehicle.highestBidder || vehicle.currentHighestBid <= 0) {
+        vehicle.assignedPartnerId = null;
+
+        vehicle.assignedStatus = VehicleAssignedStatus.UNSOLD;
+
+        vehicle.winnerBid = null;
+
+        continue;
+      }
+
+      // ----------------------------------------------
+      // Highest bidder becomes winner
+      // ----------------------------------------------
+
+      vehicle.assignedPartnerId = vehicle.highestBidder;
+
+      vehicle.assignedStatus = VehicleAssignedStatus.ASSIGNED;
+
+      vehicle.winnerBid = vehicle.currentHighestBid;
+    }
+
+    // ==================================================
+    // CLOSE AUCTION
+    // ==================================================
+
+    auction.status = AuctionStatus.ENDED;
+
+    auction.completedAt = now;
+
+    await auction.save();
+
+    return auction;
+  }
+
+  // ======================================================
+  // REJECT AUCTION APPROVAL
+  // APPROVAL_PENDING → CANCELLED
+  // ======================================================
+
+  async rejectAuctionStart(
+    auctionId: string,
+    adminId: string,
+    reason?: string,
+  ) {
     return Auction.findOneAndUpdate(
       {
-        auctionId,
-        status: AuctionStatus.SCHEDULED,
-        startApprovalPending: true,
+        _id: auctionId,
+
+        status: AuctionStatus.APPROVAL_PENDING,
       },
+
       {
         $set: {
           status: AuctionStatus.CANCELLED,
-          startApprovalPending: false,
+
           cancelledAt: new Date(),
+
+          cancellationReason: reason ?? "Auction start rejected by admin.",
+
           updatedBy: adminId,
         },
       },
+
       {
-        returnDocument: "after",
+        new: true,
         runValidators: true,
       },
     );
   }
 
-  async markAuctionLive(auctionId: string) {
-    return Auction.findOneAndUpdate(
-      {
-        _id: auctionId,
-        status: AuctionStatus.START_APPROVED,
-      },
-      {
-        $set: {
-          status: AuctionStatus.LIVE,
-        },
-      },
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
-
-  // =========================================================
-  // LIVE
-  // =========================================================
-
-  async findLiveAuctions() {
-    return Auction.find({
-      status: AuctionStatus.LIVE,
-    }).sort({ endTime: 1 });
-  }
-
-  async findLiveAuctionsForPartner(partnerId: string) {
-    return Auction.find({
-      status: AuctionStatus.LIVE,
-      "partners.partnerId": partnerId,
-    }).sort({ endTime: 1 });
-  }
-
-  async findAuctionForPartner(auctionId: string, partnerId: string) {
-    return Auction.findOne({
-      _id: auctionId,
-      status: AuctionStatus.LIVE,
-      "partners.partnerId": partnerId,
-    });
-  }
-
-  // =========================================================
+  // ======================================================
   // PARTNER ACTIVE AUCTION
-  // =========================================================
+  // ======================================================
 
   async findActiveAuctionForPartner(partnerId: string) {
     const auction = await Auction.findOne({
@@ -354,20 +392,12 @@ class AuctionRepository {
     }
 
     const partner = auction.partners.find(
-      (partner) => partner.partnerId === partnerId,
+      (item) => item.partnerId === partnerId,
     );
 
     if (!partner) {
       return null;
     }
-
-    const allowedVehicleIds = new Set(
-      partner.vehicleIds.map((vehicle) => vehicle.vehicleId),
-    );
-
-    const vehicles = auction.vehicles.filter((vehicle) =>
-      allowedVehicleIds.has(vehicle.vehicleId),
-    );
 
     return {
       auctionId: auction._id.toString(),
@@ -380,88 +410,48 @@ class AuctionRepository {
 
       endTime: auction.endTime,
 
-      autoExtend: auction.autoExtend,
-
-      autoExtendDuration: auction.autoExtendDuration,
-
       visibility: auction.visibility,
 
       partner: {
         partnerId: partner.partnerId,
+
         companyName: partner.companyName,
+
         latitude: partner.latitude,
+
         longitude: partner.longitude,
+
         state: partner.state,
+
         district: partner.district,
       },
 
-      vehicles: vehicles.map((vehicle) => {
-        const partnerVehicle = partner.vehicleIds.find(
-          (item) => item.vehicleId === vehicle.vehicleId,
-        );
-
-        return {
-          ...vehicle,
-
-          distanceInKm: partnerVehicle?.distanceInKm ?? null,
-        };
-      }),
+      vehicles: auction.vehicles,
     };
   }
-  async configureVehicle(
-    auctionId: string,
-    vehicleId: string,
-    minimumBid: number,
-    reservePrice: number,
-    bidIncrement: number,
-  ) {
-    return Auction.findOneAndUpdate(
-      {
-        _id: auctionId,
-        "vehicles.vehicleId": vehicleId,
-      },
 
-      {
-        $set: {
-          "vehicles.$.minimumBid": minimumBid,
+  // ======================================================
+  // FIND AUCTIONS WAITING FOR ADMIN APPROVAL
+  // ======================================================
 
-          "vehicles.$.reservePrice": reservePrice,
-
-          "vehicles.$.bidIncrement": bidIncrement,
-        },
-      },
-
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
+  async findPendingApprovalAuctions() {
+    return Auction.find({
+      status: AuctionStatus.APPROVAL_PENDING,
+    }).sort({
+      startTime: 1,
+    });
   }
-   async updateVehicleBid(
-    auctionId: string,
-    vehicleId: string,
-    newVehiclePrice: number,
-    partnerId: string,
-  ) {
-    console.log("========== UPDATE VEHICLE BID ==========");
-    console.log("auctionId:", auctionId);
-    console.log("vehicleId:", vehicleId);
-    console.log("newVehiclePrice:", newVehiclePrice);
-    console.log("partnerId:", partnerId);
 
-    const updatedAuction = await Auction.findOneAndUpdate(
+  async approveAuction(auctionId: string, adminId: string) {
+    const auction = await Auction.findOneAndUpdate(
       {
         _id: auctionId,
-        "vehicles.vehicleId": vehicleId,
+        status: AuctionStatus.DRAFT,
       },
       {
         $set: {
-          "vehicles.$.currentHighestBid": newVehiclePrice,
-          "vehicles.$.highestBidder": partnerId,
-        },
-
-        $inc: {
-          "vehicles.$.totalBids": 1,
+          status: AuctionStatus.SCHEDULED,
+          createdBy: adminId,
         },
       },
       {
@@ -470,64 +460,7 @@ class AuctionRepository {
       },
     );
 
-    console.log(
-      "Updated Auction:",
-      updatedAuction ? "FOUND" : "NOT FOUND",
-    );
-
-    return updatedAuction;
-  }
-  async updateVehicleWinner(
-    auctionId: string,
-    vehicleId: string,
-    winnerBid: number,
-    winnerPartner: string,
-    winnerStatus: WinnerStatus,
-  ) {
-    return Auction.findOneAndUpdate(
-      {
-        _id: auctionId,
-        "vehicles.vehicleId": vehicleId,
-      },
-
-      {
-        $set: {
-          "vehicles.$.winnerBid": winnerBid,
-
-          "vehicles.$.winnerPartner": winnerPartner,
-
-          "vehicles.$.winnerStatus": winnerStatus,
-        },
-      },
-
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
-  async updateStatus(auctionId: string, status: AuctionStatus) {
-    return Auction.findOneAndUpdate(
-      {
-        _id: auctionId,
-      },
-
-      {
-        $set: {
-          status,
-        },
-      },
-
-      {
-        returnDocument: "after",
-        runValidators: true,
-      },
-    );
-  }
-  async deleteAuction(auctionId: string) {
-    return Auction.findOneAndDelete({
-      _id: auctionId,
-    });
+    return auction;
   }
 }
 

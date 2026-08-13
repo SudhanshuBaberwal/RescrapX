@@ -1112,7 +1112,7 @@ export default function AuctionsPage() {
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5 font-mono">
                   <div className="flex justify-between">
                     <span className="text-slate-400">Auction ID:</span>
-                    <span className="font-bold text-slate-800">{currentAuction.auctionId.slice(0, 8)}...</span>
+                    {/* <span className="font-bold text-slate-800">{currentAuction.auctionId.slice(0, 8)}...</span> */}
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Scheduled Start:</span>

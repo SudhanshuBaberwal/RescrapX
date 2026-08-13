@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Gavel, Clock, Trophy, Wallet, Search,
   MapPin, Calendar, Fuel, Scale, ChevronDown, RotateCcw,
-  LayoutGrid, List, Eye, X
+  LayoutGrid, List, Eye, X, AlertTriangle
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
@@ -13,9 +13,55 @@ import { getPartnerAuctionData } from '@/hooks/getPartnerAuctionData';
 import { getVehicle } from '@/services/vehicle.service';
 import axios from 'axios';
 import { placeBid } from '@/services/auction/auctionPartner.service';
-import { useAuctionSocket } from "@/socket/useAuctionSocket";
-
+import { AuctionStartedPayload, BidUpdatedPayload } from '@/socket/auction.event';
+import {
+  useAuctionSocket,
+  useAuctionStartedSocket,
+  useAuctionEndedSocket,
+} from "@/socket/useAuctionSocket";
 const SUPABASE_PROJECT_URL = "https://guqagldnqzyrljirupya.supabase.co";
+
+// --- CUSTOM SOCKET HOOK FOR ENDING AUCTIONS ---
+
+interface AuctionEndedVehicle {
+  vehicleId: string;
+  finalPrice: number;
+  highestBidder: string | null;
+  assignedPartnerId: string | null;
+  assignmentStatus: string;
+}
+
+interface AuctionEndedPayload {
+  auctionId: string;
+  vehicles: AuctionEndedVehicle[];
+}
+
+
+export const useEndAuctionSocket = (
+  auctionId: string,
+  onAuctionEndedCallback: (data: AuctionEndedPayload) => void,
+  socketInstance?: any
+) => {
+  useEffect(() => {
+    if (!auctionId || !socketInstance) return;
+
+    const handleAuctionEnded = (data: AuctionEndedPayload) => {
+      if (String(data?.auctionId) !== String(auctionId)) {
+        return;
+      }
+
+      console.log("🏁 Auction ended:", data);
+
+      onAuctionEndedCallback(data);
+    };
+
+    socketInstance.on("auction:ended", handleAuctionEnded);
+
+    return () => {
+      socketInstance.off("auction:ended", handleAuctionEnded);
+    };
+  }, [auctionId, socketInstance, onAuctionEndedCallback]);
+};
 
 const getMediaUrl = (pathObj: any): string | null => {
   if (!pathObj) return null;
@@ -106,15 +152,16 @@ interface FormattedAuctionItem {
   endTimeIso: string;
   startTimeIso: string;
   formattedStartTime: string;
+  diffMs: number; // Storing diffMs to easily check for final 5-sec condition
 }
 
 interface LiveAuctionsDashboardProps {
   loggedPartnerId?: string;
 }
 
-export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19aa120f168dfe" }: LiveAuctionsDashboardProps) {
+export default function LiveAuctionsDashboard({ loggedPartnerId }: LiveAuctionsDashboardProps) {
   getPartnerAuctionData();
-  
+
   const { PartnerAuctionData } = useSelector((state: RootState) => (state as any).partner || {});
   const [loading, setLoading] = useState(true);
   const [rawAuctions, setRawAuctions] = useState<any[]>([]);
@@ -123,7 +170,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
   const [sortBy, setSortBy] = useState<'ending_soon' | 'highest_bid_desc' | 'highest_bid_asc'>('highest_bid_desc');
   const [now, setNow] = useState(Date.now());
 
-  // Socket state to override highest bids in real-time
   const [highestBids, setHighestBids] = useState<Record<string, number>>({});
 
   // Drawer states
@@ -136,6 +182,13 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
+
+  const [endedVehicles, setEndedVehicles] = useState<
+    Record<string, {
+      winnerId: string | null;
+      finalPrice: number;
+    }>
+  >({});
 
   useEffect(() => {
     setIsMounted(true);
@@ -155,25 +208,105 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     }
   }, [PartnerAuctionData]);
 
-  // Handle updates coming through Socket.io
-  const handleBidUpdated = useCallback((data: any) => {
-    if (data?.vehicleId && data?.currentHighestBid != null) {
-      setHighestBids((previous) => ({
-        ...previous,
-        [data.vehicleId]: Number(data.currentHighestBid),
-      }));
-    }
+  const handleBidUpdated = useCallback((data: BidUpdatedPayload) => {
+    if (!data?.vehicleId) return;
+
+    setHighestBids((previous) => ({
+      ...previous,
+      [data.vehicleId]: Number(data.currentHighestBid),
+    }));
   }, []);
 
-  // Primary active auction ID from current state for socket listeners
-  const activeAuctionId = useMemo(() => {
-    return rawAuctions?.[0]?.auctionId || rawAuctions?.[0]?._id || rawAuctions?.[0]?.id || "";
-  }, [rawAuctions]);
+  const handleAuctionStarted = useCallback(
+    (data: AuctionStartedPayload) => {
+      if (!data?.auctionId) return;
 
-  // Subscribe to real-time socket events
-  useAuctionSocket(activeAuctionId, handleBidUpdated);
+      console.log("🚀 Auction started:", data);
 
-  // Live countdown timer ticker
+      setRawAuctions((prev) => {
+        const auctionId = String(data.auctionId);
+
+        const existingIndex = prev.findIndex(
+          (auction) =>
+            String(
+              auction.auctionId ||
+              auction._id ||
+              auction.id
+            ) === auctionId
+        );
+
+        // Auction already exists → update it
+        if (existingIndex !== -1) {
+          return prev.map((auction, index) => {
+            if (index !== existingIndex) {
+              return auction;
+            }
+
+            return {
+              ...auction,
+              status: "LIVE",
+              startTime: data.startTime,
+              endTime: data.endTime,
+              vehicles: data.vehicles ?? auction.vehicles,
+            };
+          });
+        }
+
+        // Auction was not present → ADD it immediately
+        return [
+          ...prev,
+          {
+            auctionId: data.auctionId,
+            status: "LIVE",
+            startTime: data.startTime,
+            endTime: data.endTime,
+            vehicles: data.vehicles ?? [],
+          },
+        ];
+      });
+    },
+    [],
+  );
+
+  const handleAuctionEnded = useCallback((data: AuctionEndedPayload) => {
+    if (!data?.auctionId) return;
+
+    console.log("🏁 Auction ended:", data);
+
+    setRawAuctions((prev) =>
+      prev.filter(
+        (auction) =>
+          String(
+            auction.auctionId ||
+            auction._id ||
+            auction.id
+          ) !== String(data.auctionId)
+      )
+    );
+  }, []);
+
+  const activeAuctionId =
+    rawAuctions.find(
+      (auction) => auction.status === "LIVE",
+    )?.auctionId ||
+    rawAuctions.find(
+      (auction) => auction.status === "LIVE",
+    )?._id ||
+    "";
+
+  useAuctionSocket(
+    activeAuctionId,
+    handleBidUpdated,
+  );
+
+  useAuctionStartedSocket(
+    handleAuctionStarted,
+  );
+
+  useAuctionEndedSocket(
+    handleAuctionEnded,
+  );
+
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -236,9 +369,6 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
     fetchSignedUrls();
   }, [selectedVehicleDetails]);
 
-  /**
-   * Bidding submission API helper
-   */
   const submitBidApi = async (auctionId: string, vehicleId: string, amount: number) => {
     try {
       const response = await placeBid({ auctionId, vehicleId, bidAmount: amount });
@@ -264,7 +394,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
       const assignedVehicleIds = new Set<string>();
       if (currentPartnerObj?.vehicleIds) {
         currentPartnerObj.vehicleIds.forEach((vObj: any) => {
-          const vId = typeof vObj === 'string' ? vObj : vObj.vehicleId || vObj._id || vObj.id;
+          const vId = String(vObj.vehicleId);
           if (vId) assignedVehicleIds.add(String(vId));
         });
       }
@@ -288,7 +418,11 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           }
 
           const auctionType = auction.type || 'LIVE';
-          const auctionStatus = auction.status || 'DRAFT';
+          let auctionStatus = auction.status || 'DRAFT';
+
+          if (endedVehicles[vId]) {
+            auctionStatus = 'ENDED';
+          }
 
           const startDate = auction.startTime ? new Date(auction.startTime) : new Date();
           const endDate = auction.endTime ? new Date(auction.endTime) : new Date();
@@ -327,7 +461,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
           const reserveVal = vehicleObj.reservePrice;
           const incrementVal = vehicleObj.bidIncrement;
 
-          const liveBidNum = highestBids[vId] ?? Number(vehicleObj.currentHighestBid || 0);
+          const liveBidNum = endedVehicles[vId]?.finalPrice ?? (highestBids[vId] ?? Number(vehicleObj.currentHighestBid || 0));
 
           formattedList.push({
             id: vId,
@@ -344,7 +478,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
             minimumBid: minBidVal != null ? `₹${Number(minBidVal).toLocaleString('en-IN')}` : 'N/A',
             reservePrice: reserveVal != null ? `₹${Number(reserveVal).toLocaleString('en-IN')}` : 'N/A',
             bidIncrement: incrementVal != null ? `₹${Number(incrementVal).toLocaleString('en-IN')}` : 'N/A',
-            timeLeft: timeLeftStr,
+            timeLeft: auctionStatus === 'ENDED' ? '00:00:00' : timeLeftStr,
             status: statusLabel,
             auctionType,
             rawStatus: auctionStatus,
@@ -359,47 +493,102 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
             endTimeIso: auction.endTime,
             startTimeIso: auction.startTime,
             formattedStartTime,
+            diffMs,
           });
         }
       });
     });
 
     return formattedList;
-  }, [rawAuctions, loggedPartnerId, now, highestBids]);
+  }, [rawAuctions, loggedPartnerId, now, highestBids, endedVehicles]);
 
-  /**
-   * Primary Place Bid Handler with Status Verification Guard
-   */
-  const handlePlaceBid = async (auctionId: string, vehicleId: string, minBidOrIncrement: number) => {
-    const targetItem = partnerAuctionItems.find((item) => item.id === vehicleId);
+  // Check if any auction is currently in the 5-second countdown window
+  const active5SecAuction = useMemo(() => {
+    return partnerAuctionItems.find((item) => {
+      if (item.rawStatus === 'LIVE' || item.rawStatus === 'IN_PROGRESS') {
+        return item.diffMs > 0 && item.diffMs <= 5000;
+      }
+      return false;
+    });
+  }, [partnerAuctionItems]);
 
-    if (targetItem && targetItem.rawStatus !== 'LIVE') {
-      alert("Bidding is not allowed until the auction time starts and status becomes LIVE.");
+  const handlePlaceBid = async (
+    auctionId: string,
+    vehicleId: string,
+    bidIncrement: number
+  ) => {
+    const targetItem = partnerAuctionItems.find(
+      (item) => item.id === vehicleId
+    );
+
+    if (!targetItem) {
+      alert("Vehicle not found.");
       return;
     }
 
-    const amountStr = prompt(`Enter your bid amount for vehicle ID (${vehicleId}):`, String(minBidOrIncrement || 1000));
+    if (targetItem.rawStatus !== "LIVE") {
+      alert("Auction is not live.");
+      return;
+    }
+
+    if (targetItem.diffMs <= 0) {
+      alert("Auction has ended.");
+      return;
+    }
+
+    const amountStr = prompt(
+      `Enter your bid amount for vehicle (${vehicleId}):`,
+      String(bidIncrement || 1000)
+    );
+
     if (!amountStr) return;
 
     const bidAmount = Number(amountStr);
-    if (isNaN(bidAmount) || bidAmount <= 0) {
+
+    if (!Number.isFinite(bidAmount) || bidAmount <= 0) {
       alert("Please enter a valid bid amount.");
       return;
     }
 
     try {
-      const result = await submitBidApi(auctionId, vehicleId, bidAmount);
+      const response = await submitBidApi(
+        auctionId,
+        vehicleId,
+        bidAmount
+      );
 
-      const updatedHighestBid = result?.data?.currentHighestBid || result?.currentHighestBid || bidAmount;
+
+      console.log(response.data)
+      const result = response.data
+      const updatedHighestBid =
+        result.currentVehiclePrice
+
+      console.log(updatedHighestBid)
+
+      if (updatedHighestBid == null) {
+        throw new Error(
+          "Server did not return updated vehicle price."
+        );
+      }
 
       setHighestBids((prev) => ({
         ...prev,
-        [vehicleId]: updatedHighestBid
+        [vehicleId]: Number(updatedHighestBid),
       }));
 
-      alert(`Bid of ₹${updatedHighestBid.toLocaleString('en-IN')} placed successfully!`);
+      alert(
+        `Vehicle price is now ₹${Number(
+          updatedHighestBid
+        ).toLocaleString("en-IN")}`
+      );
     } catch (err: any) {
-      alert(`Failed to place bid: ${err?.message || 'Something went wrong.'}`);
+      console.error("Bid failed:", err);
+
+      alert(
+        err?.message ||
+        err?.response?.data?.message ||
+        "Failed to place bid."
+      );
     }
   };
 
@@ -475,6 +664,34 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
 
   return (
     <div className="relative space-y-6 w-full text-xs">
+      {/* 0. FINAL 5 SECONDS OVERLAY */}
+      {active5SecAuction && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-white animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl shadow-2xl text-center max-w-sm w-full space-y-4 mx-4">
+            <div className="flex justify-center text-amber-500 animate-bounce">
+              <AlertTriangle size={48} />
+            </div>
+            <h2 className="text-xl font-black text-amber-400 uppercase tracking-wide">
+              Auction Ending!
+            </h2>
+            <p className="text-sm font-semibold text-slate-300">
+              {active5SecAuction.name}
+            </p>
+
+            {/* BIG COUNTDOWN TIMER */}
+            <div className="text-6xl font-black text-red-500 font-mono my-4 tracking-widest animate-pulse">
+              {Math.ceil(active5SecAuction.diffMs / 1000)}s
+            </div>
+
+            <div className="p-3 bg-red-950/60 border border-red-800/60 rounded-xl">
+              <p className="text-xs font-bold text-red-200 uppercase tracking-wider">
+                ⛔ Bidding is Frozen
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP STATS OVERVIEW MATRIX */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {metrics.map((metric, idx) => {
@@ -600,233 +817,271 @@ export default function LiveAuctionsDashboard({ loggedPartnerId = "6a7a0b28da19a
                     <th className="py-3 px-2 font-black text-right">Reserve Price</th>
                     <th className="py-3 px-2 font-black text-right">Increment</th>
                     <th className="py-3 px-2 font-black text-center">Time Left</th>
-                    <th className="py-3 px-2 font-black text-right">Highest Bid</th>
+                    <th className="py-3 px-2 font-black text-right">Vehicle Bid</th>
                     <th className="py-3 px-2 font-black text-right">Your Bid</th>
                     <th className="py-3 px-4 font-black text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
-                  {filteredAuctionItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50/40 transition-colors">
-                      <td className="py-4 px-4 max-w-xs">
-                        <div className="flex gap-3 items-center">
-                          <button
-                            type="button"
-                            onClick={() => handleViewVehicleDetails(item.id)}
-                            className="w-20 h-14 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200/60 relative group cursor-pointer text-left"
-                          >
-                            {item.photoUrl ? (
-                              <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                            ) : (
-                              <div className="absolute inset-0 bg-gray-200 flex items-center justify-center font-bold text-gray-400">IMG</div>
-                            )}
-                            <span className="absolute bottom-1 right-1 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-sm">📷 {item.totalPhotosCount || 1}</span>
-                          </button>
-                          <div className="space-y-1">
+                  {filteredAuctionItems.map((item) => {
+                    const isFrozen = item.diffMs > 0 && item.diffMs <= 5000;
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50/40 transition-colors">
+                        <td className="py-4 px-4 max-w-xs">
+                          <div className="flex gap-3 items-center">
                             <button
                               type="button"
                               onClick={() => handleViewVehicleDetails(item.id)}
-                              className="font-black text-gray-900 text-[13px] tracking-tight leading-tight hover:text-emerald-700 text-left cursor-pointer transition-colors"
+                              className="w-20 h-14 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-200/60 relative group cursor-pointer text-left"
                             >
-                              {item.name}
+                              {item.photoUrl ? (
+                                <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                              ) : (
+                                <div className="absolute inset-0 bg-gray-200 flex items-center justify-center font-bold text-gray-400">IMG</div>
+                              )}
+                              <span className="absolute bottom-1 right-1 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-sm">📷 {item.totalPhotosCount || 1}</span>
                             </button>
-                            <p className="text-[10px] text-gray-400 font-bold">{item.engine}</p>
-                            <div className="flex flex-wrap gap-1 pt-0.5">
-                              {item.tags.map((tag, i) => (
-                                <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
-                                  }`}>{tag}</span>
-                              ))}
+                            <div className="space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => handleViewVehicleDetails(item.id)}
+                                className="font-black text-gray-900 text-[13px] tracking-tight leading-tight hover:text-emerald-700 text-left cursor-pointer transition-colors"
+                              >
+                                {item.name}
+                              </button>
+                              <p className="text-[10px] text-gray-400 font-bold">{item.engine}</p>
+                              <div className="flex flex-wrap gap-1 pt-0.5">
+                                {item.tags.map((tag, i) => (
+                                  <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
+                                    }`}>{tag}</span>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-2">
-                        <div className="space-y-0.5">
-                          <p className="flex items-center gap-1 font-bold text-gray-800"><MapPin size={12} className="text-gray-400" /> <span>{item.location}</span></p>
-                          <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-2 text-right font-black text-gray-800">{item.minimumBid}</td>
-                      <td className="py-4 px-2 text-right font-black text-gray-800">{item.reservePrice}</td>
-                      <td className="py-4 px-2 text-right font-bold text-gray-600">+{item.bidIncrement}</td>
-
-                      <td className="py-4 px-2 text-center">
-                        <div className="inline-flex flex-col items-center">
-                          <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
-                            <div className="w-2 h-2 rounded-full border border-current border-t-transparent animate-spin shrink-0" />
-                            <span>{item.timeLeft}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <div className="space-y-0.5">
+                            <p className="flex items-center gap-1 font-bold text-gray-800"><MapPin size={12} className="text-gray-400" /> <span>{item.location}</span></p>
+                            <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
                           </div>
-                          <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider mt-0.5">{item.status}</span>
-                          <span className="text-[9px] font-bold text-gray-500 mt-0.5">{item.formattedStartTime}</span>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="py-4 px-2 text-right">
-                        <p className="font-black text-emerald-700 text-[13px]">{item.highestBid}</p>
-                        <p className="text-[9px] text-gray-400 font-bold">{item.bidsCount}</p>
-                      </td>
+                        <td className="py-4 px-2 text-right font-black text-gray-800">{item.minimumBid}</td>
+                        <td className="py-4 px-2 text-right font-black text-gray-800">{item.reservePrice}</td>
+                        <td className="py-4 px-2 text-right font-bold text-gray-600">+{item.bidIncrement}</td>
 
-                      <td className="py-4 px-2 text-right">
-                        {item.yourBid !== '-' ? (
-                          <div>
-                            <p className="font-black text-emerald-700 text-[13px]">{item.yourBid}</p>
-                            <span className="text-[8px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-1 py-0.2 rounded-sm">{item.yourBidStatus}</span>
+                        <td className="py-4 px-2 text-center">
+                          <div className="inline-flex flex-col items-center">
+                            <div className={`flex items-center gap-1 font-mono font-black border px-2 py-0.5 rounded-lg bg-gray-50 text-[10px] ${item.timerColor}`}>
+                              <div className="w-2 h-2 rounded-full border border-current border-t-transparent animate-spin shrink-0" />
+                              <span>{item.timeLeft}</span>
+                            </div>
+                            <span className="text-[9px] uppercase font-black text-gray-400 tracking-wider mt-0.5">{item.status}</span>
+                            <span className="text-[9px] font-bold text-gray-500 mt-0.5">{item.formattedStartTime}</span>
                           </div>
-                        ) : (
-                          <span className="text-gray-300 font-bold">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1.5">
-                          {(item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
-                            <button
-                              type="button"
-                              disabled
-                              className="w-full py-2 px-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-[11px] text-center cursor-not-allowed opacity-90"
-                            >
-                              Auction Scheduled
-                            </button>
+                        <td className="py-4 px-2 text-right">
+                          <p className="font-black text-emerald-700 text-[13px]">{item.highestBid}</p>
+                          <p className="text-[9px] text-gray-400 font-bold">{item.bidsCount}</p>
+                        </td>
+
+                        <td className="py-4 px-2 text-right">
+                          {item.yourBid !== '-' ? (
+                            <div>
+                              <p className="font-black text-emerald-700 text-[13px]">{item.yourBid}</p>
+                              <span className="text-[8px] font-black bg-emerald-50 text-emerald-700 border border-emerald-100 px-1 py-0.2 rounded-sm">{item.yourBidStatus}</span>
+                            </div>
                           ) : (
+                            <span className="text-gray-300 font-bold">—</span>
+                          )}
+                        </td>
+
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex flex-col items-center gap-1.5">
+                            {item.rawStatus === 'ENDED' ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full py-2 px-3 bg-gray-100 border border-gray-300 text-gray-500 rounded-xl font-bold text-[11px] text-center cursor-not-allowed"
+                              >
+                                Auction Ended
+                              </button>
+                            ) : isFrozen ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full py-2 px-3 bg-red-50 border border-red-200 text-red-600 rounded-xl font-bold text-[11px] text-center cursor-not-allowed animate-pulse"
+                              >
+                                Frozen (Ending)
+                              </button>
+                            ) : (item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
+                              <button
+                                type="button"
+                                disabled
+                                className="w-full py-2 px-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-[11px] text-center cursor-not-allowed opacity-90"
+                              >
+                                Auction Scheduled
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
+                                className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer"
+                              >
+                                Place Bid
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
-                              className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all tracking-tight cursor-pointer"
+                              disabled={loadingVehicleId === item.id}
+                              onClick={() => handleViewVehicleDetails(item.id)}
+                              className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-emerald-700 transition-colors cursor-pointer"
                             >
-                              Place Bid
+                              <Eye size={11} />
+                              <span>{loadingVehicleId === item.id ? 'Loading...' : 'View Details'}</span>
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            disabled={loadingVehicleId === item.id}
-                            onClick={() => handleViewVehicleDetails(item.id)}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-emerald-700 transition-colors cursor-pointer"
-                          >
-                            <Eye size={11} />
-                            <span>{loadingVehicleId === item.id ? 'Loading...' : 'View Details'}</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* MOBILE GRID LAYOUT LIST */}
             <div className="xl:hidden divide-y divide-gray-100">
-              {filteredAuctionItems.map((item) => (
-                <div key={item.id} className="p-4 space-y-4 hover:bg-gray-50/30 transition-all">
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleViewVehicleDetails(item.id)}
-                      className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200/50 relative cursor-pointer text-left"
-                    >
-                      {item.photoUrl ? (
-                        <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center font-bold text-gray-300 bg-gray-200">IMG</div>
-                      )}
-                      <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-xs">📷 {item.totalPhotosCount || 1}</span>
-                    </button>
-                    <div className="space-y-0.5 min-w-0 flex-1">
+              {filteredAuctionItems.map((item) => {
+                const isFrozen = item.diffMs > 0 && item.diffMs <= 5000;
+                return (
+                  <div key={item.id} className="p-4 space-y-4 hover:bg-gray-50/30 transition-all">
+                    <div className="flex gap-3">
                       <button
                         type="button"
                         onClick={() => handleViewVehicleDetails(item.id)}
-                        className="font-black text-gray-900 text-sm tracking-tight truncate text-left hover:text-emerald-700 cursor-pointer block w-full"
+                        className="w-16 h-16 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-200/50 relative cursor-pointer text-left"
                       >
-                        {item.name}
+                        {item.photoUrl ? (
+                          <img src={item.photoUrl} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center font-bold text-gray-300 bg-gray-200">IMG</div>
+                        )}
+                        <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white font-mono font-bold text-[8px] px-1 rounded-xs">📷 {item.totalPhotosCount || 1}</span>
                       </button>
-                      <p className="text-[10px] text-gray-400 font-bold truncate">{item.engine}</p>
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {item.tags.map((tag, i) => (
-                          <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
-                            }`}>{tag}</span>
-                        ))}
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => handleViewVehicleDetails(item.id)}
+                          className="font-black text-gray-900 text-sm tracking-tight truncate text-left hover:text-emerald-700 cursor-pointer block w-full"
+                        >
+                          {item.name}
+                        </button>
+                        <p className="text-[10px] text-gray-400 font-bold truncate">{item.engine}</p>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {item.tags.map((tag, i) => (
+                            <span key={i} className={`text-[8px] font-black px-1.5 py-0.2 rounded-sm uppercase tracking-wide border ${tag.includes('Expired') || tag.includes('No') ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-500 border-gray-200'
+                              }`}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-gray-50/60 border border-gray-100/50 p-2.5 rounded-xl text-gray-600">
+                      <div className="space-y-1">
+                        <p className="flex items-center gap-1"><Calendar size={11} className="text-gray-400" /> <span>Year: <strong>{item.year}</strong></span></p>
+                        <p className="flex items-center gap-1"><Fuel size={11} className="text-gray-400" /> <span>Fuel: <strong>{item.fuel}</strong></span></p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-bold text-gray-800 flex items-start gap-1"><MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" /> <span className="truncate">{item.location}</span></p>
+                        <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-gray-50/80 border border-gray-200/60 p-2 rounded-xl text-center">
+                      <div>
+                        <span className="text-[9px] text-gray-400 font-bold block">Min Bid</span>
+                        <span className="font-black text-gray-800 text-[11px]">{item.minimumBid}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-gray-400 font-bold block">Reserve Price</span>
+                        <span className="font-black text-gray-800 text-[11px]">{item.reservePrice}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-gray-400 font-bold block">Increment</span>
+                        <span className="font-bold text-gray-600 text-[11px]">+{item.bidIncrement}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-left border-b border-gray-50 pb-2">
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-bold block">Est. Scrap Value</span>
+                        <span className="font-black text-gray-900">{item.scrapValue}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-gray-400 font-bold block">Highest Bid</span>
+                        <span className="font-black text-emerald-700 text-sm">{item.highestBid}</span>
+                        <span className="text-[9px] text-gray-400 font-bold block">{item.bidsCount}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="flex flex-col items-start">
+                        <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
+                          <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
+                          <span>{item.timeLeft}</span>
+                        </div>
+                        <span className="text-[9px] font-bold text-gray-400 mt-0.5">{item.status} ({item.formattedStartTime})</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={loadingVehicleId === item.id}
+                          onClick={() => handleViewVehicleDetails(item.id)}
+                          className="border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-3 py-2 rounded-xl text-[11px] cursor-pointer transition-colors"
+                        >
+                          {loadingVehicleId === item.id ? 'Loading...' : 'View Details'}
+                        </button>
+
+                        {item.rawStatus === 'ENDED' ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="bg-gray-100 border border-gray-300 text-gray-500 font-bold px-3 py-2 rounded-xl text-[11px] cursor-not-allowed"
+                          >
+                            Auction Ended
+                          </button>
+                        ) : isFrozen ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="bg-red-50 border border-red-200 text-red-600 font-bold px-3 py-2 rounded-xl text-[11px] cursor-not-allowed animate-pulse"
+                          >
+                            Frozen
+                          </button>
+                        ) : (item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="bg-amber-50 border border-amber-200 text-amber-800 font-bold px-3 py-2 rounded-xl text-[11px] cursor-not-allowed opacity-90"
+                          >
+                            Auction Scheduled
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
+                            className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer"
+                          >
+                            Place Bid
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-gray-50/60 border border-gray-100/50 p-2.5 rounded-xl text-gray-600">
-                    <div className="space-y-1">
-                      <p className="flex items-center gap-1"><Calendar size={11} className="text-gray-400" /> <span>Year: <strong>{item.year}</strong></span></p>
-                      <p className="flex items-center gap-1"><Fuel size={11} className="text-gray-400" /> <span>Fuel: <strong>{item.fuel}</strong></span></p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-bold text-gray-800 flex items-start gap-1"><MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" /> <span className="truncate">{item.location}</span></p>
-                      <p className="text-[10px] text-gray-400 font-bold pl-4">{item.distance}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 bg-gray-50/80 border border-gray-200/60 p-2 rounded-xl text-center">
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-bold block">Min Bid</span>
-                      <span className="font-black text-gray-800 text-[11px]">{item.minimumBid}</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-bold block">Reserve Price</span>
-                      <span className="font-black text-gray-800 text-[11px]">{item.reservePrice}</span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-gray-400 font-bold block">Increment</span>
-                      <span className="font-bold text-gray-600 text-[11px]">+{item.bidIncrement}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-left border-b border-gray-50 pb-2">
-                    <div>
-                      <span className="text-[10px] text-gray-400 font-bold block">Est. Scrap Value</span>
-                      <span className="font-black text-gray-900">{item.scrapValue}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-gray-400 font-bold block">Highest Bid</span>
-                      <span className="font-black text-emerald-700 text-sm">{item.highestBid}</span>
-                      <span className="text-[9px] text-gray-400 font-bold block">{item.bidsCount}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-1">
-                    <div className="flex flex-col items-start">
-                      <div className={`flex items-center gap-1 font-mono font-black border px-2 py-1 rounded-xl bg-gray-50 text-[10px] ${item.timerColor}`}>
-                        <div className="w-1.5 h-1.5 rounded-full border border-current border-t-transparent animate-spin" />
-                        <span>{item.timeLeft}</span>
-                      </div>
-                      <span className="text-[9px] font-bold text-gray-400 mt-0.5">{item.status} ({item.formattedStartTime})</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={loadingVehicleId === item.id}
-                        onClick={() => handleViewVehicleDetails(item.id)}
-                        className="border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold px-3 py-2 rounded-xl text-[11px] cursor-pointer transition-colors"
-                      >
-                        {loadingVehicleId === item.id ? 'Loading...' : 'View Details'}
-                      </button>
-
-                      {(item.rawStatus === 'SCHEDULED' || item.rawStatus === 'DRAFT') ? (
-                        <button
-                          type="button"
-                          disabled
-                          className="bg-amber-50 border border-amber-200 text-amber-800 font-bold px-3 py-2 rounded-xl text-[11px] cursor-not-allowed opacity-90"
-                        >
-                          Auction Scheduled
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handlePlaceBid(item.auctionId, item.id, 1000)}
-                          className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-4 py-2 rounded-xl shadow-3xs transition-all text-[11px] cursor-pointer"
-                        >
-                          Place Bid
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

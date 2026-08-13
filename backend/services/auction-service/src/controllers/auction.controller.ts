@@ -164,3 +164,25 @@ export const placeBid = asyncHandler(async (req, res) => {
   );
   return ApiResponse.success(res, 201, "Bid Place Successfully", vehicle);
 });
+
+export const finalizeAuction = asyncHandler(async (req, res) => {
+  const auctionId = req.query.auctionId as string;
+  if (!auctionId) {
+    throw new ApiError(400, "Auction ID is required.");
+  }
+  const result = await auctionService.finalizeAuction(auctionId);
+  if (!result) {
+    throw new ApiError(
+      404,
+      "Auction not found, already ended, or not ready to end.",
+    );
+  }
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Auction ended and vehicles assigned successfully.",
+
+    data: result,
+  });
+});

@@ -7,10 +7,10 @@ import { startAuctionScheduler } from "./schedulers/auction.scheduler.js";
 import { initializeSocket } from "./socket/socket.js";
 
 async function start() {
-  startAuctionScheduler();
   const httpServer = http.createServer(app);
   initializeSocket(httpServer);
   await connectDB();
+  startAuctionScheduler();
   httpServer.listen(env.PORT, () => {
     console.log(`
 ====================================================

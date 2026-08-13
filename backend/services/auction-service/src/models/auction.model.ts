@@ -1,5 +1,8 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
-import { v4 as uuid } from "uuid";
+
+// ======================================================
+// ENUMS
+// ======================================================
 
 export enum AuctionStatus {
   DRAFT = "DRAFT",
@@ -8,7 +11,6 @@ export enum AuctionStatus {
   START_APPROVED = "START_APPROVED",
   LIVE = "LIVE",
   ENDED = "ENDED",
-  COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
 }
 
@@ -17,19 +19,15 @@ export enum AuctionType {
   INSTANT = "INSTANT",
 }
 
-export enum WinnerStatus {
+export enum VehicleAssignedStatus {
   PENDING = "PENDING",
-  ACCEPTED = "ACCEPTED",
-  REJECTED = "REJECTED",
-  EXPIRED = "EXPIRED",
+  ASSIGNED = "ASSIGNED",
+  UNSOLD = "UNSOLD",
 }
 
-export enum PaymentStatus {
-  PENDING = "PENDING",
-  PAID = "PAID",
-  FAILED = "FAILED",
-  REFUNDED = "REFUNDED",
-}
+// ======================================================
+// AUCTION VEHICLE
+// ======================================================
 
 export interface IAuctionVehicle {
   vehicleId: string;
@@ -38,41 +36,44 @@ export interface IAuctionVehicle {
   latitude: number;
   longitude: number;
 
-  state?: string;
-  district?: string;
+  state?: string | null;
+  district?: string | null;
 
-  minimumBid?: number | null;
-  reservePrice?: number | null;
-  bidIncrement?: number | null;
+  // Bid configuration
+  minimumBid: number | null;
+  bidIncrement: number | null;
+  reservePrice: number | null;
 
-  currentHighestBid?: number;
-  highestBidder?: string | null;
-  totalBids?: number;
+  // Current bidding state
+  currentHighestBid: number;
+  highestBidder: string | null;
+  totalBids: number;
 
-  winnerBid?: number | null;
-  winnerPartner?: string | null;
-  winnerStatus?: WinnerStatus;
+  // Final assignment
+  assignedPartnerId: string | null;
+  assignedStatus: VehicleAssignedStatus;
 
-  paymentStatus?: PaymentStatus;
+  winnerBid: number | null;
 }
 
-export interface IAuctionPartnerVehicle {
-  vehicleId: string;
-  distanceInKm: number;
-}
+// ======================================================
+// AUCTION PARTNER
+// ======================================================
 
 export interface IAuctionPartner {
   partnerId: string;
-  companyName?: string;
+  companyName?: string | null;
 
   latitude: number;
   longitude: number;
 
-  state?: string;
-  district?: string;
-
-  vehicleIds: IAuctionPartnerVehicle[];
+  state?: string | null;
+  district?: string | null;
 }
+
+// ======================================================
+// AUCTION
+// ======================================================
 
 export interface IAuction extends Document {
   auctionId: string;
@@ -88,27 +89,28 @@ export interface IAuction extends Document {
 
   startTime: Date;
   endTime: Date;
-  startApprovalPending: boolean;
-  startApprovalRequestedAt?: Date;
-  startApprovedAt?: Date;
-  startApprovedBy?: string;
-  autoExtend: boolean;
-  autoExtendDuration: number;
-  extensionCount: number;
-  maxExtensions: number;
+
+  // Admin approval
+  startApprovalRequestedAt: Date | null;
+  startApprovedAt: Date | null;
+  startApprovedBy: string | null;
 
   visibility: "PUBLIC" | "PRIVATE";
 
-  cancellationReason?: string | null;
-  completedAt?: Date | null;
-  cancelledAt?: Date | null;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
 
   createdBy: string;
-  updatedBy?: string | null;
+  updatedBy: string | null;
 
   createdAt: Date;
   updatedAt: Date;
 }
+
+// ======================================================
+// AUCTION VEHICLE SCHEMA
+// ======================================================
 
 const AuctionVehicleSchema = new Schema(
   {
@@ -144,15 +146,13 @@ const AuctionVehicleSchema = new Schema(
       default: null,
     },
 
+    // ==================================================
+    // BID CONFIGURATION
+    // ==================================================
+
     minimumBid: {
       type: Number,
-      default: null,
-      min: 0,
-    },
-
-    reservePrice: {
-      type: Number,
-      default: null,
+      default:null,
       min: 0,
     },
 
@@ -161,6 +161,16 @@ const AuctionVehicleSchema = new Schema(
       default: null,
       min: 1,
     },
+
+    reservePrice: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    // ==================================================
+    // CURRENT BID
+    // ==================================================
 
     currentHighestBid: {
       type: Number,
@@ -179,50 +189,34 @@ const AuctionVehicleSchema = new Schema(
       min: 0,
     },
 
+    // ==================================================
+    // FINAL ASSIGNMENT
+    // ==================================================
+
+    assignedPartnerId: {
+      type: String,
+      default: null,
+    },
+
+    assignedStatus: {
+      type: String,
+      enum: Object.values(VehicleAssignedStatus),
+      default: VehicleAssignedStatus.PENDING,
+    },
+
     winnerBid: {
       type: Number,
       default: null,
     },
-
-    winnerPartner: {
-      type: String,
-      default: null,
-    },
-
-    winnerStatus: {
-      type: String,
-      enum: Object.values(WinnerStatus),
-      default: WinnerStatus.PENDING,
-    },
-
-    paymentStatus: {
-      type: String,
-      enum: Object.values(PaymentStatus),
-      default: PaymentStatus.PENDING,
-    },
   },
   {
     _id: false,
   },
 );
 
-const AuctionPartnerVehicleSchema = new Schema(
-  {
-    vehicleId: {
-      type: String,
-      required: true,
-    },
-
-    distanceInKm: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-  },
-  {
-    _id: false,
-  },
-);
+// ======================================================
+// AUCTION PARTNER SCHEMA
+// ======================================================
 
 const AuctionPartnerSchema = new Schema(
   {
@@ -256,24 +250,23 @@ const AuctionPartnerSchema = new Schema(
       type: String,
       default: null,
     },
-
-    vehicleIds: {
-      type: [AuctionPartnerVehicleSchema],
-      default: [],
-    },
   },
   {
     _id: false,
   },
 );
 
+// ======================================================
+// AUCTION SCHEMA
+// ======================================================
+
 const auctionSchema = new Schema(
   {
     auctionId: {
       type: String,
       unique: true,
-      default: () => uuid(),
       index: true,
+      // required: true,
     },
 
     vehicles: {
@@ -287,6 +280,10 @@ const auctionSchema = new Schema(
       required: true,
       default: [],
     },
+
+    // ==================================================
+    // AUCTION CONFIG
+    // ==================================================
 
     type: {
       type: String,
@@ -313,6 +310,10 @@ const auctionSchema = new Schema(
       min: 0,
     },
 
+    // ==================================================
+    // TIME
+    // ==================================================
+
     startTime: {
       type: Date,
       required: true,
@@ -325,40 +326,9 @@ const auctionSchema = new Schema(
       index: true,
     },
 
-    autoExtend: {
-      type: Boolean,
-      default: true,
-    },
-
-    autoExtendDuration: {
-      type: Number,
-      default: 120,
-      min: 1,
-    },
-
-    extensionCount: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    maxExtensions: {
-      type: Number,
-      default: 5,
-      min: 0,
-    },
-
-    visibility: {
-      type: String,
-      enum: ["PUBLIC", "PRIVATE"],
-      default: "PUBLIC",
-    },
-
-    startApprovalPending: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
+    // ==================================================
+    // ADMIN APPROVAL
+    // ==================================================
 
     startApprovalRequestedAt: {
       type: Date,
@@ -375,9 +345,14 @@ const auctionSchema = new Schema(
       default: null,
     },
 
-    cancellationReason: {
+    // ==================================================
+    // OTHER
+    // ==================================================
+
+    visibility: {
       type: String,
-      default: null,
+      enum: ["PUBLIC", "PRIVATE"],
+      default: "PUBLIC",
     },
 
     completedAt: {
@@ -387,6 +362,11 @@ const auctionSchema = new Schema(
 
     cancelledAt: {
       type: Date,
+      default: null,
+    },
+
+    cancellationReason: {
+      type: String,
       default: null,
     },
 
@@ -406,11 +386,19 @@ const auctionSchema = new Schema(
   },
 );
 
+// ======================================================
+// INDEX
+// ======================================================
+
 auctionSchema.index({
   status: 1,
   startTime: 1,
   endTime: 1,
 });
+
+// ======================================================
+// MODEL
+// ======================================================
 
 const Auction: Model<IAuction> =
   mongoose.models.Auction || mongoose.model<IAuction>("Auction", auctionSchema);

@@ -8,7 +8,10 @@ export const initializeAuctionSocket = (io: Server) => {
   io.on("connection", (socket) => {
     console.log("🔌 Socket connected:", socket.id);
 
-    // Join auction room
+    // Every connected partner receives auction lifecycle events
+    socket.join("partner:auctions");
+
+    // Join specific auction room
     socket.on("auction:join", (auctionId: string) => {
       socket.join(`auction:${auctionId}`);
 
@@ -17,7 +20,7 @@ export const initializeAuctionSocket = (io: Server) => {
       );
     });
 
-    // Leave auction room
+    // Leave specific auction room
     socket.on("auction:leave", (auctionId: string) => {
       socket.leave(`auction:${auctionId}`);
 
