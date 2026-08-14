@@ -266,7 +266,7 @@ const auctionSchema = new Schema(
       type: String,
       unique: true,
       index: true,
-      // required: true,
+      required: true,
     },
 
     vehicles: {

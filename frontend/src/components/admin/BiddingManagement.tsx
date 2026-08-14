@@ -4,10 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation'; // Import Next.js router
 import { createAuction } from '@/services/auction/auction.service';
-
-// 1. API Helper Function
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { getAuctionData } from '@/hooks/getAuctionData';
 
 export const BiddingManagement: React.FC = () => {
+  getAuctionData()
+  const {auctionData} = useSelector((state:RootState) => state.admin)
+  console.log(auctionData)
+  
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);

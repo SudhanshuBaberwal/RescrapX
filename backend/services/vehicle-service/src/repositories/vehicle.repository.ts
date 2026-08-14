@@ -29,6 +29,20 @@ class VehicleRepository {
     });
   }
 
+  async updateAuctionStatus(vehicleId: string, status: VehicleStatus) {
+    return Vehicle.findByIdAndUpdate(
+      vehicleId,
+      {
+        $set: {
+          status,
+        },
+      },
+      {
+        new: true,
+      },
+    );
+  }
+
   async findByVehicleId(vehicleId: string) {
     return Vehicle.findById(vehicleId);
   }
@@ -45,7 +59,7 @@ class VehicleRepository {
     return await Vehicle.find({ isRegistered: true });
   }
 
-  async findVehicleByVehicleId( vehicleId: string) {
+  async findVehicleByVehicleId(vehicleId: string) {
     return await Vehicle.findOne({
       _id: vehicleId,
     });

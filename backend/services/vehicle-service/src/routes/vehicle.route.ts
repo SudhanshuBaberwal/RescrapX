@@ -11,6 +11,7 @@ import {
   registerBasicVehicleDetails,
   reviewVehicle,
   underVerification,
+  updateAuctionVehicleStatus,
   updateVehicleStatus,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
@@ -87,5 +88,6 @@ router.put("/under-verification", attachUser, underVerification);
 router.put("/status", attachUser, adminOnly, updateVehicleStatus);
 router.get("/user-vehicles", attachUser, FindALlVehicleForUserController);
 router.post("/apply", attachUser, ApplyForBiddingVehicleController);
-router.get("/ready-for-auction",serviceAuth, getReadyForBiddingVehicles);
+router.get("/ready-for-auction", serviceAuth, getReadyForBiddingVehicles);
+router.patch("/auction/status", updateAuctionVehicleStatus);
 export default router;

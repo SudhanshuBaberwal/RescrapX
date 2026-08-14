@@ -24,6 +24,7 @@ export enum VehicleStatus {
   REJECTED = "REJECTED",
   READY_FOR_BIDDING = "READY_FOR_BIDDING",
   SOLD = "SOLD",
+  UNSOLD="UNSOLD",
   CANCELLED = "CANCELLED",
 }
 

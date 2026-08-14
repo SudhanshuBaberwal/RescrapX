@@ -13,8 +13,45 @@ import {
 import { calculateDistanceInKm } from "../utils/distance.js";
 import auctionRepository from "../repositories/auction.repository.js";
 import { env } from "../config/env.js";
+import crypto from "crypto";
 const MAX_RADIUS_KM = 150;
 const APPROVAL_WINDOW_MS = 3 * 60 * 1000;
+
+async function updateVehicleStatus(
+  vehicleId: string,
+  status: "SOLD" | "UNSOLD",
+) {
+  try {
+    console.log("========== VEHICLE STATUS UPDATE ==========");
+    console.log("Vehicle ID:", vehicleId);
+    console.log("Status:", status);
+
+    const response = await axios.patch(
+      "http://localhost:8004/register/auction/status",
+      {
+        vehicleId,
+        status,
+      },
+    );
+
+    console.log("Vehicle Service Response:", response.data);
+
+    return response.data;
+  } catch (error: any) {
+    console.error("========== VEHICLE STATUS UPDATE FAILED ==========");
+
+    console.error("Vehicle ID:", vehicleId);
+    console.error("Status:", status);
+
+    console.error("Status Code:", error.response?.status);
+
+    console.error("Response:", error.response?.data);
+
+    console.error("Message:", error.message);
+
+    throw error; // VERY IMPORTANT
+  }
+}
 
 class AuctionService {
   async createAuction(dto: CreateAuctionDto, adminId: string) {
@@ -145,7 +182,9 @@ class AuctionService {
         "No partners found within 150 KM of available vehicles.",
       );
     }
+    const auctionId = crypto.randomUUID();
     return auctionRepository.createAuction({
+      auctionId,
       vehicles: auctionVehicles,
       partners: auctionPartners,
       status: AuctionStatus.DRAFT,
@@ -452,7 +491,7 @@ class AuctionService {
       vehicleId,
       newVehiclePrice,
       partnerId,
-      vehicle.currentHighestBid ?? 0,
+      // vehicle.currentHighestBid ?? 0,
     );
 
     if (!updatedAuction) {
@@ -501,6 +540,8 @@ class AuctionService {
     }
     const winners = [];
     for (const vehicle of auction.vehicles) {
+      const status = vehicle.assignedStatus === "ASSIGNED" ? "SOLD" : "UNSOLD";
+      await updateVehicleStatus(vehicle.vehicleId, status);
       if (vehicle.assignedStatus === "UNSOLD") {
         continue;
       }

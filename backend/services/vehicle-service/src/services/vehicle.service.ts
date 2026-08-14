@@ -411,10 +411,31 @@ class VehicleService {
     return vehicle;
   }
 
-  async getReadyForBiddingVehicles(){
+  async getReadyForBiddingVehicles() {
     return Vehicle.find({
-      status:VehicleStatus.READY_FOR_BIDDING,
-    }).select("_id vehicleDetails pickup owner status")
+      status: VehicleStatus.READY_FOR_BIDDING,
+    }).select("_id vehicleDetails pickup owner status");
+  }
+
+  async updateVehicleAuctionStatus(vehicleId: string, status: VehicleStatus) {
+    if (!vehicleId) {
+      throw new ApiError(400, "Vehicle ID is required.");
+    }
+
+    if (status !== VehicleStatus.SOLD && status !== VehicleStatus.UNSOLD) {
+      throw new ApiError(400, "Invalid auction vehicle status.");
+    }
+
+    const vehicle = await vehicleRepository.updateAuctionStatus(
+      vehicleId,
+      status,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found.");
+    }
+
+    return vehicle;
   }
 }
 

@@ -7,6 +7,7 @@ import {
   emitAuctionStarted,
   emitAuctionEnded,
 } from "../socket/auction.event.js";
+import auctionService from "../service/auction.service.js";
 
 // ======================================================
 // REQUEST APPROVAL
@@ -15,21 +16,14 @@ import {
 
 async function requestApproval(auctionId: string) {
   try {
-    const auction =
-      await auctionRepository.requestAuctionApproval(auctionId);
-
+    const auction = await auctionRepository.requestAuctionApproval(auctionId);
     if (!auction) {
       return;
     }
-
     console.log(`[AUCTION] Approval required: ${auctionId}`);
-
     emitApprovalRequired(auction);
   } catch (error) {
-    console.error(
-      `[AUCTION] Approval request failed: ${auctionId}`,
-      error,
-    );
+    console.error(`[AUCTION] Approval request failed: ${auctionId}`, error);
   }
 }
 
@@ -40,8 +34,7 @@ async function requestApproval(auctionId: string) {
 
 async function startAuction(auctionId: string) {
   try {
-    const auction =
-      await auctionRepository.startApprovedAuction(auctionId);
+    const auction = await auctionRepository.startApprovedAuction(auctionId);
 
     // Not approved OR start time not reached
     if (!auction) {
@@ -53,10 +46,7 @@ async function startAuction(auctionId: string) {
     // Notify all connected partners immediately
     emitAuctionStarted(auction);
   } catch (error) {
-    console.error(
-      `[AUCTION] Start failed: ${auctionId}`,
-      error,
-    );
+    console.error(`[AUCTION] Start failed: ${auctionId}`, error);
   }
 }
 
@@ -68,38 +58,31 @@ async function startAuction(auctionId: string) {
 
 async function endAuction(auctionId: string) {
   try {
-    const auction =
-      await auctionRepository.closeAuctionAndAssignWinners(auctionId);
+    console.log(`[AUCTION] Closing auction: ${auctionId}`);
 
-    // Already closed / not live
-    if (!auction) {
+    const result = await auctionService.finalizeAuction(auctionId);
+
+    if (!result) {
+      console.log(`[AUCTION] Already closed or not live: ${auctionId}`);
       return;
     }
 
     console.log(`[AUCTION] CLOSED: ${auctionId}`);
 
-    const vehicles = auction.vehicles.map((vehicle) => ({
-      vehicleId: vehicle.vehicleId,
+    console.log(`[AUCTION] Winners: ${result.winners.length}`);
 
-      finalPrice: vehicle.currentHighestBid ?? 0,
-
-      highestBidder: vehicle.highestBidder ?? null,
-
-      assignedPartnerId: vehicle.assignedPartnerId ?? null,
-
-      assignmentStatus: vehicle.assignedStatus,
-    }));
-
-    // Notify partners immediately
     emitAuctionEnded({
-      auctionId,
-      vehicles,
+      auctionId: result.auctionId,
+      vehicles: result.vehicles.map((vehicle) => ({
+        vehicleId: vehicle.vehicleId,
+        finalPrice: vehicle.currentHighestBid ?? 0,
+        highestBidder: vehicle.highestBidder ?? null,
+        assignedPartnerId: vehicle.assignedPartnerId ?? null,
+        assignmentStatus: vehicle.assignedStatus,
+      })),
     });
   } catch (error) {
-    console.error(
-      `[AUCTION] Close failed: ${auctionId}`,
-      error,
-    );
+    console.error(`[AUCTION] Close failed: ${auctionId}`, error);
   }
 }
 
@@ -109,17 +92,13 @@ async function endAuction(auctionId: string) {
 
 async function processApprovalRequests() {
   try {
-    const auctions =
-      await auctionRepository.findAuctionsRequiringApproval();
+    const auctions = await auctionRepository.findAuctionsRequiringApproval();
 
     for (const auction of auctions) {
       await requestApproval(auction._id.toString());
     }
   } catch (error) {
-    console.error(
-      "[AUCTION] Approval check failed:",
-      error,
-    );
+    console.error("[AUCTION] Approval check failed:", error);
   }
 }
 
@@ -129,17 +108,13 @@ async function processApprovalRequests() {
 
 async function processAuctionStarts() {
   try {
-    const auctions =
-      await auctionRepository.findAuctionsReadyToStart();
+    const auctions = await auctionRepository.findAuctionsReadyToStart();
 
     for (const auction of auctions) {
       await startAuction(auction._id.toString());
     }
   } catch (error) {
-    console.error(
-      "[AUCTION] Start check failed:",
-      error,
-    );
+    console.error("[AUCTION] Start check failed:", error);
   }
 }
 
@@ -149,17 +124,13 @@ async function processAuctionStarts() {
 
 async function processAuctionEnds() {
   try {
-    const auctions =
-      await auctionRepository.findExpiredAuctions();
+    const auctions = await auctionRepository.findExpiredAuctions();
 
     for (const auction of auctions) {
-      await endAuction(auction._id.toString());
+      await endAuction(auction.auctionId.toString());
     }
   } catch (error) {
-    console.error(
-      "[AUCTION] End check failed:",
-      error,
-    );
+    console.error("[AUCTION] End check failed:", error);
   }
 }
 
@@ -180,31 +151,10 @@ export const startAuctionScheduler = () => {
     if (schedulerRunning) {
       return;
     }
-
     schedulerRunning = true;
-
     try {
-      // ------------------------------------------
-      // 1. REQUEST APPROVAL
-      // 3 minutes before startTime
-      // ------------------------------------------
-
       await processApprovalRequests();
-
-      // ------------------------------------------
-      // 2. START AUCTION
-      // Only if:
-      // - Admin approved
-      // - startTime has arrived
-      // ------------------------------------------
-
       await processAuctionStarts();
-
-      // ------------------------------------------
-      // 3. END AUCTION
-      // Only LIVE auctions whose endTime has passed
-      // ------------------------------------------
-
       await processAuctionEnds();
     } finally {
       schedulerRunning = false;

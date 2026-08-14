@@ -4,7 +4,7 @@ import vehicleService from "../services/vehicle.service.js";
 import asyncHandler from "../lib/asyncHandler.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import ApiError from "../lib/ApiError.js";
-import { VehicleDocumentType } from "../models/vehicle.model.js";
+import Vehicle, { VehicleDocumentType } from "../models/vehicle.model.js";
 import {
   UploadedFiles,
   UploadedPhotos,
@@ -140,9 +140,7 @@ export const reviewVehicle = asyncHandler(async (req, res) => {
 export const findVehicle = asyncHandler(async (req, res) => {
   const vehicleId = req.query.vehicleId as string;
   // const userId = req.user?.userId as string;
-  const vehicle = await vehicleRepository.findVehicleByVehicleId(
-    vehicleId,
-  );
+  const vehicle = await vehicleRepository.findVehicleByVehicleId(vehicleId);
   return ApiResponse.success(res, 201, "Vehicle Data", vehicle);
 });
 
@@ -227,4 +225,20 @@ export const getReadyForBiddingVehicles = asyncHandler(async (req, res) => {
     success: true,
     data: vehicles,
   });
+});
+
+export const updateAuctionVehicleStatus = asyncHandler(async (req, res) => {
+  const { status, vehicleId } = req.body;
+
+  const vehicle = await vehicleService.updateVehicleAuctionStatus(
+    vehicleId,
+    status,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Vehicle auction status updated successfully.",
+    vehicle,
+  );
 });

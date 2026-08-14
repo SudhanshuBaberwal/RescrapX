@@ -30,6 +30,7 @@ class AuctionRepository {
           AuctionStatus.APPROVAL_PENDING,
           AuctionStatus.START_APPROVED,
           AuctionStatus.LIVE,
+          // AuctionStatus.ENDED
         ],
       },
     }).sort({ createdAt: -1 });
@@ -69,36 +70,36 @@ class AuctionRepository {
   // PLACE BID
   // ======================================================
 
- async updateVehicleBid(
-  auctionId: string,
-  vehicleId: string,
-  newVehiclePrice: number,
-  partnerId: string,
-) {
-  const updatedAuction = await Auction.findOneAndUpdate(
-    {
-      _id: auctionId,
-      status: AuctionStatus.LIVE,
-      "vehicles.vehicleId": vehicleId,
-    },
-    {
-      $set: {
-        "vehicles.$.currentHighestBid": newVehiclePrice,
-        "vehicles.$.highestBidder": partnerId,
+  async updateVehicleBid(
+    auctionId: string,
+    vehicleId: string,
+    newVehiclePrice: number,
+    partnerId: string,
+  ) {
+    const updatedAuction = await Auction.findOneAndUpdate(
+      {
+        _id: auctionId,
+        status: AuctionStatus.LIVE,
+        "vehicles.vehicleId": vehicleId,
       },
-      $inc: {
-        "vehicles.$.totalBids": 1,
-        totalBids: 1,
+      {
+        $set: {
+          "vehicles.$.currentHighestBid": newVehiclePrice,
+          "vehicles.$.highestBidder": partnerId,
+        },
+        $inc: {
+          "vehicles.$.totalBids": 1,
+          totalBids: 1,
+        },
       },
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
 
-  return updatedAuction;
-}
+    return updatedAuction;
+  }
   // ======================================================
   // APPROVAL
   // Find auctions whose start time is within next 3 minutes
@@ -273,63 +274,36 @@ class AuctionRepository {
   // ======================================================
 
   async closeAuctionAndAssignWinners(auctionId: string) {
-    const now = new Date();
-
-    // First fetch only LIVE + expired auction
     const auction = await Auction.findOne({
-      _id: auctionId,
-
+      auctionId,
       status: AuctionStatus.LIVE,
-
-      endTime: {
-        $lte: now,
-      },
     });
 
     if (!auction) {
       return null;
     }
 
-    // ==================================================
-    // ASSIGN WINNERS
-    // ==================================================
-
     for (const vehicle of auction.vehicles) {
-      // ----------------------------------------------
-      // No bidder
-      // ----------------------------------------------
+      const hasBid =
+        vehicle.totalBids != null &&
+        vehicle.totalBids > 0 &&
+        vehicle.highestBidder != null &&
+        vehicle.currentHighestBid != null;
 
-      if (!vehicle.highestBidder || vehicle.currentHighestBid <= 0) {
+      if (hasBid) {
+        // SOLD
+        vehicle.assignedPartnerId = vehicle.highestBidder;
+        vehicle.assignedStatus = VehicleAssignedStatus.ASSIGNED;
+        vehicle.winnerBid = vehicle.currentHighestBid;
+      } else {
+        // UNSOLD
         vehicle.assignedPartnerId = null;
-
         vehicle.assignedStatus = VehicleAssignedStatus.UNSOLD;
-
         vehicle.winnerBid = null;
-
-        continue;
       }
-
-      // ----------------------------------------------
-      // Highest bidder becomes winner
-      // ----------------------------------------------
-
-      vehicle.assignedPartnerId = vehicle.highestBidder;
-
-      vehicle.assignedStatus = VehicleAssignedStatus.ASSIGNED;
-
-      vehicle.winnerBid = vehicle.currentHighestBid;
     }
-
-    // ==================================================
-    // CLOSE AUCTION
-    // ==================================================
-
     auction.status = AuctionStatus.ENDED;
-
-    auction.completedAt = now;
-
     await auction.save();
-
     return auction;
   }
 

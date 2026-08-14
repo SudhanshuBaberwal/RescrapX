@@ -29,6 +29,6 @@ router.get("/start-approval/check", adminOnly, checkStartApproval);
 router.get("/start-approval/pending", adminOnly, getPendingStartApproval);
 router.patch("/start-approval/approve", adminOnly, approveAuctionStart);
 router.patch("/start-approval/reject", adminOnly, rejectAuctionStart);
-router.post("/bid", partnerOnly, placeBid);
+router.post("/bid", placeBid);
 router.post("/:auctionId/finalize", finalizeAuction);
 export default router;
