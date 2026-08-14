@@ -17,6 +17,7 @@ export enum VehicleStatus {
   READY_FOR_BIDDING = "READY_FOR_BIDDING",
   SOLD = "SOLD",
   CANCELLED = "CANCELLED",
+  UNSOLD = "UNSOLD"
 }
 
 const formatDate = (dateString?: string) => {
@@ -181,7 +182,7 @@ export default function VehiclesDashboard() {
   getAllVehiclesForAdmin();
 
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle) || { allVehiclesData: [] };
-
+  console.log(allVehiclesData)
   const [vehiclesList, setVehiclesList] = useState<any[]>([]);
 
   useEffect(() => {
@@ -313,7 +314,14 @@ export default function VehiclesDashboard() {
   const activeVehicleDetails = selectedVehicle?.vehicleDetails || {};
   const activeStatus = getStatusStyle(selectedVehicle?.status);
 
-  const isVehicleVerified = selectedVehicle?.status?.toUpperCase() === VehicleStatus.VERIFIED || VehicleStatus.READY_FOR_BIDDING;
+// ✅ CORRECT LOGIC
+const currentStatus = selectedVehicle?.status?.toUpperCase();
+// ✅ FIXED CHECK
+const isVehicleVerified =
+  currentStatus === VehicleStatus.VERIFIED ||
+  currentStatus === VehicleStatus.READY_FOR_BIDDING ||
+  currentStatus === VehicleStatus.SOLD || 
+  currentStatus === VehicleStatus.UNSOLD
 
   // Approve Handler
   const handleApprove = async () => {

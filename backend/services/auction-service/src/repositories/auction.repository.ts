@@ -5,10 +5,6 @@ import Auction, {
 } from "../models/auction.model.js";
 
 class AuctionRepository {
-  // ======================================================
-  // CREATE
-  // ======================================================
-
   async createAuction(data: Partial<IAuction>) {
     return Auction.create(data);
   }
@@ -16,10 +12,6 @@ class AuctionRepository {
   async findByAuctionId(auctionId: string) {
     return Auction.findById(auctionId);
   }
-
-  // ======================================================
-  // FIND ACTIVE AUCTION
-  // ======================================================
 
   async findActiveAuction() {
     return Auction.findOne({
@@ -35,10 +27,6 @@ class AuctionRepository {
       },
     }).sort({ createdAt: -1 });
   }
-
-  // ======================================================
-  // CONFIGURE VEHICLE
-  // ======================================================
 
   async configureVehicle(
     auctionId: string,
@@ -65,10 +53,6 @@ class AuctionRepository {
       },
     );
   }
-
-  // ======================================================
-  // PLACE BID
-  // ======================================================
 
   async updateVehicleBid(
     auctionId: string,
@@ -100,11 +84,6 @@ class AuctionRepository {
 
     return updatedAuction;
   }
-  // ======================================================
-  // APPROVAL
-  // Find auctions whose start time is within next 3 minutes
-  // ======================================================
-
   async findAuctionsRequiringApproval() {
     const now = new Date();
 
@@ -125,11 +104,6 @@ class AuctionRepository {
       startTime: 1,
     });
   }
-
-  // ======================================================
-  // REQUEST APPROVAL
-  // SCHEDULED → APPROVAL_PENDING
-  // ======================================================
 
   async requestAuctionApproval(auctionId: string) {
     const now = new Date();
@@ -166,11 +140,6 @@ class AuctionRepository {
     );
   }
 
-  // ======================================================
-  // ADMIN APPROVE
-  // APPROVAL_PENDING → START_APPROVED
-  // ======================================================
-
   async approveAuctionStart(auctionId: string, adminId: string) {
     return Auction.findOneAndUpdate(
       {
@@ -196,10 +165,6 @@ class AuctionRepository {
     );
   }
 
-  // ======================================================
-  // FIND APPROVED AUCTIONS READY TO START
-  // ======================================================
-
   async findAuctionsReadyToStart() {
     const now = new Date();
 
@@ -219,11 +184,6 @@ class AuctionRepository {
       startTime: 1,
     });
   }
-
-  // ======================================================
-  // START AUCTION
-  // START_APPROVED → LIVE
-  // ======================================================
 
   async startApprovedAuction(auctionId: string) {
     const now = new Date();
@@ -250,10 +210,6 @@ class AuctionRepository {
     );
   }
 
-  // ======================================================
-  // FIND EXPIRED LIVE AUCTIONS
-  // ======================================================
-
   async findExpiredAuctions() {
     const now = new Date();
 
@@ -267,11 +223,6 @@ class AuctionRepository {
       endTime: 1,
     });
   }
-
-  // ======================================================
-  // CLOSE AUCTION + ASSIGN WINNERS
-  // LIVE → ENDED
-  // ======================================================
 
   async closeAuctionAndAssignWinners(auctionId: string) {
     const auction = await Auction.findOne({
@@ -307,11 +258,6 @@ class AuctionRepository {
     return auction;
   }
 
-  // ======================================================
-  // REJECT AUCTION APPROVAL
-  // APPROVAL_PENDING → CANCELLED
-  // ======================================================
-
   async rejectAuctionStart(
     auctionId: string,
     adminId: string,
@@ -343,10 +289,6 @@ class AuctionRepository {
     );
   }
 
-  // ======================================================
-  // PARTNER ACTIVE AUCTION
-  // ======================================================
-
   async findActiveAuctionForPartner(partnerId: string) {
     const auction = await Auction.findOne({
       status: {
@@ -375,39 +317,22 @@ class AuctionRepository {
 
     return {
       auctionId: auction._id.toString(),
-
       type: auction.type,
-
       status: auction.status,
-
       startTime: auction.startTime,
-
       endTime: auction.endTime,
-
       visibility: auction.visibility,
-
       partner: {
         partnerId: partner.partnerId,
-
         companyName: partner.companyName,
-
         latitude: partner.latitude,
-
         longitude: partner.longitude,
-
         state: partner.state,
-
         district: partner.district,
       },
-
       vehicles: auction.vehicles,
     };
   }
-
-  // ======================================================
-  // FIND AUCTIONS WAITING FOR ADMIN APPROVAL
-  // ======================================================
-
   async findPendingApprovalAuctions() {
     return Auction.find({
       status: AuctionStatus.APPROVAL_PENDING,
@@ -433,8 +358,297 @@ class AuctionRepository {
         runValidators: true,
       },
     );
-
     return auction;
+  }
+
+  // ==========================================
+  // ADMIN DASHBOARD STATS
+  // ==========================================
+
+  async getAdminAuctionStats() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const [
+      liveAuctions,
+      upcomingAuctions,
+      completedToday,
+      cancelledAuctions,
+      bidStats,
+    ] = await Promise.all([
+      Auction.countDocuments({
+        status: AuctionStatus.LIVE,
+      }),
+      Auction.countDocuments({
+        status: {
+          $in: [
+            AuctionStatus.SCHEDULED,
+            AuctionStatus.APPROVAL_PENDING,
+            AuctionStatus.START_APPROVED,
+          ],
+        },
+        startTime: {
+          $gt: new Date(),
+        },
+      }),
+      Auction.countDocuments({
+        status: AuctionStatus.ENDED,
+        completedAt: {
+          $gte: startOfToday,
+          $lte: endOfToday,
+        },
+      }),
+      Auction.countDocuments({
+        status: AuctionStatus.CANCELLED,
+      }),
+      Auction.aggregate([
+        {
+          $unwind: "$vehicles",
+        },
+        {
+          $match: {
+            "vehicles.currentHighestBid": {
+              $gt: 0,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            averageBid: {
+              $avg: "$vehicles.currentHighestBid",
+            },
+            highestBid: {
+              $max: "$vehicles.currentHighestBid",
+            },
+          },
+        },
+      ]),
+    ]);
+
+    return {
+      liveAuctions,
+      upcomingAuctions,
+      completedToday,
+      cancelledAuctions,
+      averageBid: Math.round(bidStats[0]?.averageBid ?? 0),
+      highestBidToday: bidStats[0]?.highestBid ?? 0,
+    };
+  }
+
+  // ==========================================
+  // ADMIN AUCTION LIST
+  // ==========================================
+
+  async findAdminAuctions(params: {
+    search?: string;
+    status?: string;
+    type?: string;
+    state?: string;
+    duration?: string;
+
+    page: number;
+    limit: number;
+  }) {
+    const { search, status, type, state, duration, page, limit } = params;
+
+    const filter: any = {};
+
+    // -------------------------------
+    // STATUS
+    // -------------------------------
+
+    if (status && status !== "ALL") {
+      filter.status = status;
+    }
+
+    // -------------------------------
+    // TYPE
+    // -------------------------------
+
+    if (type && type !== "ALL") {
+      filter.type = type;
+    }
+
+    // -------------------------------
+    // SEARCH
+    // -------------------------------
+
+    if (search) {
+      filter.$or = [
+        {
+          auctionId: {
+            $regex: search,
+            $options: "i",
+          },
+        },
+
+        {
+          "vehicles.vehicleId": {
+            $regex: search,
+            $options: "i",
+          },
+        },
+
+        {
+          "vehicles.district": {
+            $regex: search,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    // -------------------------------
+    // STATE
+    // -------------------------------
+
+    if (state && state !== "ALL") {
+      filter["vehicles.state"] = state;
+    }
+
+    // -------------------------------
+    // DURATION
+    // -------------------------------
+
+    const now = new Date();
+
+    if (duration === "LIVE") {
+      filter.status = AuctionStatus.LIVE;
+    }
+
+    if (duration === "UPCOMING") {
+      filter.status = {
+        $in: [
+          AuctionStatus.SCHEDULED,
+          AuctionStatus.APPROVAL_PENDING,
+          AuctionStatus.START_APPROVED,
+        ],
+      };
+
+      filter.startTime = {
+        $gt: now,
+      };
+    }
+
+    if (duration === "ENDED") {
+      filter.status = AuctionStatus.ENDED;
+    }
+
+    // -------------------------------
+    // PAGINATION
+    // -------------------------------
+
+    const skip = (page - 1) * limit;
+
+    const [auctions, total] = await Promise.all([
+      Auction.find(filter)
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Auction.countDocuments(filter),
+    ]);
+
+    return {
+      auctions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // ==========================================
+  // SINGLE AUCTION DETAILS
+  // ==========================================
+
+  async findAdminAuctionById(auctionId: string) {
+    return Auction.findById(auctionId).lean();
+  }
+
+  async getAdminAuctionActivity(limit = 20) {
+    return Auction.aggregate([
+      {
+        $unwind: "$vehicles",
+      },
+
+      {
+        $match: {
+          "vehicles.totalBids": {
+            $gt: 0,
+          },
+        },
+      },
+
+      {
+        $sort: {
+          updatedAt: -1,
+        },
+      },
+
+      {
+        $limit: limit,
+      },
+
+      {
+        $project: {
+          _id: 0,
+          auctionId: "$_id",
+          requestId: "$auctionId",
+          vehicleId: "$vehicles.vehicleId",
+          highestBid: "$vehicles.currentHighestBid",
+          totalBids: "$vehicles.totalBids",
+          bidder: "$vehicles.highestBidder",
+          status: 1,
+          updatedAt: 1,
+        },
+      },
+    ]);
+  }
+
+  // ==========================================
+  // CANCEL AUCTION
+  // ==========================================
+
+  async cancelAuction(auctionId: string, adminId: string, reason: string) {
+    return Auction.findOneAndUpdate(
+      {
+        _id: auctionId,
+
+        status: {
+          $in: [
+            AuctionStatus.DRAFT,
+            AuctionStatus.SCHEDULED,
+            AuctionStatus.APPROVAL_PENDING,
+            AuctionStatus.START_APPROVED,
+          ],
+        },
+      },
+
+      {
+        $set: {
+          status: AuctionStatus.CANCELLED,
+
+          cancelledAt: new Date(),
+
+          cancellationReason: reason,
+
+          updatedBy: adminId,
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
   }
 }
 

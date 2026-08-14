@@ -50,27 +50,16 @@ async function startAuction(auctionId: string) {
   }
 }
 
-// ======================================================
-// END AUCTION
-// LIVE -> ENDED
-// + ASSIGN WINNERS
-// ======================================================
-
 async function endAuction(auctionId: string) {
   try {
     console.log(`[AUCTION] Closing auction: ${auctionId}`);
-
     const result = await auctionService.finalizeAuction(auctionId);
-
     if (!result) {
       console.log(`[AUCTION] Already closed or not live: ${auctionId}`);
       return;
     }
-
     console.log(`[AUCTION] CLOSED: ${auctionId}`);
-
     console.log(`[AUCTION] Winners: ${result.winners.length}`);
-
     emitAuctionEnded({
       auctionId: result.auctionId,
       vehicles: result.vehicles.map((vehicle) => ({

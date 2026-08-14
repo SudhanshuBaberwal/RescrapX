@@ -186,3 +186,119 @@ export const finalizeAuction = asyncHandler(async (req, res) => {
     data: result,
   });
 });
+
+// ==========================================
+// ADMIN DASHBOARD STATS
+// ==========================================
+
+export const getAdminAuctionStats = asyncHandler(async (req, res) => {
+  const stats = await auctionService.getAdminAuctionStats();
+
+  return res.status(200).json({
+    success: true,
+    message: "Auction dashboard stats fetched successfully.",
+    data: stats,
+  });
+});
+
+// ==========================================
+// ADMIN AUCTION LIST
+// ==========================================
+
+export const getAdminAuctions = asyncHandler(async (req, res) => {
+  const { search, status, type, state, duration, page, limit } = req.query;
+
+  const result = await auctionService.getAdminAuctions({
+    search: search as string,
+    status: status as string,
+    type: type as string,
+    state: state as string,
+    duration: duration as string,
+
+    page: page ? Number(page) : 1,
+
+    limit: limit ? Number(limit) : 10,
+  });
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Auctions fetched successfully.",
+
+    data: result.auctions,
+
+    pagination: result.pagination,
+  });
+});
+
+// ==========================================
+// ADMIN AUCTION DETAILS
+// ==========================================
+
+export const getAdminAuctionById = asyncHandler(async (req, res) => {
+  const auctionId = req.params.auctionId as string;
+
+  if (!auctionId) {
+    throw new ApiError(400, "Auction ID is required.");
+  }
+
+  const auction = await auctionService.getAdminAuctionById(auctionId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Auction details fetched successfully.",
+    data: auction,
+  });
+});
+
+// ==========================================
+// ADMIN ACTIVITY FEED
+// ==========================================
+
+export const getAdminAuctionActivity = asyncHandler(async (req, res) => {
+  const limit = Number(req.query.limit ?? 20);
+
+  const activity = await auctionService.getAdminAuctionActivity(limit);
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Auction activity fetched successfully.",
+
+    data: activity,
+  });
+});
+
+// ==========================================
+// CANCEL AUCTION
+// ==========================================
+
+export const cancelAdminAuction = asyncHandler(async (req, res) => {
+  const auctionId = req.params.auctionId as string;
+
+  const adminId = req.headers["x-user-id"] as string;
+
+  const { reason } = req.body;
+
+  if (!adminId) {
+    throw new ApiError(401, "Unauthorized.");
+  }
+
+  if (!auctionId) {
+    throw new ApiError(400, "Auction ID is required.");
+  }
+
+  const auction = await auctionService.cancelAdminAuction(
+    auctionId,
+    adminId,
+    reason,
+  );
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Auction cancelled successfully.",
+
+    data: auction,
+  });
+});

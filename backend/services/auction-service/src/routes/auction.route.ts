@@ -3,10 +3,15 @@ import { Router } from "express";
 import {
   approveAuction,
   approveAuctionStart,
+  cancelAdminAuction,
   checkStartApproval,
   condifureAuctionVehicle,
   createAuction,
   finalizeAuction,
+  getAdminAuctionActivity,
+  getAdminAuctionById,
+  getAdminAuctions,
+  getAdminAuctionStats,
   getAuctionData,
   getAuctionDataForPartner,
   getPendingApprovalAuctions,
@@ -31,4 +36,14 @@ router.patch("/start-approval/approve", adminOnly, approveAuctionStart);
 router.patch("/start-approval/reject", adminOnly, rejectAuctionStart);
 router.post("/bid", placeBid);
 router.post("/:auctionId/finalize", finalizeAuction);
+
+// ==========================================
+// ADMIN DASHBOARD
+// ==========================================
+
+router.get("/admin/stats", getAdminAuctionStats);
+router.get("/admin/activity", getAdminAuctionActivity);
+router.get("/admin", getAdminAuctions);
+router.get("/admin/:auctionId", getAdminAuctionById);
+router.patch("/admin/:auctionId/cancel", cancelAdminAuction);
 export default router;

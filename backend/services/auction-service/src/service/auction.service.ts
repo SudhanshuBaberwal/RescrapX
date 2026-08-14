@@ -571,6 +571,95 @@ class AuctionService {
       vehicles: auction.vehicles,
     };
   }
+
+  async getAdminAuctionStats() {
+    return auctionRepository.getAdminAuctionStats();
+  }
+
+  // ==========================================
+  // SINGLE AUCTION
+  // ==========================================
+
+  async getAdminAuctionById(auctionId: string) {
+    const auction = await auctionRepository.findAdminAuctionById(auctionId);
+
+    if (!auction) {
+      throw new ApiError(404, "Auction not found.");
+    }
+
+    return auction;
+  }
+
+  // ==========================================
+  // LIVE ACTIVITY
+  // ==========================================
+
+  async getAdminAuctionActivity(limit?: number) {
+    return auctionRepository.getAdminAuctionActivity(
+      Math.min(Math.max(Number(limit ?? 20), 1), 100),
+    );
+  }
+
+  // ==========================================
+  // CANCEL AUCTION
+  // ==========================================
+
+  async cancelAdminAuction(
+    auctionId: string,
+    adminId: string,
+    reason?: string,
+  ) {
+    const auction = await auctionRepository.findByAuctionId(auctionId);
+
+    if (!auction) {
+      throw new ApiError(404, "Auction not found.");
+    }
+
+    if (auction.status === AuctionStatus.ENDED) {
+      throw new ApiError(400, "Ended auction cannot be cancelled.");
+    }
+
+    if (auction.status === AuctionStatus.CANCELLED) {
+      throw new ApiError(400, "Auction is already cancelled.");
+    }
+
+    const cancelled = await auctionRepository.cancelAuction(
+      auctionId,
+      adminId,
+      reason ?? "Auction cancelled by admin.",
+    );
+
+    if (!cancelled) {
+      throw new ApiError(400, "Auction could not be cancelled.");
+    }
+
+    return cancelled;
+  }
+
+  // ==========================================
+  // ADMIN AUCTION LIST
+  // ==========================================
+
+  async getAdminAuctions(params: {
+    search?: string;
+    status?: string;
+    type?: string;
+    state?: string;
+    duration?: string;
+
+    page?: number;
+    limit?: number;
+  }) {
+    const page = Math.max(Number(params.page ?? 1), 1);
+
+    const limit = Math.min(Math.max(Number(params.limit ?? 10), 1), 100);
+
+    return auctionRepository.findAdminAuctions({
+      ...params,
+      page,
+      limit,
+    });
+  }
 }
 
 export default new AuctionService();

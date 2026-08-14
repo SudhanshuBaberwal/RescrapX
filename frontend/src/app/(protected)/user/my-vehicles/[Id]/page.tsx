@@ -69,7 +69,7 @@ export default function VehicleDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const vehicleId = params?.Id as string;
-  const { showToast } = useToast()
+  const { showToast } = useToast();
   const { allVehiclesData } = useSelector((state: RootState) => state.vehicle);
   const [vehicle, setVehicle] = useState<IVehicle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,9 +180,31 @@ export default function VehicleDetailsPage() {
     }
   };
 
-  const status = vehicle?.status?.toUpperCase();
+  const status = vehicle?.status?.toUpperCase() || '';
+  const auctionStatus = (vehicle as any)?.auctionStatus?.toUpperCase() || '';
+
   const isVehicleVerified = status === 'VERIFIED' || status === 'APPROVED';
   const isUserProfileVerified = Boolean(userProfileData?.isVerifiedProfile);
+
+  // Statuses where "Register Vehicle for Auction" button MUST be hidden
+  const hiddenStatuses = [
+    'READY FOR BIDDING',
+    'READY_FOR_BIDDING',
+    'BIDDING',
+    'SOLD',
+    'UNSOLD'
+  ];
+
+  const isRegisteredForAuction = Boolean(
+    (vehicle as any)?.isRegisteredForAuction ||
+    (vehicle as any)?.registeredForAuction ||
+    (vehicle as any)?.isAuctionRegistered
+  );
+
+  const shouldHideAuctionButton =
+    isRegisteredForAuction ||
+    hiddenStatuses.includes(status) ||
+    hiddenStatuses.includes(auctionStatus);
 
   const handleRegisterForAuction = async () => {
     try {
@@ -199,10 +221,10 @@ export default function VehicleDetailsPage() {
         setAuctionError("Your vehicle is not verified by admin.");
         return;
       }
-      await applyForAuction(vehicleId)
-      showToast("Vehicle Registered For Auction Successfully", 'success')
+      await applyForAuction(vehicleId);
+      showToast("Vehicle Registered For Auction Successfully", 'success');
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   };
 
@@ -256,13 +278,16 @@ export default function VehicleDetailsPage() {
               <ArrowLeft size={14} /> Back to My Vehicles
             </button>
 
-            <button
-              type="button"
-              onClick={handleRegisterForAuction}
-              className="inline-flex items-center gap-2 text-xs font-black text-white bg-[#0B5B32] hover:bg-[#084827] px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer"
-            >
-              <Gavel size={15} /> Register Vehicle for Auction
-            </button>
+            {/* REGISTER FOR AUCTION BUTTON */}
+            {!shouldHideAuctionButton && (
+              <button
+                type="button"
+                onClick={handleRegisterForAuction}
+                className="inline-flex items-center gap-2 text-xs font-black text-white bg-[#0B5B32] hover:bg-[#084827] px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer"
+              >
+                <Gavel size={15} /> Register Vehicle for Auction
+              </button>
+            )}
           </div>
 
           {/* AUCTION ERROR MESSAGE BANNER */}
