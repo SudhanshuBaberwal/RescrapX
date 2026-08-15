@@ -375,7 +375,7 @@ export const getPickupMap = asyncHandler(async (req, res) => {
 
 export const schedulePickup = async (req: Request, res: Response) => {
   try {
-    const { vehicleId, scheduledAt , pickupCharges , documentCharges } = req.body;
+    const { vehicleId, scheduledAt, pickupCharges, documentCharges } = req.body;
     if (!vehicleId) {
       return res.status(400).json({
         success: false,
@@ -388,7 +388,12 @@ export const schedulePickup = async (req: Request, res: Response) => {
         message: "scheduledAt is required",
       });
     }
-    const vehicle = await vehicleService.schedulePickup(vehicleId, scheduledAt , pickupCharges,documentCharges);
+    const vehicle = await vehicleService.schedulePickup(
+      vehicleId,
+      scheduledAt,
+      pickupCharges,
+      documentCharges,
+    );
     return res.status(200).json({
       success: true,
       message: "Pickup scheduled successfully",
@@ -435,6 +440,39 @@ export const assignDriver = async (req: Request, res: Response) => {
     return res.status(400).json({
       success: false,
       message: error?.message || "Failed to assign driver",
+    });
+  }
+};
+
+export const getPartnerIncomingVehicles = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const partnerId =
+      (req as any).user?.userId || (req.headers["x-user-id"] as string);
+
+    if (!partnerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Partner authentication required",
+      });
+    }
+
+    const vehicles =
+      await vehicleService.getIncomingVehiclesForPartner(partnerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Incoming vehicles fetched successfully",
+      data: vehicles,
+    });
+  } catch (error) {
+    console.error("Get incoming vehicles error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch incoming vehicles",
     });
   }
 };

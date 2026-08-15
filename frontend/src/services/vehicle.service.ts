@@ -290,3 +290,12 @@ export const assignDriver = async (vehicleId: string, driverName: string) => {
     console.log(error);
   }
 };
+
+export const getIncomingVehicles = async () => {
+  try {
+    const response = await api.get("/api/vehicle/register/partner/incoming");
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -694,6 +694,32 @@ class AuctionService {
       limit,
     });
   }
+
+  async getPartnerWonVehicles(partnerId: string) {
+    if (!partnerId) {
+      throw new ApiError(401, "Partner ID is required.");
+    }
+
+    const vehicles = await auctionRepository.getPartnerWonVehicles(partnerId);
+
+    const totalWonVehicles = vehicles.length;
+
+    const totalWonValue = vehicles.reduce(
+      (total: number, item: any) =>
+        total +
+        (item.vehicle?.winnerBid ?? item.vehicle?.currentHighestBid ?? 0),
+      0,
+    );
+
+    return {
+      stats: {
+        totalWonVehicles,
+        totalWonValue,
+      },
+
+      vehicles,
+    };
+  }
 }
 
 export default new AuctionService();

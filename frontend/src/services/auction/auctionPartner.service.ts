@@ -32,3 +32,12 @@ export const getMyBids = async () => {
     console.log(error);
   }
 };
+
+export const wonVehicles = async () => {
+  try {
+    const result = await api.get("/api/auction/partner/won-vehicles");
+    return result.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

@@ -726,6 +726,67 @@ class AuctionRepository {
 
     return result;
   }
+
+  async getPartnerWonVehicles(partnerId: string) {
+    const result = await Auction.aggregate([
+      {
+        $match: {
+          status: AuctionStatus.ENDED,
+        },
+      },
+
+      {
+        $unwind: "$vehicles",
+      },
+
+      {
+        $match: {
+          "vehicles.assignedPartnerId": partnerId,
+          "vehicles.assignedStatus": VehicleAssignedStatus.ASSIGNED,
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+
+          auctionId: 1,
+
+          auctionStatus: "$status",
+
+          startTime: 1,
+          endTime: 1,
+          completedAt: 1,
+
+          vehicle: {
+            vehicleId: "$vehicles.vehicleId",
+            sellerId: "$vehicles.sellerId",
+            latitude: "$vehicles.latitude",
+            longitude: "$vehicles.longitude",
+            state: "$vehicles.state",
+            district: "$vehicles.district",
+            minimumBid: "$vehicles.minimumBid",
+            bidIncrement: "$vehicles.bidIncrement",
+            reservePrice: "$vehicles.reservePrice",
+            currentHighestBid: "$vehicles.currentHighestBid",
+            highestBidder: "$vehicles.highestBidder",
+            totalBids: "$vehicles.totalBids",
+            assignedPartnerId: "$vehicles.assignedPartnerId",
+            assignedStatus: "$vehicles.assignedStatus",
+            winnerBid: "$vehicles.winnerBid",
+          },
+        },
+      },
+
+      {
+        $sort: {
+          completedAt: -1,
+        },
+      },
+    ]);
+
+    return result;
+  }
 }
 
 export default new AuctionRepository();

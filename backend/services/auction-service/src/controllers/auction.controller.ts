@@ -317,3 +317,20 @@ export const getAdminDashboardAuctionData = asyncHandler(async (req, res) => {
     },
   );
 });
+
+export const getPartnerWonVehicles = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    return ApiResponse.error(res, 401, "Partner authentication required.");
+  }
+
+  const data = await auctionService.getPartnerWonVehicles(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Partner won vehicles fetched successfully.",
+    data,
+  );
+});

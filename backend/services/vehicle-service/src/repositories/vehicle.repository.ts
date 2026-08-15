@@ -272,6 +272,25 @@ class VehicleRepository {
       },
     );
   }
+
+  async getIncomingVehiclesByPartner(partnerId: string) {
+    return Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+
+      status: {
+        $in: [
+          VehicleStatus.SCHEDULED,
+          VehicleStatus.DRIVER_ASSIGNED,
+          VehicleStatus.IN_TRANSIT,
+          VehicleStatus.ARRIVED,
+        ],
+      },
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
 }
 
 export default new VehicleRepository();

@@ -9,6 +9,7 @@ import {
   findScheduledVehicles,
   findVehicle,
   getAllVehicles,
+  getPartnerIncomingVehicles,
   getPickupMap,
   getReadyForBiddingVehicles,
   getVehicleDashboardStats,
@@ -100,13 +101,10 @@ router.patch("/auction/status", updateAuctionVehicleStatus);
 router.patch("/approve-pickup", attachUser, approveVehicleForPickup);
 router.patch("/schedule", adminOnly, scheduleVehiclePickup);
 router.get("/scheduled-vehicles", adminOnly, findScheduledVehicles);
-
 router.get("/admin/dashboard/stats", adminOnly, getVehicleDashboardStats);
-
 router.get("/admin/dashboard/pickups/map", adminOnly, getPickupMap);
-
 router.patch("/admin/pickup/schedule", adminOnly, schedulePickup);
-
 router.patch("/admin/pickup/assign-driver", adminOnly, assignDriver);
+router.get("/partner/incoming", getPartnerIncomingVehicles);
 
 export default router;

@@ -559,7 +559,7 @@ class VehicleService {
       vehicleId,
       pickupDate,
       pickupCharges,
-      documentCharges
+      documentCharges,
     );
 
     if (!vehicle) {
@@ -588,6 +588,17 @@ class VehicleService {
     }
 
     return vehicle;
+  }
+
+  async getIncomingVehiclesForPartner(partnerId: string) {
+    if (!partnerId) {
+      throw new Error("Partner ID is required");
+    }
+
+    const vehicles =
+      await vehicleRepository.getIncomingVehiclesByPartner(partnerId);
+
+    return vehicles;
   }
 }
 

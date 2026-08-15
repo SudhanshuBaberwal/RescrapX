@@ -161,3 +161,52 @@ export interface MyBid {
 
   photos?: string[];
 }
+
+
+// Nested Vehicle Details Interface
+export interface WonVehicleDetails {
+  vehicleId: string;
+  sellerId: string;
+  latitude: number;
+  longitude: number;
+  state: string;
+  district: string;
+  minimumBid: number;
+  bidIncrement: number;
+  reservePrice: number;
+  currentHighestBid: number;
+  highestBidder: string;
+  totalBids: number;
+  assignedPartnerId: string;
+  assignedStatus: 'ASSIGNED' | 'UNASSIGNED' | string;
+  winnerBid: number;
+}
+
+// Single Won Vehicle Item Interface
+export interface WonVehicleItem {
+  auctionId: string;
+  startTime: string;
+  endTime: string;
+  completedAt: string | null;
+  auctionStatus: 'ENDED' | 'LIVE' | 'CANCELLED' | string;
+  vehicle: WonVehicleDetails;
+}
+
+// Partner Vehicle Statistics Interface
+export interface PartnerWonVehiclesStats {
+  totalWonVehicles: number;
+  totalWonValue: number;
+}
+
+// Inner Data Object Interface
+export interface PartnerWonVehiclesData {
+  stats: PartnerWonVehiclesStats;
+  vehicles: WonVehicleItem[];
+}
+
+// Top-Level API Response Interface
+export interface PartnerWonVehiclesResponse {
+  success: boolean;
+  message: string;
+  data: PartnerWonVehiclesData;
+}

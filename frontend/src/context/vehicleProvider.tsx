@@ -1,4 +1,3 @@
-
 export interface IVehicleDocument {
     path: string;
     originalName: string;
@@ -23,6 +22,13 @@ export enum VehicleStatus {
     REJECTED = "REJECTED",
     READY_FOR_BIDDING = "READY_FOR_BIDDING",
     SOLD = "SOLD",
+    UNSOLD = "UNSOLD",
+    READY_FOR_PICKUP = "READY_FOR_PICKUP",
+    SCHEDULED = "SCHEDULED",
+    DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
+    IN_TRANSIT = "IN_TRANSIT",
+    PICKED_UP="PICKED_UP",
+    ARRIVED = "ARRIVED",
     CANCELLED = "CANCELLED",
 }
 
@@ -81,15 +87,22 @@ export enum structuralDamage {
     MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
 export interface IVehicle {
-    owner: string
-    _id: string
+    owner: string;
+    pickupCharges?: number;
+    documentCharges?: number;
+    auctionResult?: {
+        auctionId: string;
+        partnerId: string | null;
+        winningBid: number | null;
+        wonAt: Date | null;
+    };
+
     status: VehicleStatus;
     isRegistered?: boolean;
     currentStep: RegistrationStep;
     vehicleDetails: {
-        carName: string
+        carName: string;
         registrationNumber: string;
-        manufacturer: string;
         model: string;
         variant: string;
         fuelType: string;
@@ -146,42 +159,35 @@ export interface IVehicle {
         houseNumber: string;
         street: string;
         area: string;
-
         landmark?: string;
-
         city: string;
         state: string;
         pincode: string;
-
         latitude: number;
         longitude: number;
-
         formattedAddress?: string;
-
         contactName: string;
         mobileNumber: string;
-
         alternateNumber?: string;
-
         vehicleLocation: "HOME" | "OFFICE" | "PARKING" | "WORKSHOP" | "OTHER";
-
         towAccessibility: "YES" | "NO" | "NOT_SURE";
-
         currentVehiclePosition:
         | "ON_ROAD"
         | "BASEMENT"
         | "SOCIETY"
         | "ROADSIDE"
         | "GARAGE";
+        scheduledAt?: Date;
+        confirmedAt?: Date;
+        confirmedBy?: string;
+        assignedDriver?: string;
     };
     timeline: {
         title: string;
         completed: boolean;
         completedAt?: Date;
     }[];
-
     rejectionReason?: string;
-
     createdAt: Date;
     updatedAt: Date;
 }

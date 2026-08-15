@@ -1,9 +1,5 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
-// ======================================================
-// ENUMS
-// ======================================================
-
 export enum AuctionStatus {
   DRAFT = "DRAFT",
   SCHEDULED = "SCHEDULED",

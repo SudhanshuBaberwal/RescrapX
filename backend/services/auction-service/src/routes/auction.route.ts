@@ -15,6 +15,7 @@ import {
   getAdminDashboardAuctionData,
   getAuctionData,
   getAuctionDataForPartner,
+  getPartnerWonVehicles,
   getPendingApprovalAuctions,
   getPendingStartApproval,
   placeBid,
@@ -52,5 +53,7 @@ router.patch("/admin/:auctionId/cancel", cancelAdminAuction);
 router.get("/partner/my-bids", partnerOnly, MyBids);
 
 router.get("/admin/dashboard", adminOnly, getAdminDashboardAuctionData);
+
+router.get("/partner/won-vehicles", partnerOnly, getPartnerWonVehicles);
 
 export default router;
