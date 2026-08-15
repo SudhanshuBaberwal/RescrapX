@@ -5,6 +5,7 @@ import { proxyRoutes } from "./routes/proxyRoute.ts";
 import cors from "cors";
 import { protect } from "./middleware/auth.middleware.ts";
 import cookieParser from "cookie-parser";
+import router from "./routes/newRoute.ts";
 
 const app = express();
 
@@ -32,6 +33,8 @@ app.use(
     parseReqBody: false,
   }),
 );
+app.use("/", router);
+
 app.use("/api/user", protect, proxyRoutes(env.USER_SERVICE_URL));
 
 app.use("/api/vehicle", protect, proxyRoutes(env.VEHICLE_SERVICE_URL));

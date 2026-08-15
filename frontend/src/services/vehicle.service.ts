@@ -256,3 +256,37 @@ export const vehiclesRegisterForPickup = async () => {
     console.log(error);
   }
 };
+
+export const schedulePickup = async (
+  vehicleId: string,
+  scheduledAt: string,
+  pickupCharges: number,
+  documentCharges: number,
+) => {
+  const response = await api.patch(
+    "/api/vehicle/register/admin/pickup/schedule",
+    {
+      vehicleId,
+      scheduledAt,
+      pickupCharges,
+      documentCharges,
+    },
+  );
+
+  return response.data;
+};
+
+export const assignDriver = async (vehicleId: string, driverName: string) => {
+  try {
+    const response = await api.patch(
+      "/api/vehicle/register/admin/pickup/assign-driver",
+      {
+        vehicleId,
+        driverName,
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

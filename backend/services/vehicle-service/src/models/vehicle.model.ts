@@ -29,7 +29,7 @@ export enum VehicleStatus {
   SCHEDULED = "SCHEDULED",
   DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
   IN_TRANSIT = "IN_TRANSIT",
-  ARRIVED="ARRIVED",
+  ARRIVED = "ARRIVED",
   CANCELLED = "CANCELLED",
 }
 
@@ -89,7 +89,8 @@ export enum structuralDamage {
 }
 export interface IVehicle extends Document {
   owner: mongoose.Types.ObjectId;
-
+  pickupCharges?: number;
+  documentCharges?: number;
   auctionResult?: {
     auctionId: string;
     partnerId: string | null;
@@ -180,6 +181,7 @@ export interface IVehicle extends Document {
     scheduledAt?: Date;
     confirmedAt?: Date;
     confirmedBy?: string;
+    assignedDriver?: string;
   };
   timeline: {
     title: string;
@@ -489,6 +491,11 @@ const pickupSchema = new Schema(
       type: String,
       default: null,
     },
+    assignedDriver: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   {
     _id: false,
@@ -509,6 +516,14 @@ const vehicleSchema = new Schema<IVehicle>(
     owner: {
       type: Schema.Types.ObjectId,
       required: true,
+    },
+    pickupCharges: {
+      type: Number,
+      default: 0,
+    },
+    documentCharges: {
+      type: Number,
+      default: 0,
     },
     isRegistered: {
       type: Boolean,

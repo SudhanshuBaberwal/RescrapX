@@ -3,15 +3,19 @@ import {
   allVehiclesDataForAdmin,
   ApplyForBiddingVehicleController,
   approveVehicleForPickup,
+  assignDriver,
   createVehicleDraft,
   FindALlVehicleForUserController,
   findScheduledVehicles,
   findVehicle,
   getAllVehicles,
+  getPickupMap,
   getReadyForBiddingVehicles,
+  getVehicleDashboardStats,
   majorComponents,
   registerBasicVehicleDetails,
   reviewVehicle,
+  schedulePickup,
   scheduleVehiclePickup,
   underVerification,
   updateAuctionVehicleStatus,
@@ -96,4 +100,13 @@ router.patch("/auction/status", updateAuctionVehicleStatus);
 router.patch("/approve-pickup", attachUser, approveVehicleForPickup);
 router.patch("/schedule", adminOnly, scheduleVehiclePickup);
 router.get("/scheduled-vehicles", adminOnly, findScheduledVehicles);
+
+router.get("/admin/dashboard/stats", adminOnly, getVehicleDashboardStats);
+
+router.get("/admin/dashboard/pickups/map", adminOnly, getPickupMap);
+
+router.patch("/admin/pickup/schedule", adminOnly, schedulePickup);
+
+router.patch("/admin/pickup/assign-driver", adminOnly, assignDriver);
+
 export default router;

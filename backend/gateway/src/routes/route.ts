@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { env } from "../config/env.ts";
-
+import env from "../config/env";
 const proxyRoutes = Router();
 
 proxyRoutes.use(
@@ -12,7 +11,7 @@ proxyRoutes.use(
     pathRewrite: {
       "^/auth": "/api/auth",
     },
-  })
+  }),
 );
 
 

@@ -651,18 +651,81 @@ class AuctionRepository {
     );
   }
 
-
   async findByAuctionIds(auctionIds: string[]) {
-  if (!auctionIds.length) {
-    return [];
+    if (!auctionIds.length) {
+      return [];
+    }
+
+    return Auction.find({
+      auctionId: {
+        $in: auctionIds,
+      },
+    }).lean();
   }
 
-  return Auction.find({
-    auctionId: {
-      $in: auctionIds,
-    },
-  }).lean();
-}
+  async getDashboardAuctionStats() {
+    const [
+      totalAuctions,
+      liveAuctions,
+      scheduledAuctions,
+      completedAuctions,
+      cancelledAuctions,
+    ] = await Promise.all([
+      Auction.countDocuments(),
+      Auction.countDocuments({
+        status: AuctionStatus.LIVE,
+      }),
+      Auction.countDocuments({
+        status: {
+          $in: [AuctionStatus.SCHEDULED, AuctionStatus.APPROVAL_PENDING],
+        },
+      }),
+      Auction.countDocuments({
+        status: AuctionStatus.ENDED,
+      }),
+      Auction.countDocuments({
+        status: AuctionStatus.CANCELLED,
+      }),
+    ]);
+
+    return {
+      totalAuctions,
+      liveAuctions,
+      scheduledAuctions,
+      completedAuctions,
+      cancelledAuctions,
+    };
+  }
+
+  async getLiveAuctionSnapshot() {
+    const auctions = await Auction.find({
+      status: AuctionStatus.LIVE,
+    })
+      .sort({ startTime: 1 })
+      .lean();
+    const result = [];
+    for (const auction of auctions) {
+      for (const vehicle of auction.vehicles) {
+        const currentHighestBid =
+          vehicle.currentHighestBid ?? vehicle.minimumBid ?? 0;
+        const timeLeft = Math.max(
+          0,
+          new Date(auction.endTime).getTime() - Date.now(),
+        );
+        result.push({
+          auctionId: auction.auctionId,
+          vehicleId: vehicle.vehicleId,
+          highestBid: currentHighestBid,
+          highestBidder: vehicle.highestBidder ?? null,
+          totalBids: vehicle.totalBids ?? 0,
+          timeLeft,
+          endTime: auction.endTime,
+        });
+      }
+    }
+
+    return result;
+  }
 }
 
 export default new AuctionRepository();

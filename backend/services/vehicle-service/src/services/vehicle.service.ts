@@ -530,6 +530,65 @@ class VehicleService {
 
     return updatedVehicle;
   }
+
+  async schedulePickup(
+    vehicleId: string,
+    scheduledAt: string,
+    pickupCharges: number,
+    documentCharges: number,
+  ) {
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      throw new Error("Invalid vehicle ID");
+    }
+
+    if (!scheduledAt) {
+      throw new Error("Pickup date and time is required");
+    }
+
+    const pickupDate = new Date(scheduledAt);
+
+    if (Number.isNaN(pickupDate.getTime())) {
+      throw new Error("Invalid pickup date and time");
+    }
+
+    if (pickupDate.getTime() <= Date.now()) {
+      throw new Error("Pickup date and time must be in the future");
+    }
+
+    const vehicle = await vehicleRepository.scheduleVehiclePickup(
+      vehicleId,
+      pickupDate,
+      pickupCharges,
+      documentCharges
+    );
+
+    if (!vehicle) {
+      throw new Error("Vehicle not found or vehicle is not READY_FOR_PICKUP");
+    }
+
+    return vehicle;
+  }
+
+  async assignDriver(vehicleId: string, driverName: string) {
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      throw new Error("Invalid vehicle ID");
+    }
+
+    if (!driverName?.trim()) {
+      throw new Error("Driver name is required");
+    }
+
+    const vehicle = await vehicleRepository.assignVehicleDriver(
+      vehicleId,
+      driverName.trim(),
+    );
+
+    if (!vehicle) {
+      throw new Error("Vehicle not found or vehicle is not SCHEDULED");
+    }
+
+    return vehicle;
+  }
 }
 
 export default new VehicleService();

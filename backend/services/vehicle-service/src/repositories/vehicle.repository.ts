@@ -178,21 +178,100 @@ class VehicleRepository {
     );
   }
 
- async findAllReadyForPickupVehicles() {
-  return await Vehicle.find({
-    status: { 
-      $in: [VehicleStatus.READY_FOR_PICKUP, VehicleStatus.SCHEDULED] 
-    },
-  })
-    .select(
-      "_id status vehicleDetails.manufacturer vehicleDetails.model vehicleDetails.manufacturingYear vehicleDetails.registrationNumber pickup.contactName pickup.mobileNumber pickup.area pickup.city pickup.state pickup.scheduledAt createdAt"
-    )
-    .populate({
-      path: "owner",
-      select: "name phone email",
+  async findAllReadyForPickupVehicles() {
+    return await Vehicle.find({
+      status: {
+        $in: [
+          VehicleStatus.READY_FOR_PICKUP,
+          VehicleStatus.SCHEDULED,
+          VehicleStatus.DRIVER_ASSIGNED,
+        ],
+      },
     })
-    .exec();
-}
+      .select(
+        "_id status assignedDriver vehicleDetails.manufacturer vehicleDetails.model vehicleDetails.manufacturingYear vehicleDetails.registrationNumber pickup.contactName pickup.mobileNumber pickup.area pickup.city pickup.state pickup.scheduledAt createdAt",
+      )
+      .populate({
+        path: "owner",
+        select: "name phone email",
+      })
+      .lean()
+      .exec();
+  }
+
+  async getVehicleDashboardStats() {
+    const totalVehicles = await Vehicle.countDocuments();
+    return {
+      totalVehicles,
+    };
+  }
+
+  async getActivePickupLocations() {
+    return Vehicle.find({
+      "pickup.status": {
+        $in: ["SCHEDULED", "DRIVER_ASSIGNED", "IN_TRANSIT"],
+      },
+      "pickup.latitude": {
+        $exists: true,
+      },
+      "pickup.longitude": {
+        $exists: true,
+      },
+    })
+      .select({
+        _id: 1,
+        "vehicleDetails.model": 1,
+        "pickup.latitude": 1,
+        "pickup.longitude": 1,
+        "pickup.status": 1,
+      })
+      .lean();
+  }
+
+  async scheduleVehiclePickup(
+    vehicleId: string,
+    scheduledAt: Date,
+    pickupCharges: number,
+    documentCharges: number,
+  ) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+        status: VehicleStatus.READY_FOR_PICKUP,
+      },
+      {
+        $set: {
+          "pickup.scheduledAt": scheduledAt,
+          status: VehicleStatus.SCHEDULED,
+          pickupCharges,
+          documentCharges,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
+
+  async assignVehicleDriver(vehicleId: string, driverName: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+        status: VehicleStatus.SCHEDULED,
+      },
+      {
+        $set: {
+          "pickup.assignedDriver": driverName,
+          status: VehicleStatus.DRIVER_ASSIGNED,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
 }
 
 export default new VehicleRepository();

@@ -345,8 +345,96 @@ export const scheduleVehiclePickup = async (req: Request, res: Response) => {
   }
 };
 
-export const findScheduledVehicles = asyncHandler(async (req , res) => {
-  const result =  await vehicleRepository.findAllReadyForPickupVehicles()
+export const findScheduledVehicles = asyncHandler(async (req, res) => {
+  const result = await vehicleRepository.findAllReadyForPickupVehicles();
 
-  return ApiResponse.success(res,201,"Scheduled Vehicles",result)
-})
+  return ApiResponse.success(res, 201, "Scheduled Vehicles", result);
+});
+
+export const getVehicleDashboardStats = asyncHandler(async (req, res) => {
+  const data = await vehicleRepository.getVehicleDashboardStats();
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Vehicle dashboard data fetched successfully",
+    data,
+  );
+});
+
+export const getPickupMap = asyncHandler(async (req, res) => {
+  const data = await vehicleRepository.getActivePickupLocations();
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Pickup locations fetched successfully",
+    data,
+  );
+});
+
+export const schedulePickup = async (req: Request, res: Response) => {
+  try {
+    const { vehicleId, scheduledAt , pickupCharges , documentCharges } = req.body;
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: "vehicleId is required",
+      });
+    }
+    if (!scheduledAt || !pickupCharges || !documentCharges) {
+      return res.status(400).json({
+        success: false,
+        message: "scheduledAt is required",
+      });
+    }
+    const vehicle = await vehicleService.schedulePickup(vehicleId, scheduledAt , pickupCharges,documentCharges);
+    return res.status(200).json({
+      success: true,
+      message: "Pickup scheduled successfully",
+      data: vehicle,
+    });
+  } catch (error: any) {
+    console.error("Schedule pickup error:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error?.message || "Failed to schedule pickup",
+    });
+  }
+};
+
+export const assignDriver = async (req: Request, res: Response) => {
+  try {
+    const { vehicleId, driverName } = req.body;
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: "vehicleId is required",
+      });
+    }
+
+    if (!driverName?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "driverName is required",
+      });
+    }
+
+    const vehicle = await vehicleService.assignDriver(vehicleId, driverName);
+
+    return res.status(200).json({
+      success: true,
+      message: "Driver assigned successfully",
+      data: vehicle,
+    });
+  } catch (error: any) {
+    console.error("Assign driver error:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error?.message || "Failed to assign driver",
+    });
+  }
+};

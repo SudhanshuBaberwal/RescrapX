@@ -1,6 +1,7 @@
 import ApiError from "../lib/ApiError.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import asyncHandler from "../lib/asyncHandler.js";
+import auctionRepository from "../repositories/auction.repository.js";
 import auctionService from "../service/auction.service.js";
 import {
   configureAuctionVehicleSchema,
@@ -301,4 +302,18 @@ export const cancelAdminAuction = asyncHandler(async (req, res) => {
 
     data: auction,
   });
+});
+
+export const getAdminDashboardAuctionData = asyncHandler(async (req, res) => {
+  const stats = await auctionRepository.getDashboardAuctionStats();
+  const liveAuctions = await auctionRepository.getLiveAuctionSnapshot();
+  return ApiResponse.success(
+    res,
+    200,
+    "Auction dashboard data fetched successfully",
+    {
+      stats,
+      liveAuctions,
+    },
+  );
 });
