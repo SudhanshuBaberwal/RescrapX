@@ -17,6 +17,7 @@ import {
 } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
 import supabaseService from "./supabase.service.js";
+import mongoose from "mongoose";
 
 const createPhoto = (upload: any, file: Express.Multer.File) => ({
   path: upload.path,
@@ -417,18 +418,19 @@ class VehicleService {
     }).select("_id vehicleDetails pickup owner status");
   }
 
-  async updateVehicleAuctionStatus(vehicleId: string, status: VehicleStatus) {
-    if (!vehicleId) {
-      throw new ApiError(400, "Vehicle ID is required.");
-    }
-
-    if (status !== VehicleStatus.SOLD && status !== VehicleStatus.UNSOLD) {
-      throw new ApiError(400, "Invalid auction vehicle status.");
-    }
-
-    const vehicle = await vehicleRepository.updateAuctionStatus(
+  async updateAuctionResult(
+    vehicleId: string,
+    status: "SOLD" | "UNSOLD",
+    auctionId: string,
+    partnerId: string | null,
+    winningBid: number | null,
+  ) {
+    const vehicle = await vehicleRepository.updateAuctionResult(
       vehicleId,
-      status,
+      status as VehicleStatus.SOLD | VehicleStatus.UNSOLD,
+      auctionId,
+      partnerId,
+      winningBid,
     );
 
     if (!vehicle) {
@@ -436,6 +438,97 @@ class VehicleService {
     }
 
     return vehicle;
+  }
+
+  async approveVehicleForPickup(vehicleId: string) {
+    const vehicle = await vehicleRepository.approveVehicleForPickup(vehicleId);
+
+    if (!vehicle) {
+      const existingVehicle =
+        await vehicleRepository.findByVehicleId(vehicleId);
+
+      if (!existingVehicle) {
+        throw new Error("Vehicle not found.");
+      }
+
+      if (existingVehicle.status !== VehicleStatus.SOLD) {
+        throw new Error(
+          `Vehicle cannot be approved for pickup. Current status: ${existingVehicle.status}`,
+        );
+      }
+
+      throw new Error("Vehicle could not be updated for pickup.");
+    }
+
+    return vehicle;
+  }
+
+  async scheduledPickup(
+    vehicleId: string,
+    scheduledAt: string,
+    pickup: any,
+    confirmedBy: string,
+  ) {
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      throw new Error("Invalid vehicle ID");
+    }
+
+    if (!scheduledAt) {
+      throw new Error("Pickup date and time are required");
+    }
+
+    const pickupDate = new Date(scheduledAt);
+
+    if (isNaN(pickupDate.getTime())) {
+      throw new Error("Invalid pickup date/time");
+    }
+
+    // Past date prevent karo
+    if (pickupDate <= new Date()) {
+      throw new Error("Pickup time must be in the future");
+    }
+
+    if (!pickup?.city) {
+      throw new Error("Pickup city is required");
+    }
+
+    if (!pickup?.state) {
+      throw new Error("Pickup state is required");
+    }
+
+    if (!pickup?.pincode) {
+      throw new Error("Pickup pincode is required");
+    }
+
+    if (!pickup?.contactName) {
+      throw new Error("Pickup contact name is required");
+    }
+
+    if (!pickup?.mobileNumber) {
+      throw new Error("Pickup mobile number is required");
+    }
+
+    const vehicle =
+      await vehicleRepository.findReadyForPickupVehicle(vehicleId);
+
+    if (!vehicle) {
+      throw new Error("Vehicle not found or vehicle is not ready for pickup");
+    }
+
+    const updatedVehicle = await vehicleRepository.scheduledVehiclePickup(
+      vehicleId,
+      pickup,
+      pickupDate,
+      confirmedBy,
+    );
+
+    if (!updatedVehicle) {
+      throw new Error(
+        "Unable to schedule pickup. Vehicle status may have changed.",
+      );
+    }
+
+    return updatedVehicle;
   }
 }
 

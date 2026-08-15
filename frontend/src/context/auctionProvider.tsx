@@ -102,3 +102,62 @@ export interface IAuction extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+
+export type MyBidStatus =
+  | "ACTIVE"
+  | "OUTBID"
+  | "WON"
+  | "LOST";
+
+export interface MyBid {
+  bidId: string;
+
+  auctionId: string;
+
+  vehicleId: string;
+
+  amount: number;
+
+  currentHighestBid: number;
+
+  highestBidder: string | null;
+
+  totalBids: number;
+
+  minimumBid: number;
+
+  bidIncrement: number;
+
+  reservePrice: number;
+
+  auctionStatus:
+    | "DRAFT"
+    | "SCHEDULED"
+    | "LIVE"
+    | "ENDED"
+    | "CANCELLED";
+
+  startTime: string;
+
+  endTime: string;
+
+  status: MyBidStatus;
+
+  createdAt: string;
+
+  vehicle?: {
+    manufacturer?: string;
+    model?: string;
+    manufacturingYear?: number;
+    fuelType?: string;
+    transmission?: string;
+  };
+
+  pickup?: {
+    city?: string;
+    state?: string;
+  };
+
+  photos?: string[];
+}

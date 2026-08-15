@@ -14,23 +14,41 @@ import { calculateDistanceInKm } from "../utils/distance.js";
 import auctionRepository from "../repositories/auction.repository.js";
 import { env } from "../config/env.js";
 import crypto from "crypto";
+import bidRepository from "../repositories/bid.repository.js";
 const MAX_RADIUS_KM = 150;
 const APPROVAL_WINDOW_MS = 3 * 60 * 1000;
 
-async function updateVehicleStatus(
+async function updateVehicleAuctionResult(
   vehicleId: string,
   status: "SOLD" | "UNSOLD",
+  auctionId: string,
+  partnerId: string | null,
+  winningBid: number | null,
 ) {
   try {
-    console.log("========== VEHICLE STATUS UPDATE ==========");
-    console.log("Vehicle ID:", vehicleId);
-    console.log("Status:", status);
+    console.log("========== VEHICLE AUCTION RESULT ==========");
+
+    console.log({
+      vehicleId,
+      status,
+      auctionId,
+      partnerId,
+      winningBid,
+    });
 
     const response = await axios.patch(
       "http://localhost:8004/register/auction/status",
       {
         vehicleId,
         status,
+        auctionId,
+        partnerId,
+        winningBid,
+      },
+      {
+        headers: {
+          "x-service-key": env.INTERNAL_SERVICE_TOKEN,
+        },
       },
     );
 
@@ -38,21 +56,23 @@ async function updateVehicleStatus(
 
     return response.data;
   } catch (error: any) {
-    console.error("========== VEHICLE STATUS UPDATE FAILED ==========");
+    console.error("========== VEHICLE AUCTION RESULT FAILED ==========");
 
     console.error("Vehicle ID:", vehicleId);
+
     console.error("Status:", status);
+
+    console.error("Partner:", partnerId);
+
+    console.error("Winning Bid:", winningBid);
 
     console.error("Status Code:", error.response?.status);
 
     console.error("Response:", error.response?.data);
 
-    console.error("Message:", error.message);
-
-    throw error; // VERY IMPORTANT
+    throw error;
   }
 }
-
 class AuctionService {
   async createAuction(dto: CreateAuctionDto, adminId: string) {
     let vehicles: any[] = [];
@@ -509,6 +529,14 @@ class AuctionService {
       throw new ApiError(500, "Updated vehicle not found.");
     }
 
+    // SAVE BID HISTORY
+    await bidRepository.createBid({
+      auctionId,
+      vehicleId,
+      partnerId,
+      amount: bidAmount,
+    });
+
     emitBidUpdated({
       auctionId,
       vehicleId,
@@ -541,7 +569,13 @@ class AuctionService {
     const winners = [];
     for (const vehicle of auction.vehicles) {
       const status = vehicle.assignedStatus === "ASSIGNED" ? "SOLD" : "UNSOLD";
-      await updateVehicleStatus(vehicle.vehicleId, status);
+      await updateVehicleAuctionResult(
+        vehicle.vehicleId,
+        status,
+        auction.auctionId,
+        vehicle.assignedPartnerId,
+        vehicle.winnerBid,
+      );
       if (vehicle.assignedStatus === "UNSOLD") {
         continue;
       }

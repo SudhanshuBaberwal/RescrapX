@@ -21,6 +21,7 @@ import {
 } from "../controllers/auction.controller.js";
 import adminOnly from "../middlewares/adminOnly.js";
 import partnerOnly from "../middlewares/partnerOnly.js";
+import { MyBids } from "../controllers/bid.controller.js";
 const router = Router();
 
 router.post("/create", adminOnly, createAuction);
@@ -46,4 +47,7 @@ router.get("/admin/activity", getAdminAuctionActivity);
 router.get("/admin", getAdminAuctions);
 router.get("/admin/:auctionId", getAdminAuctionById);
 router.patch("/admin/:auctionId/cancel", cancelAdminAuction);
+
+router.get("/partner/my-bids",partnerOnly,MyBids)
+
 export default router;

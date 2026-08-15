@@ -38,4 +38,5 @@ app.get("/health", (_, res) => {
 
 app.use("/", auctionRoutes);
 
+
 export default app;

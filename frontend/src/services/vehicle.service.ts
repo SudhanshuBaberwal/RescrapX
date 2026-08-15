@@ -247,3 +247,12 @@ export const updateVehicleStatus = async (
     console.log(error);
   }
 };
+
+export const vehiclesRegisterForPickup = async () => {
+  try {
+    const result = await api.get("/api/vehicle/register/scheduled-vehicles");
+    return result.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

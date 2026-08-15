@@ -11,12 +11,27 @@ import { getAllVehicles } from '@/hooks/getAllVehicles';
 import {
   Car, ShieldCheck, Calendar, Fuel, Gauge, ArrowLeft,
   XCircle, CheckCircle2, AlertCircle, FileText, MapPin,
-  RefreshCw, Eye, Gavel
+  RefreshCw, Eye, Gavel, Truck, Loader2
 } from 'lucide-react';
 import axios from 'axios';
 import { getUserProfileData } from '@/hooks/getUserProfileData';
 import { applyForAuction } from '@/services/auction/auctionVehicle.service';
 import { useToast } from '@/lib/ui/toast/ToastContext';
+
+// API call to approve vehicle for pickup
+export const approveVehicleForPickup = async (vehicleId: string) => {
+  try {
+    const response = await axios.patch(
+      `http://localhost:8000/api/vehicle/register/approve-pickup?vehicleId=${vehicleId}`,
+      {},
+      { withCredentials: true }
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 
 const formatDate = (dateValue?: string | Date) => {
   if (!dateValue) return 'N/A';
@@ -76,10 +91,19 @@ export default function VehicleDetailsPage() {
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const [auctionError, setAuctionError] = useState<string | null>(null);
 
+  // States for pickup approval
+  const [isApprovingPickup, setIsApprovingPickup] = useState(false);
+  const [isPickupApproved, setIsPickupApproved] = useState(false);
+
   const [resolvedPhotos, setResolvedPhotos] = useState<{ label: string; url: string }[]>([]);
 
   useEffect(() => {
     if (!vehicle) return;
+
+    // Set initial pickup approval state from vehicle record if present
+    if ((vehicle as any)?.isPickupApproved || (vehicle as any)?.pickupApproved) {
+      setIsPickupApproved(true);
+    }
 
     const rawPhotos = vehicle.photos || {};
     const initialList: { label: string; rawPath: string; url: string }[] = [];
@@ -192,7 +216,8 @@ export default function VehicleDetailsPage() {
     'READY_FOR_BIDDING',
     'BIDDING',
     'SOLD',
-    'UNSOLD'
+    'UNSOLD',
+    'READY_FOR_PICKUP'
   ];
 
   const isRegisteredForAuction = Boolean(
@@ -205,6 +230,8 @@ export default function VehicleDetailsPage() {
     isRegisteredForAuction ||
     hiddenStatuses.includes(status) ||
     hiddenStatuses.includes(auctionStatus);
+
+  const isSold = status === 'SOLD' || auctionStatus === 'SOLD';
 
   const handleRegisterForAuction = async () => {
     try {
@@ -225,6 +252,20 @@ export default function VehicleDetailsPage() {
       showToast("Vehicle Registered For Auction Successfully", 'success');
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  // Handler for pickup approval
+  const handleApprovePickup = async () => {
+    try {
+      setIsApprovingPickup(true);
+      await approveVehicleForPickup(vehicleId);
+      setIsPickupApproved(true);
+      showToast("Vehicle pickup approved successfully!", 'success');
+    } catch (error) {
+      showToast("Failed to approve vehicle pickup. Please try again.", 'error');
+    } finally {
+      setIsApprovingPickup(false);
     }
   };
 
@@ -289,6 +330,52 @@ export default function VehicleDetailsPage() {
               </button>
             )}
           </div>
+
+          {/* VEHICLE PICKUP APPROVAL CARD FOR SOLD VEHICLES */}
+          {isSold && (
+            <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="p-2.5 bg-[#0B5B32] text-white rounded-xl shrink-0">
+                  <Truck size={22} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-900">
+                    Vehicle Sold – Pickup Approval Required
+                  </h3>
+                  <p className="text-xs text-emerald-800 font-medium">
+                    {isPickupApproved
+                      ? 'You have approved this vehicle for pickup. Logistics details are now active.'
+                      : 'This vehicle is sold. Please authorize and approve the pickup schedule.'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                {isPickupApproved ? (
+                  <span className="inline-flex items-center gap-1.5 bg-[#0B5B32] text-white text-xs font-black px-4 py-2 rounded-xl shadow-2xs">
+                    <CheckCircle2 size={15} /> Pickup Approved
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApprovePickup}
+                    disabled={isApprovingPickup}
+                    className="inline-flex items-center gap-2 text-xs font-black text-white bg-[#0B5B32] hover:bg-[#084827] px-4 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isApprovingPickup ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" /> Approving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} /> Approve Vehicle for Pickup
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* AUCTION ERROR MESSAGE BANNER */}
           {auctionError && (

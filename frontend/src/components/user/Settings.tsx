@@ -182,10 +182,19 @@ export default function CustomerSettingsLayout() {
     return new File([u8arr], filename, { type: mime });
   };
 
+
+//   export enum VERIFICATION_DOCUMENTS {
+//   AADAHR_CARD = "AADAHR_CARD",
+//   PAN_CARD = "PAN_CARD",
+//   PASSPORT = "PASSPORT",
+//   VOTERID = "VOTERID",
+//   DRIVING_LICENSE = "DRIVING_LICENSE",
+// }
+
   const getFormattedDocType = (type: string) => {
     switch (type) {
       case 'aadhaar':
-        return 'AADAHAR_CARD';
+        return 'AADAHR_CARD';
       case 'pan':
         return 'PAN_CARD';
       case 'dl':
@@ -639,7 +648,7 @@ export default function CustomerSettingsLayout() {
                     onChange={(e) => setSelectedDocType(e.target.value)}
                     className="w-full bg-gray-50/50 border border-gray-200 text-gray-800 text-xs font-bold rounded-xl p-2.5 focus:outline-none focus:border-[#0B5B32]"
                   >
-                    <option value="aadhaar">Government Identity Card (e.g., Identity / Voter ID)</option>
+                    <option value="aadhaar">Government Identity Card (AADAHR_CARD)</option>
                     <option value="pan">Permanent Account Number (PAN Card)</option>
                     <option value="dl">Driving License</option>
                     <option value="passport">Passport</option>

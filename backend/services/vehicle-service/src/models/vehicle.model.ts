@@ -24,7 +24,12 @@ export enum VehicleStatus {
   REJECTED = "REJECTED",
   READY_FOR_BIDDING = "READY_FOR_BIDDING",
   SOLD = "SOLD",
-  UNSOLD="UNSOLD",
+  UNSOLD = "UNSOLD",
+  READY_FOR_PICKUP = "READY_FOR_PICKUP",
+  SCHEDULED = "SCHEDULED",
+  DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
+  IN_TRANSIT = "IN_TRANSIT",
+  ARRIVED="ARRIVED",
   CANCELLED = "CANCELLED",
 }
 
@@ -84,6 +89,13 @@ export enum structuralDamage {
 }
 export interface IVehicle extends Document {
   owner: mongoose.Types.ObjectId;
+
+  auctionResult?: {
+    auctionId: string;
+    partnerId: string | null;
+    winningBid: number | null;
+    wonAt: Date | null;
+  };
 
   status: VehicleStatus;
   isRegistered?: boolean;
@@ -165,6 +177,9 @@ export interface IVehicle extends Document {
       | "SOCIETY"
       | "ROADSIDE"
       | "GARAGE";
+    scheduledAt?: Date;
+    confirmedAt?: Date;
+    confirmedBy?: string;
   };
   timeline: {
     title: string;
@@ -459,10 +474,25 @@ const pickupSchema = new Schema(
         "GARAGE_WORKSHOP",
       ],
     },
+
+    scheduledAt: {
+      type: Date,
+      default: null,
+    },
+
+    confirmedAt: {
+      type: Date,
+      default: null,
+    },
+
+    confirmedBy: {
+      type: String,
+      default: null,
+    },
   },
   {
     _id: false,
-  }
+  },
 );
 
 const timelineSchema = new Schema(
@@ -502,6 +532,29 @@ const vehicleSchema = new Schema<IVehicle>(
     rejectionReason: {
       type: String,
       default: null,
+    },
+
+    auctionResult: {
+      auctionId: {
+        type: String,
+        default: null,
+      },
+
+      partnerId: {
+        type: String,
+        default: null,
+        index: true,
+      },
+
+      winningBid: {
+        type: Number,
+        default: null,
+      },
+
+      wonAt: {
+        type: Date,
+        default: null,
+      },
     },
   },
   {

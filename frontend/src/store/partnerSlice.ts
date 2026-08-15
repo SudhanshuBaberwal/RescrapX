@@ -1,12 +1,14 @@
-import { IAuction } from "@/context/auctionProvider";
+import { IAuction, MyBidStatus } from "@/context/auctionProvider";
 import { createSlice } from "@reduxjs/toolkit";
 
 interface PartnerState {
   PartnerAuctionData: IAuction | null;
+  PartnerBidsData: MyBidStatus | null;
 }
 
 const initialState: PartnerState = {
   PartnerAuctionData: null,
+  PartnerBidsData: null,
 };
 const partnerSlice = createSlice({
   name: "admin",
@@ -15,8 +17,12 @@ const partnerSlice = createSlice({
     setPartnerAuctionData: (state, action) => {
       state.PartnerAuctionData = action.payload;
     },
+    setPartnerBidsData: (state, action) => {
+      state.PartnerBidsData = action.payload;
+    },
   },
 });
 
-export const { setPartnerAuctionData } = partnerSlice.actions;
+export const { setPartnerAuctionData, setPartnerBidsData } =
+  partnerSlice.actions;
 export default partnerSlice.reducer;

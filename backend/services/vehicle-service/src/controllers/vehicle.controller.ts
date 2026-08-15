@@ -228,17 +228,125 @@ export const getReadyForBiddingVehicles = asyncHandler(async (req, res) => {
 });
 
 export const updateAuctionVehicleStatus = asyncHandler(async (req, res) => {
-  const { status, vehicleId } = req.body;
+  const { vehicleId, status, auctionId, partnerId, winningBid } = req.body;
+  if (!vehicleId) {
+    return res.status(400).json({
+      success: false,
+      message: "vehicleId is required",
+    });
+  }
 
-  const vehicle = await vehicleService.updateVehicleAuctionStatus(
+  if (status !== "SOLD" && status !== "UNSOLD") {
+    return res.status(400).json({
+      success: false,
+      message: "Status must be SOLD or UNSOLD",
+    });
+  }
+
+  if (!auctionId) {
+    return res.status(400).json({
+      success: false,
+      message: "auctionId is required",
+    });
+  }
+
+  if (status === "SOLD") {
+    if (!partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: "partnerId is required for SOLD vehicle",
+      });
+    }
+
+    if (
+      winningBid == null ||
+      !Number.isFinite(Number(winningBid)) ||
+      Number(winningBid) <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid winningBid is required for SOLD vehicle",
+      });
+    }
+  }
+
+  const vehicle = await vehicleService.updateAuctionResult(
     vehicleId,
     status,
+    auctionId,
+    partnerId ?? null,
+    winningBid != null ? Number(winningBid) : null,
   );
 
-  return ApiResponse.success(
-    res,
-    200,
-    "Vehicle auction status updated successfully.",
-    vehicle,
-  );
+  return ApiResponse.success(res, 201, `Vehicle marked as ${status}`, vehicle);
 });
+
+export const approveVehicleForPickup = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle Id Not Found");
+  }
+  const vehicle = await vehicleService.approveVehicleForPickup(vehicleId);
+
+  return res.status(200).json({
+    success: true,
+    message: "Vehicle approved for pickup.",
+    data: {
+      vehicleId: vehicle._id,
+      status: vehicle.status,
+    },
+  });
+});
+
+export const scheduleVehiclePickup = async (req: Request, res: Response) => {
+  try {
+    const { vehicleId, scheduledAt, pickup } = req.body;
+    const userId = req.headers["x-user-id"];
+    if (!userId || typeof userId !== "string") {
+      return res.status(401).json({
+        success: false,
+        message: "User ID is missing",
+      });
+    }
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: "vehicleId is required",
+      });
+    }
+
+    if (!scheduledAt) {
+      return res.status(400).json({
+        success: false,
+        message: "scheduledAt is required",
+      });
+    }
+
+    const vehicle = await vehicleService.scheduledPickup(
+      vehicleId,
+      scheduledAt,
+      pickup,
+      userId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Pickup scheduled successfully",
+      data: vehicle,
+    });
+  } catch (error: any) {
+    console.error("[PICKUP] Schedule pickup error:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to schedule pickup",
+    });
+  }
+};
+
+export const findScheduledVehicles = asyncHandler(async (req , res) => {
+  const result =  await vehicleRepository.findAllReadyForPickupVehicles()
+
+  return ApiResponse.success(res,201,"Scheduled Vehicles",result)
+})

@@ -24,6 +24,8 @@ export enum VehicleStatus {
   READY_FOR_BIDDING = "READY_FOR_BIDDING",
   SOLD = "SOLD",
   CANCELLED = "CANCELLED",
+  UNSOLD = "UNSOLD",
+  READY_FOR_PICKUP = "READY_FOR_PICKUP"
 }
 
 export default function MyVehiclesPage() {
@@ -111,10 +113,22 @@ export default function MyVehiclesPage() {
             Sold
           </span>
         );
+      case VehicleStatus.UNSOLD:
+        return (
+          <span className="bg-yellow-50 text-yellow-700 border border-yellow-200 text-[10px] font-black px-2.5 py-1 rounded-full">
+            UNSOLD
+          </span>
+        );
       case VehicleStatus.CANCELLED:
         return (
           <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black px-2.5 py-1 rounded-full">
             Cancelled
+          </span>
+        );
+      case VehicleStatus.READY_FOR_PICKUP:
+        return (
+          <span className="bg-green-100 text-green-600 border border-green-200 text-[10px] font-black px-2.5 py-1 rounded-full">
+            Ready For Pick Up
           </span>
         );
       case VehicleStatus.DRAFT:

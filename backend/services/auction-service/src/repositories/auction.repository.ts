@@ -650,6 +650,19 @@ class AuctionRepository {
       },
     );
   }
+
+
+  async findByAuctionIds(auctionIds: string[]) {
+  if (!auctionIds.length) {
+    return [];
+  }
+
+  return Auction.find({
+    auctionId: {
+      $in: auctionIds,
+    },
+  }).lean();
+}
 }
 
 export default new AuctionRepository();

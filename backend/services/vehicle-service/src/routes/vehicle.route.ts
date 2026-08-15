@@ -2,14 +2,17 @@ import { Router } from "express";
 import {
   allVehiclesDataForAdmin,
   ApplyForBiddingVehicleController,
+  approveVehicleForPickup,
   createVehicleDraft,
   FindALlVehicleForUserController,
+  findScheduledVehicles,
   findVehicle,
   getAllVehicles,
   getReadyForBiddingVehicles,
   majorComponents,
   registerBasicVehicleDetails,
   reviewVehicle,
+  scheduleVehiclePickup,
   underVerification,
   updateAuctionVehicleStatus,
   updateVehicleStatus,
@@ -90,4 +93,7 @@ router.get("/user-vehicles", attachUser, FindALlVehicleForUserController);
 router.post("/apply", attachUser, ApplyForBiddingVehicleController);
 router.get("/ready-for-auction", serviceAuth, getReadyForBiddingVehicles);
 router.patch("/auction/status", updateAuctionVehicleStatus);
+router.patch("/approve-pickup", attachUser, approveVehicleForPickup);
+router.patch("/schedule", adminOnly, scheduleVehiclePickup);
+router.get("/scheduled-vehicles", adminOnly, findScheduledVehicles);
 export default router;
