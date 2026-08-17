@@ -447,13 +447,13 @@ export default function WonVehiclesDashboard() {
                   </td>
                 </tr>
               ) : (
-                processedVehicles.map((row) => {
+                processedVehicles.map((row,index) => {
                   const endDate = new Date(row.endTime || row.startTime);
                   const formattedDate = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                   const formattedTime = endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
                   return (
-                    <tr key={row.auctionId} className="hover:bg-gray-50/30 transition-colors">
+                   <tr key={`${row.auctionId}-${row.vehicle?.vehicleId || index}`} className="hover:bg-gray-50/30 transition-colors">
                       
                       {/* Column A: Vehicle Specs Details */}
                       <td className="py-3.5 px-4 min-w-[200px]">

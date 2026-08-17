@@ -299,3 +299,34 @@ export const getIncomingVehicles = async () => {
     console.log(error);
   }
 };
+
+export const pickupVehicle = async (vehicleId: string) => {
+  try {
+    const response = await api.post("/api/vehicle/register/pickup-vehicle", {
+      vehicleId,
+    });
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const processingVehicles = async () => {
+  try {
+    const response = await api.get("/api/vehicle/register/partner/processing");
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const processingVehicleStates = async () => {
+  try {
+    const response = await api.get(
+      "/api/vehicle/register/partner/processing/stats",
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};

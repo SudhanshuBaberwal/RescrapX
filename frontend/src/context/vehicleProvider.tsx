@@ -14,6 +14,16 @@ export interface IUploadedPhoto {
     uploadedAt: Date;
 }
 
+export enum ProcessingStage {
+    WAITING_FOR_ARRIVAL = "WAITING_FOR_ARRIVAL",
+    VEHICLE_RECEIVED = "VEHICLE_RECEIVED",
+    INSPECTION_COMPLETED = "INSPECTION_COMPLETED",
+    DISMANTLING = "DISMANTLING",
+    RECYCLING = "RECYCLING",
+    CERTIFICATE_PENDING = "CERTIFICATE_PENDING",
+    COMPLETED = "COMPLETED",
+}
+
 export enum VehicleStatus {
     DRAFT = "DRAFT",
     SUBMITTED = "SUBMITTED",
@@ -26,8 +36,8 @@ export enum VehicleStatus {
     READY_FOR_PICKUP = "READY_FOR_PICKUP",
     SCHEDULED = "SCHEDULED",
     DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
+    PICKED_UP = "PICKED_UP",
     IN_TRANSIT = "IN_TRANSIT",
-    PICKED_UP="PICKED_UP",
     ARRIVED = "ARRIVED",
     CANCELLED = "CANCELLED",
 }
@@ -87,6 +97,7 @@ export enum structuralDamage {
     MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
 export interface IVehicle {
+    _id:string;
     owner: string;
     pickupCharges?: number;
     documentCharges?: number;
@@ -98,6 +109,7 @@ export interface IVehicle {
     };
 
     status: VehicleStatus;
+    processingStage?: ProcessingStage;
     isRegistered?: boolean;
     currentStep: RegistrationStep;
     vehicleDetails: {
@@ -181,6 +193,11 @@ export interface IVehicle {
         confirmedAt?: Date;
         confirmedBy?: string;
         assignedDriver?: string;
+
+        pickupOtpHash?: string | null;
+        pickupOtpExpiresAt?: Date | null;
+        pickupOtpAttempts?: number;
+        pickupOtpVerifiedAt?: Date | null;
     };
     timeline: {
         title: string;

@@ -15,9 +15,12 @@ import {
   vehicleLocationDto,
   vehicleMajorComponentsDto,
 } from "../validations/vehicle.validation.js";
-import getEditableVehicle from "../helper/editableVehicle.js";
+import getEditableVehicle, {
+  getProcessingStage,
+} from "../helper/editableVehicle.js";
 import supabaseService from "./supabase.service.js";
 import mongoose from "mongoose";
+import { generatePickupOtp, hashPickupOtp } from "../helper/otp.js";
 
 const createPhoto = (upload: any, file: Express.Multer.File) => ({
   path: upload.path,
@@ -599,6 +602,224 @@ class VehicleService {
       await vehicleRepository.getIncomingVehiclesByPartner(partnerId);
 
     return vehicles;
+  }
+
+  async getProcessingVehiclesByPartner(partnerId: string) {
+    const vehicles =
+      await vehicleRepository.getProcessingVehiclesByPartner(partnerId);
+
+    return vehicles.map((vehicle) => {
+      const processingStage = getProcessingStage(vehicle.timeline ?? []);
+
+      return {
+        vehicleId: vehicle._id,
+
+        vehicleDetails: {
+          carName:
+            vehicle.vehicleDetails?.carName ??
+            vehicle.vehicleDetails?.model ??
+            null,
+
+          model: vehicle.vehicleDetails?.model ?? null,
+
+          variant: vehicle.vehicleDetails?.variant ?? null,
+
+          fuelType: vehicle.vehicleDetails?.fuelType ?? null,
+
+          transmission: vehicle.vehicleDetails?.transmission ?? null,
+
+          manufacturingYear: vehicle.vehicleDetails?.manufacturingYear ?? null,
+
+          registrationNumber:
+            vehicle.vehicleDetails?.registrationNumber ?? null,
+
+          kmsDriven: vehicle.vehicleDetails?.kmsDriven ?? null,
+
+          ownership: vehicle.vehicleDetails?.ownership ?? null,
+        },
+
+        auction: {
+          auctionId: vehicle.auctionResult?.auctionId ?? null,
+
+          winningBid: vehicle.auctionResult?.winningBid ?? null,
+
+          wonAt: vehicle.auctionResult?.wonAt ?? null,
+        },
+
+        status: vehicle.status,
+
+        processingStage,
+
+        pickup: {
+          city: vehicle.pickup?.city ?? null,
+
+          state: vehicle.pickup?.state ?? null,
+
+          formattedAddress: vehicle.pickup?.formattedAddress ?? null,
+
+          scheduledAt: vehicle.pickup?.scheduledAt ?? null,
+
+          confirmedAt: vehicle.pickup?.confirmedAt ?? null,
+
+          assignedDriver: vehicle.pickup?.assignedDriver ?? null,
+        },
+
+        timeline: vehicle.timeline ?? [],
+
+        documents: {
+          rcbook: vehicle.documents?.rcbook ?? null,
+
+          insurance: vehicle.documents?.insurance ?? null,
+
+          puc: vehicle.documents?.puc ?? null,
+        },
+
+        photos: vehicle.photos ?? null,
+
+        createdAt: vehicle.createdAt,
+
+        updatedAt: vehicle.updatedAt,
+      };
+    });
+  }
+
+  async getProcessingStatsByPartner(partnerId: string) {
+    return vehicleRepository.getProcessingStatsByPartner(partnerId);
+  }
+
+  async requestPickupOtp(vehicleId: string) {
+    const vehicle =
+      await vehicleRepository.getVehicleForPickupVerification(vehicleId);
+
+    if (!vehicle) {
+      throw new Error("Vehicle is not assigned to a driver");
+    }
+
+    if (vehicle.status !== VehicleStatus.DRIVER_ASSIGNED) {
+      throw new Error("Vehicle is not ready for pickup verification");
+    }
+
+    if (!vehicle.pickup?.mobileNumber) {
+      throw new Error("Customer mobile number not available");
+    }
+
+    const otp = generatePickupOtp();
+
+    const otpHash = hashPickupOtp(otp);
+
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    await vehicleRepository.generatePickupOtp(vehicleId, otpHash, expiresAt);
+
+    /*
+     * TODO:
+     * Send OTP through notification service
+     *
+     * await notificationService.sendPickupOtp({
+     *   mobileNumber:
+     *     vehicle.pickup.mobileNumber,
+     *   otp,
+     * });
+     */
+
+    console.log(`[PICKUP OTP] ${vehicleId}: ${otp}`);
+
+    return {
+      vehicleId,
+      expiresAt,
+      message: "Pickup verification OTP generated successfully",
+    };
+  }
+
+  async verifyPickupOtp(vehicleId: string, otp: string, confirmedBy: string) {
+    const vehicle =
+      await vehicleRepository.getVehicleForPickupVerification(vehicleId);
+
+    if (!vehicle) {
+      throw new Error("Vehicle is not assigned for pickup");
+    }
+
+    const pickup = vehicle.pickup;
+
+    if (!pickup) {
+      throw new Error("Pickup information not found");
+    }
+
+    if (!pickup.pickupOtpHash || !pickup.pickupOtpExpiresAt) {
+      throw new Error("Pickup OTP has not been generated");
+    }
+
+    // OTP expired
+    if (new Date() > new Date(pickup.pickupOtpExpiresAt)) {
+      throw new Error("Pickup OTP has expired");
+    }
+
+    // Too many attempts
+    if ((pickup.pickupOtpAttempts ?? 0) >= 5) {
+      throw new Error("Too many invalid OTP attempts");
+    }
+
+    const otpHash = hashPickupOtp(otp);
+
+    if (otpHash !== pickup.pickupOtpHash) {
+      await vehicleRepository.incrementPickupOtpAttempts(vehicleId);
+
+      throw new Error("Invalid pickup OTP");
+    }
+
+    const updatedVehicle = await vehicleRepository.markVehiclePickedUp(
+      vehicleId,
+      confirmedBy,
+    );
+
+    if (!updatedVehicle) {
+      throw new Error("Vehicle pickup could not be completed");
+    }
+
+    return updatedVehicle;
+  }
+
+  async CurrentVehiclePickedUp(vehicleId: string) {
+    const vehicle = await vehicleRepository.pickedupVehicleRepo(vehicleId);
+    if (!vehicle) {
+      throw new ApiError(400, "No Vehicle to pick up");
+    }
+    return vehicle;
+  }
+
+  async getAllVehiclesWithStatus() {
+    const vehicles = await vehicleRepository.getAllVehiclesWithStatus();
+    return vehicles.map((vehicle) => ({
+      vehicleId: vehicle._id.toString(),
+      status: vehicle.status,
+      ownerId: vehicle.owner?.toString() ?? null,
+      vehicleDetails: vehicle.vehicleDetails,
+      auctionResult: vehicle.auctionResult,
+      pickup: vehicle.pickup,
+      timeline: vehicle.timeline,
+      currentStep: vehicle.currentStep,
+      createdAt: vehicle.createdAt,
+      updatedAt: vehicle.updatedAt,
+    }));
+  }
+
+  async getVehicleStatusById(vehicleId: string) {
+    const vehicle = await vehicleRepository.getVehicleStatusById(vehicleId);
+    if (!vehicle) {
+      throw new Error("Vehicle not found");
+    }
+    return {
+      vehicleId: vehicle._id.toString(),
+      status: vehicle.status,
+      ownerId: vehicle.owner?.toString() ?? null,
+      vehicleDetails: vehicle.vehicleDetails,
+      auctionResult: vehicle.auctionResult,
+      pickup: vehicle.pickup,
+      timeline: vehicle.timeline,
+      currentStep: vehicle.currentStep,
+      createdAt: vehicle.createdAt,
+      updatedAt: vehicle.updatedAt,
+    };
   }
 }
 

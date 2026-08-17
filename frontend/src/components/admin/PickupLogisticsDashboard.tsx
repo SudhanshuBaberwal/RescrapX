@@ -5,7 +5,7 @@ import { RootState } from '@/store/store';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { drivers } from '../drivers/drivers';
-import { assignDriver, schedulePickup } from '@/services/vehicle.service';
+import { assignDriver, pickupVehicle, schedulePickup } from '@/services/vehicle.service';
 
 interface VehicleDetails {
   registrationNumber?: string;
@@ -42,6 +42,9 @@ export const PickupLogisticsDashboard: React.FC = () => {
 
   const { pickupDetails } = useSelector((state: RootState) => state.admin);
 
+  // Track pickup statuses locally for immediate UI reactivity
+  const [itemStatuses, setItemStatuses] = useState<Record<string, string>>({});
+
   // Map exported drivers dictionary to an array for UI loops
   const driverEntries = useMemo(() => {
     return Object.entries(drivers).map(([name, phone], index) => ({
@@ -52,16 +55,22 @@ export const PickupLogisticsDashboard: React.FC = () => {
     }));
   }, []);
 
-  // Filter ONLY vehicles in active logistics statuses
+  // Filter vehicles in active logistics statuses (including PICKED_UP)
   const readyForPickupList: VehiclePickupItem[] = useMemo(() => {
     if (!Array.isArray(pickupDetails)) return [];
-    return pickupDetails.filter(
-      (item) =>
-        item.status === 'READY_FOR_PICKUP' ||
-        item.status === 'SCHEDULED' ||
-        item.status === 'DRIVER_ASSIGNED'
-    );
-  }, [pickupDetails]);
+    return pickupDetails
+      .map((item) => ({
+        ...item,
+        status: itemStatuses[item._id] || item.status,
+      }))
+      .filter(
+        (item) =>
+          item.status === 'READY_FOR_PICKUP' ||
+          item.status === 'SCHEDULED' ||
+          item.status === 'DRIVER_ASSIGNED' ||
+          item.status === 'PICKED_UP'
+      );
+  }, [pickupDetails, itemStatuses]);
 
   // Track driver assignments individually per pickup ID
   const [assignedDrivers, setAssignedDrivers] = useState<Record<string, string>>({});
@@ -79,6 +88,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
   const [docCharge, setDocCharge] = useState<number>(500);
   const [isScheduling, setIsScheduling] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isPickingUp, setIsPickingUp] = useState(false);
 
   const activeItem = selectedPickup || readyForPickupList[0];
 
@@ -128,6 +138,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
     setIsScheduling(true);
     try {
       await schedulePickup(activeItem._id, scheduledDateTime, pickupCharge, docCharge);
+      setItemStatuses((prev) => ({ ...prev, [activeItem._id]: 'SCHEDULED' }));
       alert('Pickup scheduled successfully!');
     } catch (error) {
       console.error('Failed to schedule pickup:', error);
@@ -146,12 +157,32 @@ export const PickupLogisticsDashboard: React.FC = () => {
         ...prev,
         [activeItem._id]: selectedDriver,
       }));
+      setItemStatuses((prev) => ({ ...prev, [activeItem._id]: 'DRIVER_ASSIGNED' }));
       alert(`Driver ${selectedDriver} assigned successfully!`);
     } catch (error) {
       console.error('Failed to assign driver:', error);
       alert('Failed to assign driver.');
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  // Handler for updating status when vehicle is picked up
+  const handleVehiclePickedUp = async () => {
+    if (!activeItem?._id) return;
+    setIsPickingUp(true);
+    try {
+      await pickupVehicle(activeItem._id);
+      setItemStatuses((prev) => ({
+        ...prev,
+        [activeItem._id]: 'PICKED_UP',
+      }));
+      alert('Vehicle successfully marked as Picked Up!');
+    } catch (error) {
+      console.error('Failed to update status to Picked Up:', error);
+      alert('Failed to update status.');
+    } finally {
+      setIsPickingUp(false);
     }
   };
 
@@ -216,7 +247,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 <div className="flex flex-col gap-1">
                   <label className="font-bold text-slate-400 text-[10px] uppercase">Status</label>
                   <select disabled className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-slate-600 outline-none cursor-not-allowed">
-                    <option>Ready / Scheduled / Assigned</option>
+                    <option>Ready / Scheduled / Assigned / Picked Up</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -324,6 +355,13 @@ export const PickupLogisticsDashboard: React.FC = () => {
                                         DRIVER ASSIGNED
                                       </span>
                                     );
+                                  case 'PICKED_UP':
+                                    return (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-purple-50 text-purple-700 border-purple-200/80 inline-flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                        PICKED UP
+                                      </span>
+                                    );
                                   default:
                                     return (
                                       <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200 inline-flex items-center gap-1">
@@ -383,7 +421,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={handleAssignDriver}
-                  disabled={isAssigning || activeItem?.status === 'DRIVER_ASSIGNED'}
+                  disabled={isAssigning || activeItem?.status === 'DRIVER_ASSIGNED' || activeItem?.status === 'PICKED_UP'}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                 >
                   {isAssigning ? 'Assigning...' : 'Assign Driver'}
@@ -478,6 +516,12 @@ export const PickupLogisticsDashboard: React.FC = () => {
                         return (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-200">
                             DRIVER ASSIGNED
+                          </span>
+                        );
+                      case 'PICKED_UP':
+                        return (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-purple-50 text-purple-700 border-purple-200">
+                            PICKED UP
                           </span>
                         );
                       default:
@@ -605,19 +649,31 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 )}
 
                 {activeItem.status === 'DRIVER_ASSIGNED' && (
-                  <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-center py-2.5 rounded-lg text-xs font-bold">
-                    ✓ Pickup Scheduled & Driver Assigned
+                  <button
+                    onClick={handleVehiclePickedUp}
+                    disabled={isPickingUp}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-2.5 rounded-lg shadow-xs text-center transition-all disabled:opacity-50"
+                  >
+                    {isPickingUp ? 'Updating...' : 'Mark as Picked Up'}
+                  </button>
+                )}
+
+                {activeItem.status === 'PICKED_UP' && (
+                  <div className="w-full bg-purple-50 border border-purple-200 text-purple-800 text-center py-2.5 rounded-lg text-xs font-bold">
+                    ✓ Vehicle Marked as Picked Up
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs py-2 rounded-lg text-center">
-                    Edit Pickup
-                  </button>
-                  <button className="border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs py-2 rounded-lg text-center">
-                    Cancel Pickup
-                  </button>
-                </div>
+                {activeItem.status !== 'PICKED_UP' && (
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <button className="border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs py-2 rounded-lg text-center">
+                      Edit Pickup
+                    </button>
+                    <button className="border border-rose-200 text-rose-700 hover:bg-rose-50 font-bold text-xs py-2 rounded-lg text-center">
+                      Cancel Pickup
+                    </button>
+                  </div>
+                )}
               </div>
 
             </div>

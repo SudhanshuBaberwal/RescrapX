@@ -476,3 +476,83 @@ export const getPartnerIncomingVehicles = async (
     });
   }
 };
+
+export const getPartnerProcessingVehicles = asyncHandler(async (req, res) => {
+  const partnerId = (req as any).user?.userId || req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    return ApiResponse.error(res, 401, "Partner authentication required");
+  }
+
+  const vehicles =
+    await vehicleService.getProcessingVehiclesByPartner(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Processing vehicles fetched successfully",
+    vehicles,
+  );
+});
+
+export const getPartnerProcessingStats = asyncHandler(async (req, res) => {
+  const partnerId = (req as any).user?.userId || req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    return ApiResponse.error(res, 401, "Partner authentication required");
+  }
+
+  const stats = await vehicleService.getProcessingStatsByPartner(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Processing statistics fetched successfully",
+    stats,
+  );
+});
+
+export const requestPickupOtp = asyncHandler(async (req, res) => {
+  const { vehicleId } = req.body;
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle Id is required");
+  }
+
+  const result = await vehicleService.requestPickupOtp(vehicleId);
+  return ApiResponse.success(res, 201, "Pickup Otp sent Successfully", result);
+});
+
+export const verifyPickupOtp = asyncHandler(async (req, res) => {
+  const { vehicleId, otp } = req.body;
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle id is required");
+  }
+
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    throw new ApiError(400, "Valid 6 ditit opt is required");
+  }
+
+  const confirmedBy = (req as any).user?.userId ?? "USER";
+
+  const vehicle = await vehicleService.verifyPickupOtp(
+    vehicleId,
+    otp,
+    confirmedBy,
+  );
+
+  return ApiResponse.success(res, 200, "Vehicle pickup verified successfully", {
+    vehicleId: vehicle?._id,
+    status: vehicle?.status,
+    pickedUpAt: vehicle?.pickup?.pickupOtpVerifiedAt,
+    message: "Vehicle has been successfully picked up",
+  });
+});
+
+export const setPickupVehicleController = asyncHandler(async (req, res) => {
+  const { vehicleId } = req.body;
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle Id Not Found");
+  }
+  const vehicle = await vehicleService.CurrentVehiclePickedUp(vehicleId);
+  return ApiResponse.success(res, 201, "Picked Up Vehicle", vehicle);
+});

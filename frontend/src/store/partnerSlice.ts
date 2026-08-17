@@ -11,6 +11,7 @@ interface PartnerState {
   PartnerBidsData: MyBidStatus | null;
   PartnerWonVehiclesdata: WonVehicleDetails | null;
   PartnerIncomingVehicleData: IVehicle[] | null;
+  PartnerProcessingYardVehiclesData: IVehicle[] | null;
 }
 
 const initialState: PartnerState = {
@@ -18,6 +19,7 @@ const initialState: PartnerState = {
   PartnerBidsData: null,
   PartnerWonVehiclesdata: null,
   PartnerIncomingVehicleData: [],
+  PartnerProcessingYardVehiclesData: [],
 };
 const partnerSlice = createSlice({
   name: "admin",
@@ -35,6 +37,9 @@ const partnerSlice = createSlice({
     setPartnerIncomingVehicleData: (state, action) => {
       state.PartnerIncomingVehicleData = action.payload;
     },
+    setPartnerProcessingYardData: (state, action) => {
+      state.PartnerProcessingYardVehiclesData = action.payload;
+    },
   },
 });
 
@@ -43,5 +48,6 @@ export const {
   setPartnerBidsData,
   setPartnerWonVehiclesData,
   setPartnerIncomingVehicleData,
+  setPartnerProcessingYardData,
 } = partnerSlice.actions;
 export default partnerSlice.reducer;

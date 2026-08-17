@@ -13,20 +13,7 @@ import {
 } from 'lucide-react';
 import { getAllVehicles } from '@/hooks/getAllVehicles';
 import { RootState } from '@/store/store';
-import { IVehicle } from '@/context/vehicleProvider';
-
-export enum VehicleStatus {
-  DRAFT = "DRAFT",
-  SUBMITTED = "SUBMITTED",
-  UNDER_VERIFICATION = "UNDER_VERIFICATION",
-  VERIFIED = "VERIFIED",
-  REJECTED = "REJECTED",
-  READY_FOR_BIDDING = "READY_FOR_BIDDING",
-  SOLD = "SOLD",
-  CANCELLED = "CANCELLED",
-  UNSOLD = "UNSOLD",
-  READY_FOR_PICKUP = "READY_FOR_PICKUP"
-}
+import { IVehicle, VehicleStatus } from '@/context/vehicleProvider';
 
 export default function MyVehiclesPage() {
   const router = useRouter();
@@ -129,6 +116,12 @@ export default function MyVehiclesPage() {
         return (
           <span className="bg-green-100 text-green-600 border border-green-200 text-[10px] font-black px-2.5 py-1 rounded-full">
             Ready For Pick Up
+          </span>
+        );
+      case VehicleStatus.SCHEDULED:
+        return (
+          <span className="bg-green-100 text-green-600 border border-green-200 text-[10px] font-black px-2.5 py-1 rounded-full">
+            Scheduled
           </span>
         );
       case VehicleStatus.DRAFT:
@@ -269,7 +262,7 @@ export default function MyVehiclesPage() {
                           </div>
                           <div>
                             <h2 className="text-sm font-black text-gray-900 group-hover:text-[#0B5B32] transition-colors leading-tight">
-                              {details?.manufacturer || 'Unnamed Vehicle'}
+                              {details?.carName || 'Unnamed Vehicle'}
                             </h2>
                             <p className="text-[11px] font-bold text-gray-400 mt-0.5">
                               {details?.model ? `${details.model} ${details.variant || ''}` : 'Model N/A'}

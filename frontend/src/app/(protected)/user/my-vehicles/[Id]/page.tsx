@@ -443,7 +443,7 @@ export default function VehicleDetailsPage() {
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-black text-gray-900">
-                  {details.manufacturer || 'Vehicle Details'} {details.model || ''}
+                  {details.carName || 'Vehicle Details'} {details.model || ''}
                 </h1>
                 <p className="text-xs text-gray-400 font-mono font-medium mt-0.5">
                   REG NO: <span className="text-gray-700 font-bold">{details.registrationNumber || 'N/A'}</span>

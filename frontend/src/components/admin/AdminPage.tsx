@@ -13,6 +13,8 @@ import { DocumentsCompliance } from './DocumentsCompliance';
 import { PaymentsAndSettlements } from './PaymentsAndSettlements';
 import { NotificationsHub } from './NotificationsHub';
 import { CustomersDashboard } from './CustomersDashboard';
+import DriversDashboard from './drivers';
+import VehicleStatus from './VehicleStatus';
 
 const AdminPage = () => {
   const searchParams = useSearchParams();
@@ -37,7 +39,7 @@ const AdminPage = () => {
 
       case 'pickup-logistics':
         return <PickupLogisticsDashboard />;
-        
+
       case 'operations':
         return <OperationsOverview />;
 
@@ -54,7 +56,11 @@ const AdminPage = () => {
         return <AnalyticsReports />;
 
       case 'notifications':
-        return <NotificationsHub />;;
+        return <NotificationsHub />;
+      case 'drivers':
+        return <DriversDashboard />
+      case 'all-vehicles':
+        return <VehicleStatus />
 
       default:
         return <AdminDashboard />;

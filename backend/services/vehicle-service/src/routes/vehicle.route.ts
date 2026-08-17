@@ -10,14 +10,18 @@ import {
   findVehicle,
   getAllVehicles,
   getPartnerIncomingVehicles,
+  getPartnerProcessingStats,
+  getPartnerProcessingVehicles,
   getPickupMap,
   getReadyForBiddingVehicles,
   getVehicleDashboardStats,
   majorComponents,
   registerBasicVehicleDetails,
+  requestPickupOtp,
   reviewVehicle,
   schedulePickup,
   scheduleVehiclePickup,
+  setPickupVehicleController,
   underVerification,
   updateAuctionVehicleStatus,
   updateVehicleStatus,
@@ -25,6 +29,7 @@ import {
   uploadVehiclePhotosController,
   vehicleCondition,
   vehiclePickupLocation,
+  verifyPickupOtp,
   viewDocument,
 } from "../controllers/vehicle.controller.js";
 import {
@@ -106,5 +111,10 @@ router.get("/admin/dashboard/pickups/map", adminOnly, getPickupMap);
 router.patch("/admin/pickup/schedule", adminOnly, schedulePickup);
 router.patch("/admin/pickup/assign-driver", adminOnly, assignDriver);
 router.get("/partner/incoming", getPartnerIncomingVehicles);
+router.get("/partner/processing", getPartnerProcessingVehicles);
+router.get("/partner/processing/stats", getPartnerProcessingStats);
+// router.post("/pickup/request-otp", requestPickupOtp);
+// router.post("/pickup/verify-otp", verifyPickupOtp);
+router.post("/pickup-vehicle", adminOnly, setPickupVehicleController);
 
 export default router;

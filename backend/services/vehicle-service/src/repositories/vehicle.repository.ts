@@ -1,7 +1,9 @@
 import supabase from "../config/supabase.js";
+import { getProcessingStage } from "../helper/editableVehicle.js";
 import ApiError from "../lib/ApiError.js";
 import Vehicle, {
   IVehicle,
+  ProcessingStage,
   RegistrationStep,
   VehicleStatus,
 } from "../models/vehicle.model.js";
@@ -290,6 +292,215 @@ class VehicleRepository {
         updatedAt: -1,
       })
       .lean();
+  }
+
+  async getProcessingVehiclesByPartner(partnerId: string) {
+    console.log("[PROCESSING] Partner ID:", partnerId);
+
+    const vehicles = await Vehicle.find({
+      status: {
+        $in: [
+          VehicleStatus.PICKED_UP,
+          VehicleStatus.IN_TRANSIT,
+          VehicleStatus.ARRIVED,
+        ],
+      },
+    })
+      .select("_id status auctionResult vehicleDetails pickup updatedAt")
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+
+    console.log("[PROCESSING] All matching statuses:", vehicles.length);
+
+    for (const vehicle of vehicles) {
+      console.log({
+        vehicleId: vehicle._id,
+        status: vehicle.status,
+        partnerId: vehicle.auctionResult?.partnerId,
+        matchesPartner: vehicle.auctionResult?.partnerId === partnerId,
+      });
+    }
+
+    return vehicles.filter(
+      (vehicle) => vehicle.auctionResult?.partnerId === partnerId,
+    );
+  }
+
+  async getProcessingStatsByPartner(partnerId: string) {
+    const vehicles = await Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+
+      status: {
+        $in: [
+          VehicleStatus.PICKED_UP,
+          VehicleStatus.IN_TRANSIT,
+          VehicleStatus.ARRIVED,
+        ],
+      },
+    })
+      .select("timeline status")
+      .lean();
+
+    const stats = {
+      waitingForArrival: 0,
+      vehicleReceived: 0,
+      inspectionCompleted: 0,
+      dismantling: 0,
+      recycling: 0,
+      certificatePending: 0,
+      completed: 0,
+    };
+
+    for (const vehicle of vehicles) {
+      const stage = getProcessingStage(vehicle.timeline ?? []);
+
+      switch (stage) {
+        case ProcessingStage.WAITING_FOR_ARRIVAL:
+          stats.waitingForArrival++;
+          break;
+
+        case ProcessingStage.VEHICLE_RECEIVED:
+          stats.vehicleReceived++;
+          break;
+
+        case ProcessingStage.INSPECTION_COMPLETED:
+          stats.inspectionCompleted++;
+          break;
+
+        case ProcessingStage.DISMANTLING:
+          stats.dismantling++;
+          break;
+
+        case ProcessingStage.RECYCLING:
+          stats.recycling++;
+          break;
+
+        case ProcessingStage.CERTIFICATE_PENDING:
+          stats.certificatePending++;
+          break;
+
+        case ProcessingStage.COMPLETED:
+          stats.completed++;
+          break;
+      }
+    }
+
+    return stats;
+  }
+
+  async generatePickupOtp(vehicleId: string, otpHash: string, expiresAt: Date) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        status: VehicleStatus.DRIVER_ASSIGNED,
+      },
+
+      {
+        $set: {
+          "pickup.pickupOtpHash": otpHash,
+          "pickup.pickupOtpExpiresAt": expiresAt,
+          "pickup.pickupOtpAttempts": 0,
+          "pickup.pickupOtpVerifiedAt": null,
+        },
+      },
+      {
+        new: true,
+      },
+    ).lean();
+  }
+  async getVehicleForPickupVerification(vehicleId: string) {
+    return Vehicle.findOne({
+      _id: vehicleId,
+
+      status: VehicleStatus.DRIVER_ASSIGNED,
+    });
+  }
+  async markVehiclePickedUp(vehicleId: string, confirmedBy: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+        status: VehicleStatus.DRIVER_ASSIGNED,
+      },
+      {
+        $set: {
+          status: VehicleStatus.PICKED_UP,
+          "pickup.confirmedAt": new Date(),
+          "pickup.confirmedBy": confirmedBy,
+          "pickup.pickupOtpHash": null,
+          "pickup.pickupOtpExpiresAt": null,
+          "pickup.pickupOtpAttempts": 0,
+          "pickup.pickupOtpVerifiedAt": new Date(),
+        },
+
+        $push: {
+          timeline: {
+            title: "Vehicle Picked Up",
+            completed: true,
+            completedAt: new Date(),
+          },
+        },
+      },
+      {
+        new: true,
+      },
+    ).lean();
+  }
+
+  async incrementPickupOtpAttempts(vehicleId: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        status: VehicleStatus.DRIVER_ASSIGNED,
+      },
+      {
+        $inc: {
+          "pickup.pickupOtpAttempts": 1,
+        },
+      },
+      {
+        new: true,
+      },
+    );
+  }
+
+  async pickedupVehicleRepo(vehicleId: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+        status: VehicleStatus.DRIVER_ASSIGNED,
+      },
+      {
+        $set: {
+          status: VehicleStatus.PICKED_UP,
+        },
+        $push: {
+          timeline: {
+            title: "Vehicle Picked Up",
+            completed: true,
+            completedAt: new Date(),
+          },
+        },
+      },
+      {
+        new: true,
+      },
+    );
+  }
+
+  async getAllVehiclesWithStatus() {
+    return Vehicle.find({})
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async getVehicleStatusById(vehicleId: string) {
+    return Vehicle.findById(vehicleId).lean();
   }
 }
 

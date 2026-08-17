@@ -17,6 +17,7 @@ import {
   BarChart3,
   Bell,
   LogOut,
+  CarIcon,
 } from 'lucide-react';
 import { logout } from '@/services/auth.service';
 
@@ -37,6 +38,7 @@ const AdminSidebar: React.FC<SidebarProps> = ({
     { label: 'Partners (RVSF)', icon: Building2, href: 'partners', badge: 86 },
     { label: 'Pickup & Logistics', icon: Package, href: 'pickup-logistics' },
     { label: 'Drivers', icon: UserCog, href: 'drivers', badge: 82 },
+    { label: 'All Vehicles', icon: CarIcon, href: 'all-vehicles' },
     { label: 'Operations', icon: Settings2, href: 'operations' },
     { label: 'Documents & Compliance', icon: FileText, href: 'documents-compliance' },
     { label: 'Payments & Settlements', icon: CreditCard, href: 'payments-settlements' },

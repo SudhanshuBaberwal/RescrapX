@@ -16,6 +16,16 @@ export interface IUploadedPhoto {
   uploadedAt: Date;
 }
 
+export enum ProcessingStage {
+  WAITING_FOR_ARRIVAL = "WAITING_FOR_ARRIVAL",
+  VEHICLE_RECEIVED = "VEHICLE_RECEIVED",
+  INSPECTION_COMPLETED = "INSPECTION_COMPLETED",
+  DISMANTLING = "DISMANTLING",
+  RECYCLING = "RECYCLING",
+  CERTIFICATE_PENDING = "CERTIFICATE_PENDING",
+  COMPLETED = "COMPLETED",
+}
+
 export enum VehicleStatus {
   DRAFT = "DRAFT",
   SUBMITTED = "SUBMITTED",
@@ -28,7 +38,7 @@ export enum VehicleStatus {
   READY_FOR_PICKUP = "READY_FOR_PICKUP",
   SCHEDULED = "SCHEDULED",
   DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
-  PICKED_UP="PICKED_UP",
+  PICKED_UP = "PICKED_UP",
   IN_TRANSIT = "IN_TRANSIT",
   ARRIVED = "ARRIVED",
   CANCELLED = "CANCELLED",
@@ -100,6 +110,7 @@ export interface IVehicle extends Document {
   };
 
   status: VehicleStatus;
+  processingStage?: ProcessingStage;
   isRegistered?: boolean;
   currentStep: RegistrationStep;
   vehicleDetails: {
@@ -183,6 +194,11 @@ export interface IVehicle extends Document {
     confirmedAt?: Date;
     confirmedBy?: string;
     assignedDriver?: string;
+
+    pickupOtpHash?: string | null;
+    pickupOtpExpiresAt?: Date | null;
+    pickupOtpAttempts?: number;
+    pickupOtpVerifiedAt?: Date | null;
   };
   timeline: {
     title: string;
@@ -497,6 +513,25 @@ const pickupSchema = new Schema(
       default: null,
       trim: true,
     },
+    pickupOtpHash: {
+      type: String,
+      default: null,
+    },
+
+    pickupOtpExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
+    pickupOtpAttempts: {
+      type: Number,
+      default: 0,
+    },
+
+    pickupOtpVerifiedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     _id: false,
@@ -533,6 +568,11 @@ const vehicleSchema = new Schema<IVehicle>(
       type: String,
       enum: Object.values(VehicleStatus),
       default: VehicleStatus.DRAFT,
+    },
+    processingStage: {
+      type: String,
+      enum: Object.values(ProcessingStage),
+      default: ProcessingStage.WAITING_FOR_ARRIVAL,
     },
     currentStep: {
       type: Number,
