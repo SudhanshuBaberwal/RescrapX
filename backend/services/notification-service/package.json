@@ -21,6 +21,7 @@
     "handlebars": "^4.7.9",
     "helmet": "^8.3.0",
     "nodemailer": "^9.0.3",
+    "@types/node": "^26.1.1",
     "tsx": "^4.23.1",
     "typescript": "^5.8.3",
     "zod": "^4.4.3"
@@ -31,7 +32,6 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/handlebars": "^4.0.40",
-    "@types/node": "^26.1.1",
     "@types/nodemailer": "^8.0.1",
     "nodemon": "^3.1.14"
   }
