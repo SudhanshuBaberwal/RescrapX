@@ -5,7 +5,7 @@ import { RootState } from '@/store/store';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { drivers } from '../drivers/drivers';
-import { assignDriver, pickupVehicle, schedulePickup } from '@/services/vehicle.service';
+import { assignDriver, makeVehicleArrived, pickupVehicle, schedulePickup } from '@/services/vehicle.service';
 
 interface VehicleDetails {
   registrationNumber?: string;
@@ -55,7 +55,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
     }));
   }, []);
 
-  // Filter vehicles in active logistics statuses (including PICKED_UP)
+  // Filter vehicles in active logistics statuses (including PICKED_UP and ARRIVED_TO_PARTNER)
   const readyForPickupList: VehiclePickupItem[] = useMemo(() => {
     if (!Array.isArray(pickupDetails)) return [];
     return pickupDetails
@@ -68,7 +68,8 @@ export const PickupLogisticsDashboard: React.FC = () => {
           item.status === 'READY_FOR_PICKUP' ||
           item.status === 'SCHEDULED' ||
           item.status === 'DRIVER_ASSIGNED' ||
-          item.status === 'PICKED_UP'
+          item.status === 'PICKED_UP' ||
+          item.status === 'ARRIVED_TO_PARTNER'
       );
   }, [pickupDetails, itemStatuses]);
 
@@ -89,6 +90,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
   const [isScheduling, setIsScheduling] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isPickingUp, setIsPickingUp] = useState(false);
+  const [isArriving, setIsArriving] = useState(false);
 
   const activeItem = selectedPickup || readyForPickupList[0];
 
@@ -186,6 +188,25 @@ export const PickupLogisticsDashboard: React.FC = () => {
     }
   };
 
+  // Handler for updating status when vehicle arrives at partner
+  const handleArrivedToPartner = async () => {
+    if (!activeItem?._id) return;
+    setIsArriving(true);
+    try {
+      await makeVehicleArrived(activeItem._id)
+      setItemStatuses((prev) => ({
+        ...prev,
+        [activeItem._id]: 'ARRIVED_TO_PARTNER',
+      }));
+      alert('Vehicle successfully marked as Arrived to Partner!');
+    } catch (error) {
+      console.error('Failed to update status to Arrived to Partner:', error);
+      alert('Failed to update status.');
+    } finally {
+      setIsArriving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased w-full">
       <div className="p-4 md:p-6 mx-auto max-w-[1750px] space-y-6">
@@ -247,7 +268,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 <div className="flex flex-col gap-1">
                   <label className="font-bold text-slate-400 text-[10px] uppercase">Status</label>
                   <select disabled className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-slate-600 outline-none cursor-not-allowed">
-                    <option>Ready / Scheduled / Assigned / Picked Up</option>
+                    <option>Ready / Scheduled / Assigned / Picked Up / Arrived</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -362,6 +383,13 @@ export const PickupLogisticsDashboard: React.FC = () => {
                                         PICKED UP
                                       </span>
                                     );
+                                  case 'ARRIVED_TO_PARTNER':
+                                    return (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200/80 inline-flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                        ARRIVED TO PARTNER
+                                      </span>
+                                    );
                                   default:
                                     return (
                                       <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-slate-50 text-slate-600 border-slate-200 inline-flex items-center gap-1">
@@ -421,7 +449,7 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={handleAssignDriver}
-                  disabled={isAssigning || activeItem?.status === 'DRIVER_ASSIGNED' || activeItem?.status === 'PICKED_UP'}
+                  disabled={isAssigning || activeItem?.status === 'DRIVER_ASSIGNED' || activeItem?.status === 'PICKED_UP' || activeItem?.status === 'ARRIVED_TO_PARTNER'}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-lg shadow-xs transition-colors disabled:opacity-50"
                 >
                   {isAssigning ? 'Assigning...' : 'Assign Driver'}
@@ -522,6 +550,12 @@ export const PickupLogisticsDashboard: React.FC = () => {
                         return (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-purple-50 text-purple-700 border-purple-200">
                             PICKED UP
+                          </span>
+                        );
+                      case 'ARRIVED_TO_PARTNER':
+                        return (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200">
+                            ARRIVED TO PARTNER
                           </span>
                         );
                       default:
@@ -659,12 +693,22 @@ export const PickupLogisticsDashboard: React.FC = () => {
                 )}
 
                 {activeItem.status === 'PICKED_UP' && (
-                  <div className="w-full bg-purple-50 border border-purple-200 text-purple-800 text-center py-2.5 rounded-lg text-xs font-bold">
-                    ✓ Vehicle Marked as Picked Up
+                  <button
+                    onClick={handleArrivedToPartner}
+                    disabled={isArriving}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 rounded-lg shadow-xs text-center transition-all disabled:opacity-50"
+                  >
+                    {isArriving ? 'Updating...' : 'Arrived To Partner'}
+                  </button>
+                )}
+
+                {activeItem.status === 'ARRIVED_TO_PARTNER' && (
+                  <div className="w-full bg-indigo-50 border border-indigo-200 text-indigo-800 text-center py-2.5 rounded-lg text-xs font-bold">
+                    ✓ Arrived Completed
                   </div>
                 )}
 
-                {activeItem.status !== 'PICKED_UP' && (
+                {activeItem.status !== 'ARRIVED_TO_PARTNER' && (
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     <button className="border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs py-2 rounded-lg text-center">
                       Edit Pickup

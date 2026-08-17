@@ -36,13 +36,6 @@ interface VehicleRecord {
 export default function ProcessingYardDashboard() {
   // Trigger hook to populate Redux store
   getProcessingYardData();
-
-  // Retrieve raw vehicles list from Redux
-  const { PartnerProcessingYardVehiclesData } = useSelector(
-    (state: RootState) => state.partner
-  );
-
-  // Local state for backend stage metrics fetched via processingVehicleStates API
   const [statsData, setStatsData] = useState({
     waitingForArrival: 0,
     vehicleReceived: 0,
@@ -52,6 +45,33 @@ export default function ProcessingYardDashboard() {
     certificatePending: 0,
     completed: 0,
   });
+
+  const { PartnerProcessingYardVehiclesData } = useSelector(
+    (state: RootState) => state.partner
+  );
+  useEffect(() => {
+    // Fetch Redux data
+    // Fetch metrics
+    const fetchStats = async () => {
+      try {
+        const res = await processingVehicleStates();
+        if (res?.success && res?.data) {
+          setStatsData(res.data);
+        } else if (res) {
+          setStatsData(res);
+        }
+      } catch (err) {
+        console.error('Failed to fetch processing stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  // Retrieve raw vehicles list from Redux
+
+  console.log(PartnerProcessingYardVehiclesData)
+
+  // Local state for backend stage metrics fetched via processingVehicleStates API
 
   const [searchQuery, setSearchQuery] = useState('');
 

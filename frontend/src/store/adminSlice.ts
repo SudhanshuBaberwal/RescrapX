@@ -9,6 +9,7 @@ interface AdminState {
   allUsersProfileData: IUserDocuments[];
   auctionData: IAuction | null;
   pickupDetails: IVehicle | null;
+  allVehicles: IVehicle[] | null;
 }
 
 const initialState: AdminState = {
@@ -16,6 +17,7 @@ const initialState: AdminState = {
   allUsersProfileData: [],
   auctionData: null,
   pickupDetails: null,
+  allVehicles: [],
 };
 const adminSlice = createSlice({
   name: "admin",
@@ -33,6 +35,9 @@ const adminSlice = createSlice({
     setPickupDetails: (state, action) => {
       state.pickupDetails = action.payload;
     },
+    setAllVehicles: (state, action) => {
+      state.allVehicles = action.payload;
+    },
   },
 });
 
@@ -41,5 +46,6 @@ export const {
   setAllUserPrfileData,
   setAuctionData,
   setPickupDetails,
+  setAllVehicles,
 } = adminSlice.actions;
 export default adminSlice.reducer;

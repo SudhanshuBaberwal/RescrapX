@@ -8,12 +8,36 @@ export interface IVehicleDocument {
   uploadedAt: Date;
 }
 
+export interface IPartnerDocument {
+  _id?: mongoose.Types.ObjectId;
+  type: VehicleDocumentType;
+  required: boolean;
+  path: string;
+  fullPath: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+  status: PartnerDocumentStatus;
+  rejectionReason?: string | null;
+  reviewedAt?: Date | null;
+  reviewedBy?: string | null;
+}
+
 export interface IUploadedPhoto {
   path: string;
   originalName: string;
   mimeType: string;
   size: number;
   uploadedAt: Date;
+}
+
+export enum PartnerDocumentSubmissionStatus {
+  NOT_STARTED = "NOT_STARTED",
+  IN_PROGRESS = "IN_PROGRESS",
+  SUBMITTED = "SUBMITTED",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 
 export enum ProcessingStage {
@@ -24,6 +48,19 @@ export enum ProcessingStage {
   RECYCLING = "RECYCLING",
   CERTIFICATE_PENDING = "CERTIFICATE_PENDING",
   COMPLETED = "COMPLETED",
+}
+
+export enum PartnerDocumentType {
+  CERTIFICATE_OF_DEPOSIT = "CERTIFICATE_OF_DEPOSIT",
+  CERTIFICATE_OF_SCRAPPING = "CERTIFICATE_OF_SCRAPPING",
+  CHASSIS_PROOF = "CHASSIS_PROOF",
+  OTHER = "OTHER",
+}
+
+export enum PartnerDocumentStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 
 export enum VehicleStatus {
@@ -156,6 +193,8 @@ export interface IVehicle extends Document {
     loanClosure?: IVehicleDocument;
     other?: IVehicleDocument;
   };
+  partnerDocumentStatus?: PartnerDocumentSubmissionStatus;
+  partnerDocuments?: IPartnerDocument[];
   photos: {
     front?: IUploadedPhoto;
     rear?: IUploadedPhoto;
@@ -446,6 +485,70 @@ const photosSchema = new Schema(
   { _id: false },
 );
 
+const partnerDocumentSchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: Object.values(PartnerDocumentType),
+      required: true,
+    },
+
+    required: {
+      type: Boolean,
+      required: true,
+    },
+
+    path: {
+      type: String,
+      required: true,
+    },
+
+    fullPath: {
+      type: String,
+      required: true,
+    },
+
+    originalName: {
+      type: String,
+      required: true,
+    },
+
+    mimeType: {
+      type: String,
+      required: true,
+    },
+
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(PartnerDocumentStatus),
+      default: PartnerDocumentStatus.PENDING,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+
+    reviewedBy: {
+      type: String,
+      default: null,
+    },
+  },
+  {
+    _id: true,
+  },
+);
+
 const pickupSchema = new Schema(
   {
     houseNumber: String,
@@ -584,6 +687,16 @@ const vehicleSchema = new Schema<IVehicle>(
     documents: documentsSchema,
     photos: photosSchema,
     pickup: pickupSchema,
+    partnerDocumentStatus: {
+      type: String,
+      enum: Object.values(PartnerDocumentSubmissionStatus),
+      default: PartnerDocumentSubmissionStatus.NOT_STARTED,
+    },
+
+    partnerDocuments: {
+      type: [partnerDocumentSchema],
+      default: [],
+    },
     timeline: [timelineSchema],
     rejectionReason: {
       type: String,

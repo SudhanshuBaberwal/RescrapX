@@ -3,6 +3,9 @@ import { getProcessingStage } from "../helper/editableVehicle.js";
 import ApiError from "../lib/ApiError.js";
 import Vehicle, {
   IVehicle,
+  PartnerDocumentStatus,
+  PartnerDocumentSubmissionStatus,
+  PartnerDocumentType,
   ProcessingStage,
   RegistrationStep,
   VehicleStatus,
@@ -16,6 +19,7 @@ class VehicleRepository {
       status: VehicleStatus.DRAFT,
     });
   }
+
   async createDraftCar(userId: string): Promise<IVehicle | null> {
     return Vehicle.create({
       owner: userId,
@@ -187,6 +191,8 @@ class VehicleRepository {
           VehicleStatus.READY_FOR_PICKUP,
           VehicleStatus.SCHEDULED,
           VehicleStatus.DRIVER_ASSIGNED,
+          VehicleStatus.PICKED_UP,
+          VehicleStatus.ARRIVED,
         ],
       },
     })
@@ -295,9 +301,9 @@ class VehicleRepository {
   }
 
   async getProcessingVehiclesByPartner(partnerId: string) {
-    console.log("[PROCESSING] Partner ID:", partnerId);
+    return Vehicle.find({
+      "auctionResult.partnerId": partnerId,
 
-    const vehicles = await Vehicle.find({
       status: {
         $in: [
           VehicleStatus.PICKED_UP,
@@ -306,26 +312,13 @@ class VehicleRepository {
         ],
       },
     })
-      .select("_id status auctionResult vehicleDetails pickup updatedAt")
+      .select(
+        "_id status processingStage auctionResult vehicleDetails pickup timeline updatedAt",
+      )
       .sort({
         updatedAt: -1,
       })
       .lean();
-
-    console.log("[PROCESSING] All matching statuses:", vehicles.length);
-
-    for (const vehicle of vehicles) {
-      console.log({
-        vehicleId: vehicle._id,
-        status: vehicle.status,
-        partnerId: vehicle.auctionResult?.partnerId,
-        matchesPartner: vehicle.auctionResult?.partnerId === partnerId,
-      });
-    }
-
-    return vehicles.filter(
-      (vehicle) => vehicle.auctionResult?.partnerId === partnerId,
-    );
   }
 
   async getProcessingStatsByPartner(partnerId: string) {
@@ -340,7 +333,7 @@ class VehicleRepository {
         ],
       },
     })
-      .select("timeline status")
+      .select("processingStage")
       .lean();
 
     const stats = {
@@ -354,9 +347,7 @@ class VehicleRepository {
     };
 
     for (const vehicle of vehicles) {
-      const stage = getProcessingStage(vehicle.timeline ?? []);
-
-      switch (stage) {
+      switch (vehicle.processingStage) {
         case ProcessingStage.WAITING_FOR_ARRIVAL:
           stats.waitingForArrival++;
           break;
@@ -411,6 +402,7 @@ class VehicleRepository {
       },
     ).lean();
   }
+
   async getVehicleForPickupVerification(vehicleId: string) {
     return Vehicle.findOne({
       _id: vehicleId,
@@ -418,6 +410,7 @@ class VehicleRepository {
       status: VehicleStatus.DRIVER_ASSIGNED,
     });
   }
+
   async markVehiclePickedUp(vehicleId: string, confirmedBy: string) {
     return Vehicle.findOneAndUpdate(
       {
@@ -501,6 +494,154 @@ class VehicleRepository {
 
   async getVehicleStatusById(vehicleId: string) {
     return Vehicle.findById(vehicleId).lean();
+  }
+
+  async markVehicleArrived(vehicleId: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+        status: VehicleStatus.PICKED_UP,
+      },
+      {
+        $set: {
+          status: VehicleStatus.ARRIVED,
+          processingStage: ProcessingStage.VEHICLE_RECEIVED,
+        },
+
+        $push: {
+          timeline: {
+            status: VehicleStatus.ARRIVED,
+            message: "Vehicle arrived at RVSF facility",
+            createdAt: new Date(),
+          },
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
+  }
+
+  async getArrivedVehiclesForPartner(partnerId: string) {
+    return Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+
+      status: VehicleStatus.ARRIVED,
+
+      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async getPartnerVehicleDocuments(vehicleId: string, partnerId: string) {
+    return Vehicle.findOne({
+      _id: vehicleId,
+
+      "auctionResult.partnerId": partnerId,
+
+      status: VehicleStatus.ARRIVED,
+
+      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+    })
+      .select({
+        vehicleDetails: 1,
+        auctionResult: 1,
+        documents: 1,
+        status: 1,
+        processingStage: 1,
+      })
+      .lean();
+  }
+
+  async upsertPartnerDocument(
+    vehicleId: string,
+    partnerId: string,
+    document: any,
+  ) {
+    const vehicle = await Vehicle.findOne({
+      _id: vehicleId,
+      "auctionResult.partnerId": partnerId,
+      status: VehicleStatus.ARRIVED,
+      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+    });
+
+    if (!vehicle) {
+      return null;
+    }
+
+    if (!vehicle.documents) {
+      vehicle.documents = {} as any;
+    }
+
+    if (!vehicle.partnerDocuments) {
+      vehicle.partnerDocuments = [];
+    }
+
+    const existingIndex = vehicle.partnerDocuments.findIndex(
+      (doc: any) => doc.type === document.type,
+    );
+
+    if (existingIndex !== -1) {
+      vehicle.partnerDocuments[existingIndex] = document;
+    } else {
+      vehicle.partnerDocuments.push(document);
+    }
+
+    vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.IN_PROGRESS;
+
+    await vehicle.save();
+
+    return vehicle.toObject();
+  }
+
+  async submitPartnerDocuments(vehicleId: string, partnerId: string) {
+    const vehicle = await Vehicle.findOne({
+      _id: vehicleId,
+
+      "auctionResult.partnerId": partnerId,
+
+      status: VehicleStatus.ARRIVED,
+
+      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+    });
+
+    if (!vehicle) {
+      return null;
+    }
+
+    const documents = vehicle.partnerDocuments ?? [];
+
+    const requiredTypes = [
+      PartnerDocumentType.CERTIFICATE_OF_DEPOSIT,
+      PartnerDocumentType.CERTIFICATE_OF_SCRAPPING,
+      PartnerDocumentType.CHASSIS_PROOF,
+    ];
+
+    const hasAllRequired = requiredTypes.every((requiredType) =>
+      documents.some(
+        (doc: any) =>
+          doc.type === requiredType &&
+          doc.path &&
+          doc.status !== PartnerDocumentStatus.REJECTED,
+      ),
+    );
+
+    if (!hasAllRequired) {
+      throw new ApiError(
+        400,
+        "All required documents must be uploaded before submission",
+      );
+    }
+
+    vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.SUBMITTED;
+
+    await vehicle.save();
+
+    return vehicle.toObject();
   }
 }
 

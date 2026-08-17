@@ -67,4 +67,23 @@ export const uploadVehiclePhotos = upload.fields([
   },
 ]);
 
+export const uploadVehicleDocumentByPartner = upload.fields([
+  {
+    name: "cod",
+    maxCount: 1,
+  },
+  {
+    name: "cos",
+    maxCount: 1,
+  },
+  {
+    name: "chassis",
+    maxCount: 1,
+  },
+  {
+    name: "other",
+    maxCount: 1,
+  },
+]);
+
 export default uploadVehicleDocument;

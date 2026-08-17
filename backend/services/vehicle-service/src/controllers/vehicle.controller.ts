@@ -4,7 +4,10 @@ import vehicleService from "../services/vehicle.service.js";
 import asyncHandler from "../lib/asyncHandler.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import ApiError from "../lib/ApiError.js";
-import Vehicle, { VehicleDocumentType } from "../models/vehicle.model.js";
+import Vehicle, {
+  PartnerDocumentType,
+  VehicleDocumentType,
+} from "../models/vehicle.model.js";
 import {
   UploadedFiles,
   UploadedPhotos,
@@ -478,7 +481,8 @@ export const getPartnerIncomingVehicles = async (
 };
 
 export const getPartnerProcessingVehicles = asyncHandler(async (req, res) => {
-  const partnerId = (req as any).user?.userId || req.headers["x-user-id"] as string;
+  const partnerId =
+    (req as any).user?.userId || (req.headers["x-user-id"] as string);
 
   if (!partnerId) {
     return ApiResponse.error(res, 401, "Partner authentication required");
@@ -496,7 +500,8 @@ export const getPartnerProcessingVehicles = asyncHandler(async (req, res) => {
 });
 
 export const getPartnerProcessingStats = asyncHandler(async (req, res) => {
-  const partnerId = (req as any).user?.userId || req.headers["x-user-id"] as string;
+  const partnerId =
+    (req as any).user?.userId || (req.headers["x-user-id"] as string);
 
   if (!partnerId) {
     return ApiResponse.error(res, 401, "Partner authentication required");
@@ -555,4 +560,174 @@ export const setPickupVehicleController = asyncHandler(async (req, res) => {
   }
   const vehicle = await vehicleService.CurrentVehiclePickedUp(vehicleId);
   return ApiResponse.success(res, 201, "Picked Up Vehicle", vehicle);
+});
+
+export const getVehicleStatusById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const vehicleId = req.query.vehicleId as string;
+
+    const vehicle = await vehicleService.getVehicleStatusById(vehicleId);
+
+    res.status(200).json({
+      success: true,
+      message: "Vehicle status fetched successfully",
+      data: vehicle,
+    });
+  },
+);
+
+export const getAllVehiclesWithStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const vehicles = await vehicleService.getAllVehiclesWithStatus();
+
+    res.status(200).json({
+      success: true,
+      message: "All vehicle status fetched successfully",
+      data: vehicles,
+    });
+  },
+);
+
+export const markVehicleArrived = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { vehicleId } = req.body;
+
+    if (!vehicleId) {
+      return res.status(400).json({
+        success: false,
+        message: "Vehicle ID is required",
+      });
+    }
+
+    const vehicle = await vehicleService.markVehicleArrived(vehicleId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Vehicle marked as arrived successfully",
+      data: vehicle,
+    });
+  },
+);
+
+export const uploadPartnerDocument = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  const { vehicleId, documentType } = req.body;
+  if (!vehicleId) {
+    throw new ApiError(400, "vehicleId is required");
+  }
+
+  if (!documentType) {
+    throw new ApiError(400, "documentType is required");
+  }
+
+  const files = req.files as {
+    [fieldname: string]: Express.Multer.File[];
+  };
+
+  let file: Express.Multer.File | undefined;
+
+  switch (documentType) {
+    case PartnerDocumentType.CERTIFICATE_OF_DEPOSIT:
+      file = files?.cod?.[0];
+      break;
+
+    case PartnerDocumentType.CERTIFICATE_OF_SCRAPPING:
+      file = files?.cos?.[0];
+      break;
+
+    case PartnerDocumentType.CHASSIS_PROOF:
+      file = files?.chassis?.[0];
+      break;
+
+    case PartnerDocumentType.OTHER:
+      file = files?.other?.[0];
+      break;
+
+    default:
+      throw new ApiError(400, "Invalid document type");
+  }
+
+  if (!file) {
+    throw new ApiError(400, `${documentType} file is required`);
+  }
+
+  const document = await vehicleService.uploadPartnerDocument(
+    vehicleId,
+    partnerId,
+    documentType,
+    file,
+  );
+
+  return ApiResponse.success(
+    res,
+    201,
+    "Document uploaded successfully",
+    document,
+  );
+});
+
+export const submitPartnerDocuments = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  const { vehicleId } = req.body;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "vehicleId is required");
+  }
+
+  const vehicle = await vehicleRepository.submitPartnerDocuments(
+    vehicleId,
+    partnerId,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Documents submitted for admin approval",
+    vehicle,
+  );
+});
+
+export const getPartnerDocumentVehicles = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    throw new ApiError(401, "Partner authentication required");
+  }
+
+  const vehicles = await vehicleService.getPartnerDocumentVehicles(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Partner document vehicles fetched successfully",
+    vehicles,
+  );
+});
+
+export const getPartnerVehicleDocuments = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+
+  const partnerId = req.user?.userId;
+
+  if (!partnerId) {
+    throw new ApiError(401, "Partner authentication required");
+  }
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  const vehicle = await vehicleService.getPartnerVehicleDocuments(
+    vehicleId,
+    partnerId,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Vehicle documents fetched successfully",
+    vehicle,
+  );
 });

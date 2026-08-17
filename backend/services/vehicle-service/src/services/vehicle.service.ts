@@ -1,12 +1,17 @@
 import vehicleRepository from "../repositories/vehicle.repository.js";
 import Vehicle, {
   IVehicle,
+  PartnerDocumentStatus,
+  PartnerDocumentSubmissionStatus,
+  PartnerDocumentType,
+  ProcessingStage,
   RegistrationStep,
   VehicleDocumentType,
   VehicleStatus,
 } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import {
+  UploadedFile,
   UploadedFiles,
   UploadedPhotos,
   vehicleBasicDto,
@@ -609,8 +614,6 @@ class VehicleService {
       await vehicleRepository.getProcessingVehiclesByPartner(partnerId);
 
     return vehicles.map((vehicle) => {
-      const processingStage = getProcessingStage(vehicle.timeline ?? []);
-
       return {
         vehicleId: vehicle._id,
 
@@ -648,35 +651,13 @@ class VehicleService {
 
         status: vehicle.status,
 
-        processingStage,
+        // IMPORTANT:
+        // Use the value stored in MongoDB.
+        processingStage: vehicle.processingStage,
 
-        pickup: {
-          city: vehicle.pickup?.city ?? null,
-
-          state: vehicle.pickup?.state ?? null,
-
-          formattedAddress: vehicle.pickup?.formattedAddress ?? null,
-
-          scheduledAt: vehicle.pickup?.scheduledAt ?? null,
-
-          confirmedAt: vehicle.pickup?.confirmedAt ?? null,
-
-          assignedDriver: vehicle.pickup?.assignedDriver ?? null,
-        },
+        pickup: vehicle.pickup ?? null,
 
         timeline: vehicle.timeline ?? [],
-
-        documents: {
-          rcbook: vehicle.documents?.rcbook ?? null,
-
-          insurance: vehicle.documents?.insurance ?? null,
-
-          puc: vehicle.documents?.puc ?? null,
-        },
-
-        photos: vehicle.photos ?? null,
-
-        createdAt: vehicle.createdAt,
 
         updatedAt: vehicle.updatedAt,
       };
@@ -820,6 +801,175 @@ class VehicleService {
       createdAt: vehicle.createdAt,
       updatedAt: vehicle.updatedAt,
     };
+  }
+
+  async markVehicleArrived(vehicleId: string) {
+    const vehicle = await vehicleRepository.markVehicleArrived(vehicleId);
+
+    if (!vehicle) {
+      throw new Error(
+        "Vehicle not found or vehicle is not in PICKED_UP status",
+      );
+    }
+
+    return vehicle;
+  }
+
+  async getPartnerVehicleDocuments(vehicleId: string, partnerId: string) {
+    const vehicle = await vehicleRepository.getPartnerVehicleDocuments(
+      vehicleId,
+      partnerId,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(
+        404,
+        "Vehicle not found or vehicle is not available for documents",
+      );
+    }
+
+    return {
+      vehicleId: vehicle._id,
+
+      vehicleDetails: {
+        carName: vehicle.vehicleDetails?.carName ?? null,
+
+        manufacturer: vehicle.vehicleDetails?.carName ?? null,
+
+        model: vehicle.vehicleDetails?.model ?? null,
+
+        variant: vehicle.vehicleDetails?.variant ?? null,
+
+        registrationNumber: vehicle.vehicleDetails?.registrationNumber ?? null,
+
+        fuelType: vehicle.vehicleDetails?.fuelType ?? null,
+
+        transmission: vehicle.vehicleDetails?.transmission ?? null,
+
+        manufacturingYear: vehicle.vehicleDetails?.manufacturingYear ?? null,
+      },
+
+      pickup: {
+        city: vehicle.pickup?.city ?? null,
+        state: vehicle.pickup?.state ?? null,
+        formattedAddress: vehicle.pickup?.formattedAddress ?? null,
+      },
+
+      auction: {
+        auctionId: vehicle.auctionResult?.auctionId ?? null,
+
+        winningBid: vehicle.auctionResult?.winningBid ?? null,
+
+        wonAt: vehicle.auctionResult?.wonAt ?? null,
+      },
+
+      status: vehicle.status,
+
+      processingStage: vehicle.processingStage,
+
+      partnerDocumentStatus:
+        vehicle.partnerDocumentStatus ??
+        PartnerDocumentSubmissionStatus.NOT_STARTED,
+
+      partnerDocuments: vehicle.partnerDocuments ?? [],
+
+      updatedAt: vehicle.updatedAt,
+    };
+  }
+
+  async getPartnerDocumentVehicles(partnerId: string) {
+    const vehicles =
+      await vehicleRepository.getArrivedVehiclesForPartner(partnerId);
+
+    return vehicles.map((vehicle) => ({
+      vehicleId: vehicle._id,
+
+      vehicleDetails: {
+        carName: vehicle.vehicleDetails?.carName ?? null,
+        model: vehicle.vehicleDetails?.model ?? null,
+        variant: vehicle.vehicleDetails?.variant ?? null,
+        fuelType: vehicle.vehicleDetails?.fuelType ?? null,
+        registrationNumber: vehicle.vehicleDetails?.registrationNumber ?? null,
+      },
+
+      auction: {
+        auctionId: vehicle.auctionResult?.auctionId ?? null,
+        winningBid: vehicle.auctionResult?.winningBid ?? null,
+        wonAt: vehicle.auctionResult?.wonAt ?? null,
+      },
+
+      status: vehicle.status,
+
+      processingStage: vehicle.processingStage,
+
+      documents: {
+        submissionStatus:
+          vehicle.partnerDocumentStatus ?? "NOT_STARTED",
+
+        partnerDocuments: vehicle.partnerDocuments ?? [],
+      },
+
+      updatedAt: vehicle.updatedAt,
+    }));
+  }
+
+  async uploadPartnerDocument(
+    vehicleId: string,
+    partnerId: string,
+    documentType: PartnerDocumentType,
+    file: UploadedFile,
+  ) {
+    const vehicle = await vehicleRepository.getPartnerVehicleDocuments(
+      vehicleId,
+      partnerId,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(
+        404,
+        "Vehicle not found or vehicle is not ready for documents",
+      );
+    }
+
+    const requiredDocuments = [
+      PartnerDocumentType.CERTIFICATE_OF_DEPOSIT,
+      PartnerDocumentType.CERTIFICATE_OF_SCRAPPING,
+      PartnerDocumentType.CHASSIS_PROOF,
+    ];
+
+    const isRequired = requiredDocuments.includes(documentType);
+
+    const uploadResult = await supabaseService.uploadToSupabase(
+      file,
+      `vehicles/${vehicleId}/partner-documents`,
+      documentType.toLowerCase(),
+    );
+
+    const document = {
+      type: documentType,
+      required: isRequired,
+      path: uploadResult.path,
+      fullPath: uploadResult.fullPath,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+      status: PartnerDocumentStatus.PENDING,
+      rejectionReason: null,
+      reviewedAt: null,
+      reviewedBy: null,
+    };
+
+    const updatedVehicle = await vehicleRepository.upsertPartnerDocument(
+      vehicleId,
+      partnerId,
+      document,
+    );
+
+    if (!updatedVehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    return document;
   }
 }
 

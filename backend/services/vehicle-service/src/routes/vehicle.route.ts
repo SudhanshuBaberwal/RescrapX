@@ -9,22 +9,29 @@ import {
   findScheduledVehicles,
   findVehicle,
   getAllVehicles,
+  getAllVehiclesWithStatus,
+  getPartnerDocumentVehicles,
   getPartnerIncomingVehicles,
   getPartnerProcessingStats,
   getPartnerProcessingVehicles,
+  getPartnerVehicleDocuments,
   getPickupMap,
   getReadyForBiddingVehicles,
   getVehicleDashboardStats,
+  getVehicleStatusById,
   majorComponents,
+  markVehicleArrived,
   registerBasicVehicleDetails,
   requestPickupOtp,
   reviewVehicle,
   schedulePickup,
   scheduleVehiclePickup,
   setPickupVehicleController,
+  submitPartnerDocuments,
   underVerification,
   updateAuctionVehicleStatus,
   updateVehicleStatus,
+  uploadPartnerDocument,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
@@ -41,6 +48,7 @@ import {
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
 import uploadVehicleDocument, {
+  uploadVehicleDocumentByPartner,
   uploadVehiclePhotos,
 } from "../middlewares/uploadVehicleDocument.js";
 import adminOnly from "../middlewares/adminOnly.js";
@@ -116,5 +124,24 @@ router.get("/partner/processing/stats", getPartnerProcessingStats);
 // router.post("/pickup/request-otp", requestPickupOtp);
 // router.post("/pickup/verify-otp", verifyPickupOtp);
 router.post("/pickup-vehicle", adminOnly, setPickupVehicleController);
+router.get("/admin/all-status", getAllVehiclesWithStatus);
+router.get("/admin/status", getVehicleStatusById);
+router.patch("/admin/arrived", markVehicleArrived);
+
+router.get("/partner/documents/vehicles",  getPartnerDocumentVehicles);
+
+router.get(
+  "/partner/documents/vehicles/check",
+  
+  getPartnerVehicleDocuments,
+);
+
+router.post(
+  "/partner/documents/upload",
+  uploadVehicleDocumentByPartner,
+  uploadPartnerDocument,
+);
+
+router.post("/partner/documents/submit", submitPartnerDocuments);
 
 export default router;

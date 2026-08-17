@@ -6,12 +6,36 @@ export interface IVehicleDocument {
     uploadedAt: Date;
 }
 
+export interface IPartnerDocument {
+    _id?: string;
+    type: VehicleDocumentType;
+    required: boolean;
+    path: string;
+    fullPath: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: Date;
+    status: PartnerDocumentStatus;
+    rejectionReason?: string | null;
+    reviewedAt?: Date | null;
+    reviewedBy?: string | null;
+}
+
 export interface IUploadedPhoto {
     path: string;
     originalName: string;
     mimeType: string;
     size: number;
     uploadedAt: Date;
+}
+
+export enum PartnerDocumentSubmissionStatus {
+    NOT_STARTED = "NOT_STARTED",
+    IN_PROGRESS = "IN_PROGRESS",
+    SUBMITTED = "SUBMITTED",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
 }
 
 export enum ProcessingStage {
@@ -22,6 +46,19 @@ export enum ProcessingStage {
     RECYCLING = "RECYCLING",
     CERTIFICATE_PENDING = "CERTIFICATE_PENDING",
     COMPLETED = "COMPLETED",
+}
+
+export enum PartnerDocumentType {
+    CERTIFICATE_OF_DEPOSIT = "CERTIFICATE_OF_DEPOSIT",
+    CERTIFICATE_OF_SCRAPPING = "CERTIFICATE_OF_SCRAPPING",
+    CHASSIS_PROOF = "CHASSIS_PROOF",
+    OTHER = "OTHER",
+}
+
+export enum PartnerDocumentStatus {
+    PENDING = "PENDING",
+    APPROVED = "APPROVED",
+    REJECTED = "REJECTED",
 }
 
 export enum VehicleStatus {
@@ -97,7 +134,7 @@ export enum structuralDamage {
     MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
 export interface IVehicle {
-    _id:string;
+    _id: string
     owner: string;
     pickupCharges?: number;
     documentCharges?: number;
@@ -155,6 +192,8 @@ export interface IVehicle {
         loanClosure?: IVehicleDocument;
         other?: IVehicleDocument;
     };
+    partnerDocumentStatus?: PartnerDocumentSubmissionStatus;
+    partnerDocuments?: IPartnerDocument[];
     photos: {
         front?: IUploadedPhoto;
         rear?: IUploadedPhoto;

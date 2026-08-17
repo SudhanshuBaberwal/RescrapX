@@ -330,3 +330,50 @@ export const processingVehicleStates = async () => {
     console.log(error);
   }
 };
+
+export const getAllVehiclesService = async () => {
+  try {
+    const response = await api.get("/api/vehicle/register/admin/all-status");
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const makeVehicleArrived = async (vehicleId: string) => {
+  try {
+    const response = await api.patch("/api/vehicle/register/admin/arrived", {
+      vehicleId,
+    });
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const partnerDocuments = async () => {
+  try {
+    const response = await api.get("/api/vehicle/register/partner/documents/vehicles")
+    return response.data;
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export const uploadPartnerDocument = async () => {
+  try {
+    const response = await api.post("/api/vehicle/register/partner/documents/upload")
+    return response.data;
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export const submitPartnerDocuments = async () => {
+  try {
+    const response = await api.patch("/api/vehicle/register/partner/documents/submit")
+    return response.data;
+  } catch (error) {
+    console.log(error)
+  }
+}
