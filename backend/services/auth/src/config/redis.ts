@@ -2,8 +2,13 @@
 import { createClient } from "redis";
 import { env } from "./env.js";
 
+const isTLS = env.REDIS_URL.startsWith("rediss://");
+
 const redis = createClient({
   url: env.REDIS_URL,
+  socket: isTLS
+    ? { tls: true as const, rejectUnauthorized: false }
+    : {},
 });
 
 redis.on("connect", () => {

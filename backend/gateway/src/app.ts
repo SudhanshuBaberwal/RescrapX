@@ -1,11 +1,11 @@
 import express from "express";
 import proxy from "express-http-proxy";
-import env from "./config/env.ts";
-import { proxyRoutes } from "./routes/proxyRoute.ts";
+import env from "./config/env.js";
+import { proxyRoutes } from "./routes/proxyRoute.js";
 import cors from "cors";
-import { protect } from "./middleware/auth.middleware.ts";
+import { protect } from "./middleware/auth.middleware.js";
 import cookieParser from "cookie-parser";
-import router from "./routes/newRoute.ts";
+import router from "./routes/newRoute.js";
 
 const app = express();
 
@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   }),
 );

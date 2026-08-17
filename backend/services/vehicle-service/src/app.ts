@@ -10,7 +10,7 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: ["http://localhost:8000"],
+    origin: [process.env.GATEWAY_URL || "http://localhost:8000"],
     credentials: true,
   })
 );
