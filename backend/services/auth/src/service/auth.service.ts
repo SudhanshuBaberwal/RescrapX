@@ -335,7 +335,7 @@ class AuthService {
       throw new ApiError(404, "Password is Not Assignable to this account");
     }
 
-    const isPasswordCorrect = bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
     if (!isPasswordCorrect) {
       throw new ApiError(401, "Invalid email or password");
