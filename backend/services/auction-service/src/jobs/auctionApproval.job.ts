@@ -2,7 +2,7 @@ import auctionService from "../service/auction.service.js";
 
 setInterval(async () => {
   try {
-    const count = await auctionService.checkAuctionsForApproval();
+    const count = await auctionService.checkAuctionsForStartApproval();
 
     if (count > 0) {
       console.log(`${count} auction(s) waiting for admin approval`);

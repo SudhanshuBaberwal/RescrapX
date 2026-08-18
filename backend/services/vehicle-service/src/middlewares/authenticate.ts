@@ -10,8 +10,6 @@ export const authenticate = (
 
   const role = req.headers["x-user-role"] as string;
 
-  const email = req.headers["x-user-email"] as string;
-
   if (!userId) {
     return next(new ApiError(401, "Unauthorized"));
   }
@@ -19,7 +17,6 @@ export const authenticate = (
   req.user = {
     userId,
     role,
-    email,
   };
 
   next();

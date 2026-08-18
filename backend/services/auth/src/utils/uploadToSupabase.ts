@@ -15,7 +15,7 @@ interface UploadResult {
 export const uploadToSupabase = async (
   file: UploadedFile,
   folder: string,
-  prefix: string, // ✅ New parameter
+  prefix: string = "file", // ✅ New parameter
 ): Promise<UploadResult> => {
   const extension = file.originalname.split(".").pop();
 
