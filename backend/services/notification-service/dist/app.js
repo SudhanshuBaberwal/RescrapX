@@ -30,6 +30,10 @@ app.get("/", (_req, res) => {
         status: "Running 🚀",
     });
 });
+// Example for health check or root endpoints:
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "OK" });
+});
 // app.use("/{*any}", (_req, res) => {
 //   res.status(404).json({
 //     success: false,

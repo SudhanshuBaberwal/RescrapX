@@ -1,3 +1,4 @@
+import { Request, Response } from "express";
 import express, { Application } from "express";
 import cors from "cors";
 import compression from "compression";
@@ -14,14 +15,14 @@ app.use(
   cors({
     origin: [process.env.GATEWAY_URL || "http://localhost:8000"],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(compression());
 app.use(cookieParser());
-app.use("/" , router)
+app.use("/", router);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({
@@ -37,6 +38,11 @@ app.get("/", (_req, res) => {
     version: "v1",
     status: "Running 🚀",
   });
+});
+
+// Example for health check or root endpoints:
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "OK" });
 });
 // app.use("/{*any}", (_req, res) => {
 //   res.status(404).json({
