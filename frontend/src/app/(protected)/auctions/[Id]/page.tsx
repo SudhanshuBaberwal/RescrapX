@@ -310,8 +310,7 @@ export default function AuctionsPage() {
     } else if (rawPhotos && typeof rawPhotos === 'object') {
       Object.entries(rawPhotos).forEach(([key, photoObj]) => {
         const url = getMediaUrl(photoObj);
-        const rawPath = typeof photoObj === 'string' ? photoObj : (photoObj as { path?: string })?.path || '';
-        if (url) {
+        const rawPath = typeof photoObj === 'string' ? photoObj : (photoObj as { path?: string; fullPath?: string })?.path || (photoObj as any)?.fullPath || ''; if (url) {
           initialList.push({
             label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
             rawPath,
