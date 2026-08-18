@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "https://rescrap-x.vercel.app/",
+    origin: "https://rescrap-x.vercel.app",
     credentials: true,
   }),
 );
