@@ -23,7 +23,7 @@ export default function Page() {
         );
 
     useEffect(() => {
-        if (!loading) {
+        if (!loading &&!userData) {
             router.replace("/login");
         }
     }, [loading, userData, router]);
