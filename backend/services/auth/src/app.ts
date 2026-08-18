@@ -15,7 +15,11 @@ const app: Application = express();
  */
 app.use(
   cors({
-    origin: [process.env.GATEWAY_URL || "http://localhost:8000"],
+    origin: [
+      process.env.GATEWAY_URL || "http://localhost:8000",
+      "https://rescrap-x.vercel.app",
+      "http://localhost:3000"
+    ],
     credentials: true,
   })
 );
