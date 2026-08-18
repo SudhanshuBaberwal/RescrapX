@@ -1,1 +1,0 @@
-redis://red-da1pdp0jo6nc73fbcu5g:6379
