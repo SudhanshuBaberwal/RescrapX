@@ -6,8 +6,11 @@ import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { login } from '@/services/auth.service';
-import { setLoading } from '@/store/userSlice';
+import { setLoading, setUserData } from '@/store/userSlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
 export default function LoginPage() {
+  const dispatch = useDispatch<AppDispatch>()
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { showToast } = useToast();
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -17,9 +20,9 @@ export default function LoginPage() {
   const router = useRouter();
   // Input Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { type, value } = e.target;
-    setFormData((prev) => ({ ...prev, [type]: value }));
-  };
+  const { name, value } = e.target;
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
 
   // Main Form Submit Handler
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -34,6 +37,7 @@ export default function LoginPage() {
         email: formData.email,
         password: formData.password,
       });
+      dispatch(setUserData(result.data))
       setSuccessMessage("Authentication successful! Redirecting...");
       showToast("Welcome back! Authentication successful.", "success");
       router.replace("/");
@@ -48,7 +52,7 @@ export default function LoginPage() {
       showToast(error?.message || "Login failed. Please try again.", "error");
     } finally {
       setIsLoading(false);
-      setLoading(false)
+      dispatch(setLoading(false))
     }
   };
 
@@ -139,6 +143,7 @@ export default function LoginPage() {
                   <Mail size={18} className="absolute left-4 text-gray-400" />
                   <input
                     type="email"
+                    name="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="Enter your registered email"
@@ -155,6 +160,7 @@ export default function LoginPage() {
                 <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="Enter your password"
