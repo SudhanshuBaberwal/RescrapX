@@ -11,6 +11,7 @@ import { getProcessingYardData } from '@/hooks/getPartnerProcessingYardData';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { processingVehicleStates } from '@/services/vehicle.service'; // Ensure correct path to your service file
+import { IVehicle } from '@/context/vehicleProvider';
 
 // Type definition corresponding to your console log data structure
 interface VehicleRecord {
@@ -163,7 +164,7 @@ export default function ProcessingYardDashboard() {
 
   // Safe mapping and search filter over Redux dataset
   const rawList: VehicleRecord[] = Array.isArray(PartnerProcessingYardVehiclesData)
-    ? PartnerProcessingYardVehiclesData
+    ? (PartnerProcessingYardVehiclesData as unknown as VehicleRecord[])
     : [];
 
   const filteredVehicles = useMemo(() => {

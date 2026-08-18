@@ -18,48 +18,255 @@ import { getAllVehicles } from '@/hooks/getAllVehiclesData';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 
-// Interface matching Redux real vehicle API payload structure
-export interface VehicleData {
-  vehicleId: string;
+export interface IVehicleDocument {
+  path: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
+export interface IPartnerDocument {
+  _id?: string;
+  type: VehicleDocumentType;
+  required: boolean;
+  path: string;
+  fullPath: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+  status: PartnerDocumentStatus;
+  rejectionReason?: string | null;
+  reviewedAt?: Date | null;
+  reviewedBy?: string | null;
+}
+
+export interface IUploadedPhoto {
+  path: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+}
+
+export enum PartnerDocumentSubmissionStatus {
+  NOT_STARTED = "NOT_STARTED",
+  IN_PROGRESS = "IN_PROGRESS",
+  SUBMITTED = "SUBMITTED",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export enum ProcessingStage {
+  WAITING_FOR_ARRIVAL = "WAITING_FOR_ARRIVAL",
+  VEHICLE_RECEIVED = "VEHICLE_RECEIVED",
+  INSPECTION_COMPLETED = "INSPECTION_COMPLETED",
+  DISMANTLING = "DISMANTLING",
+  RECYCLING = "RECYCLING",
+  CERTIFICATE_PENDING = "CERTIFICATE_PENDING",
+  COMPLETED = "COMPLETED",
+}
+
+export enum PartnerDocumentType {
+  CERTIFICATE_OF_DEPOSIT = "CERTIFICATE_OF_DEPOSIT",
+  CERTIFICATE_OF_SCRAPPING = "CERTIFICATE_OF_SCRAPPING",
+  CHASSIS_PROOF = "CHASSIS_PROOF",
+  OTHER = "OTHER",
+}
+
+export enum PartnerDocumentStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export enum VehicleStatus {
+  DRAFT = "DRAFT",
+  SUBMITTED = "SUBMITTED",
+  UNDER_VERIFICATION = "UNDER_VERIFICATION",
+  VERIFIED = "VERIFIED",
+  REJECTED = "REJECTED",
+  READY_FOR_BIDDING = "READY_FOR_BIDDING",
+  SOLD = "SOLD",
+  UNSOLD = "UNSOLD",
+  READY_FOR_PICKUP = "READY_FOR_PICKUP",
+  SCHEDULED = "SCHEDULED",
+  DRIVER_ASSIGNED = "DRIVER_ASSIGNED",
+  PICKED_UP = "PICKED_UP",
+  IN_TRANSIT = "IN_TRANSIT",
+  ARRIVED = "ARRIVED",
+  CANCELLED = "CANCELLED",
+}
+
+export enum VehicleDocumentType {
+  RC_BOOK = "RC_BOOK",
+  INSURANCE = "INSURANCE",
+  PUC = "PUC",
+  LOAN_CLOSURE = "LOAN_CLOSURE",
+  OTHER = "OTHER",
+}
+
+export enum RegistrationStep {
+  VEHICLE_DETAILS = 1,
+  VEHICLE_CONDITION,
+  MAJOR_COMPONENTS,
+  DOCUMENTS,
+  PHOTOS,
+  PICKUP,
+  REVIEW,
+  SUBMITTED,
+}
+
+export enum TransmissionType {
+  MANUAL = "MANUAL",
+  AUTOMATIC = "AUTOMATIC",
+  CVT = "CVT",
+  DCT = "DCT",
+  AMT = "AMT",
+}
+
+export enum EngineCondition {
+  EXCELLENT = "EXCELLENT",
+  GOOD = "GOOD",
+  FAIR = "FAIR",
+  POOR = "POOR",
+  NOT_WORKING = "NOT_WORKING",
+}
+
+export enum ComponentCondition {
+  GOOD = "GOOD",
+  NOT_WORKING = "NOT_WORKING",
+  MISSING = "MISSING",
+}
+
+export enum accidentType {
+  NO_ACCIDENT = "NO_ACCIDENT",
+  ACCIDENTAL_DAMAGE = "ACCIDENTAL_DAMAGE",
+  BURNT = "BURNT",
+  FLOODED = "FLOODED",
+  OTHER = "OTHER",
+}
+
+export enum structuralDamage {
+  NO_DAMAGE = "NO_DAMAGE",
+  MINOR_DAMAGE = "MINOR_DAMAGE",
+  MAJOR_DAMAGE = "MAJOR_DAMAGE",
+}
+
+export interface IVehicle {
+  _id: string;
   owner: string;
-  status: string;
-  currentStep: number;
-  createdAt: string;
-  updatedAt: string;
+  pickupCharges?: number;
+  documentCharges?: number;
   auctionResult?: {
-    auctionId?: string;
-    partnerId?: string;
-    winningBid?: number;
-    partnerName?: string;
-    partnerLocation?: string;
+    auctionId: string;
+    partnerId: string | null;
+    winningBid: number | null;
+    wonAt: Date | null;
   };
-  pickup?: {
-    houseNumber?: string;
-    street?: string;
-    area?: string;
-    city?: string;
+
+  status: VehicleStatus;
+  processingStage?: ProcessingStage;
+  isRegistered?: boolean;
+  currentStep: RegistrationStep;
+  vehicleDetails: {
+    carName: string;
+    registrationNumber: string;
+    model: string;
+    variant: string;
+    fuelType: string;
+    transmission: TransmissionType;
+    manufacturingYear: number;
+    ownership: number;
+    kmsDriven: number;
   };
-  timeline?: {
-    step: number;
+
+  vehicleCondition: {
+    accidentType: accidentType;
+    structure: structuralDamage;
+    airbagsDeployed: boolean;
+    description: string;
+  };
+
+  majorComponents: {
+    engine: ComponentCondition;
+    radiator: ComponentCondition;
+    fuelSystem: ComponentCondition;
+    gearbox: ComponentCondition;
+    suspension: ComponentCondition;
+    steering: ComponentCondition;
+    electrical: ComponentCondition;
+    exhaust: ComponentCondition;
+    tyres: ComponentCondition;
+    ac: ComponentCondition;
+    bodyPanels: ComponentCondition;
+    glass: ComponentCondition;
+    lights: ComponentCondition;
+    interior: ComponentCondition;
+  };
+
+  documents: {
+    rcbook?: IVehicleDocument;
+    insurance?: IVehicleDocument;
+    puc?: IVehicleDocument;
+    loanClosure?: IVehicleDocument;
+    other?: IVehicleDocument;
+  };
+  partnerDocumentStatus?: PartnerDocumentSubmissionStatus;
+  partnerDocuments?: IPartnerDocument[];
+  photos: {
+    front?: IUploadedPhoto;
+    rear?: IUploadedPhoto;
+    left?: IUploadedPhoto;
+    right?: IUploadedPhoto;
+    dashboard?: IUploadedPhoto;
+    interior?: IUploadedPhoto;
+    engine?: IUploadedPhoto;
+    odometer?: IUploadedPhoto;
+    chassisNumber?: IUploadedPhoto;
+  };
+
+  pickup: {
+    houseNumber: string;
+    street: string;
+    area: string;
+    landmark?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    latitude: number;
+    longitude: number;
+    formattedAddress?: string;
+    contactName: string;
+    mobileNumber: string;
+    alternateNumber?: string;
+    vehicleLocation: "HOME" | "OFFICE" | "PARKING" | "WORKSHOP" | "OTHER";
+    towAccessibility: "YES" | "NO" | "NOT_SURE";
+    currentVehiclePosition:
+      | "ON_ROAD"
+      | "BASEMENT"
+      | "SOCIETY"
+      | "ROADSIDE"
+      | "GARAGE";
+    scheduledAt?: Date;
+    confirmedAt?: Date;
+    confirmedBy?: string;
+    assignedDriver?: string;
+
+    pickupOtpHash?: string | null;
+    pickupOtpExpiresAt?: Date | null;
+    pickupOtpAttempts?: number;
+    pickupOtpVerifiedAt?: Date | null;
+  };
+  timeline: {
     title: string;
-    date?: string;
-    description?: string;
-    status: 'Completed' | 'In Progress' | 'Pending';
+    completed: boolean;
+    completedAt?: Date;
   }[];
-  vehicleDetails?: {
-    registrationNumber?: string;
-    model?: string;
-    variant?: string;
-    fuelType?: string;
-    transmission?: string;
-    expectedWeight?: string;
-    image?: string;
-  };
-  ownerDetails?: {
-    name?: string;
-    phone?: string;
-    email?: string;
-  };
+  rejectionReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export default function RequestStatusPage() {
@@ -67,11 +274,11 @@ export default function RequestStatusPage() {
   getAllVehicles();
 
   // Extract real backend data from Redux Store
-  const allVehicles: VehicleData[] = useSelector(
+  const allVehicles: IVehicle[] = useSelector(
     (state: RootState) => state.admin.allVehicles || []
   );
 
-  const [selectedRequest, setSelectedRequest] = useState<VehicleData | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<IVehicle | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -83,35 +290,47 @@ export default function RequestStatusPage() {
   }, [allVehicles, selectedRequest]);
 
   // Dynamic status badges mapping backend values
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string) => {
     const formattedStatus = status?.toUpperCase();
     switch (formattedStatus) {
       case 'PICKED_UP':
-      case 'IN PROGRESS':
-      case 'IN_PROGRESS':
+      case 'IN_TRANSIT':
+      case 'ARRIVED':
         return 'bg-blue-50 text-blue-600 border border-blue-100';
-      case 'COMPLETED':
+      case 'SOLD':
+      case 'VERIFIED':
         return 'bg-emerald-50 text-emerald-600 border border-emerald-100';
       case 'SCHEDULED':
-      case 'PENDING':
+      case 'SUBMITTED':
+      case 'UNDER_VERIFICATION':
+      case 'READY_FOR_BIDDING':
+      case 'READY_FOR_PICKUP':
         return 'bg-amber-50 text-amber-600 border border-amber-100';
+      case 'REJECTED':
+      case 'CANCELLED':
+      case 'UNSOLD':
+        return 'bg-red-50 text-red-600 border border-red-100';
       default:
         return 'bg-gray-50 text-gray-600 border border-gray-100';
     }
   };
 
-  const formatDate = (isoString?: string) => {
-    if (!isoString) return 'N/A';
-    return new Date(isoString).toLocaleDateString('en-GB', {
+  const formatDate = (dateValue?: Date | string) => {
+    if (!dateValue) return 'N/A';
+    const dateObj = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    if (isNaN(dateObj.getTime())) return 'N/A';
+    return dateObj.toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
     });
   };
 
-  const formatTime = (isoString?: string) => {
-    if (!isoString) return '';
-    return new Date(isoString).toLocaleTimeString('en-US', {
+  const formatTime = (dateValue?: Date | string) => {
+    if (!dateValue) return '';
+    const dateObj = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -122,8 +341,8 @@ export default function RequestStatusPage() {
     const query = searchQuery.toLowerCase();
     const regNum = v.vehicleDetails?.registrationNumber?.toLowerCase() || '';
     const model = v.vehicleDetails?.model?.toLowerCase() || '';
-    const vehicleId = v.vehicleId?.toLowerCase() || '';
-    const ownerName = v.ownerDetails?.name?.toLowerCase() || '';
+    const vehicleId = v._id?.toLowerCase() || '';
+    const ownerName = v.owner?.toLowerCase() || '';
 
     const matchesSearch =
       regNum.includes(query) ||
@@ -170,7 +389,9 @@ export default function RequestStatusPage() {
               <option value="ALL">All Status</option>
               <option value="PICKED_UP">Picked Up</option>
               <option value="SCHEDULED">Scheduled</option>
-              <option value="COMPLETED">Completed</option>
+              <option value="SOLD">Sold</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="REJECTED">Rejected</option>
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
@@ -207,30 +428,31 @@ export default function RequestStatusPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50 text-xs">
                   {filteredVehicles.map((req, idx) => {
-                    const isSelected = selectedRequest?.vehicleId === req.vehicleId;
+                    const isSelected = selectedRequest?._id === req._id;
                     const displayReg = req.vehicleDetails?.registrationNumber || 'N/A';
-                    const displayModel = req.vehicleDetails?.model || 'Unknown Model';
+                    const displayModel = req.vehicleDetails?.model || req.vehicleDetails?.carName || 'Unknown Model';
 
                     return (
                       <tr
-                        key={req.vehicleId || idx}
-                        className={`hover:bg-gray-50/60 transition-colors cursor-pointer ${isSelected ? 'bg-emerald-50/20' : ''
-                          }`}
+                        key={req._id || idx}
+                        className={`hover:bg-gray-50/60 transition-colors cursor-pointer ${
+                          isSelected ? 'bg-emerald-50/20' : ''
+                        }`}
                         onClick={() => setSelectedRequest(req)}
                       >
                         <td className="py-3 px-4">
                           <span className="font-semibold text-gray-900 text-[11px] block truncate max-w-[120px]">
-                            {req.vehicleId}
+                            {req._id}
                           </span>
                           <span className="font-bold text-gray-800 text-[11px]">{displayReg}</span>
                           <span className="text-[10px] text-gray-400 block">{displayModel}</span>
                         </td>
                         <td className="py-3 px-4">
                           <span className="font-semibold text-gray-800 block text-[11px]">
-                            {req.ownerDetails?.name || req.ownerId}
+                            {req.pickup?.contactName || req.owner || 'N/A'}
                           </span>
                           <span className="text-[10px] text-gray-400">
-                            {req.ownerDetails?.phone || 'N/A'}
+                            {req.pickup?.mobileNumber || 'N/A'}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -240,7 +462,7 @@ export default function RequestStatusPage() {
                             </span>
                             <div>
                               <span className="font-semibold text-gray-900 block text-[11px]">
-                                {req.status}
+                                {req.processingStage || req.status}
                               </span>
                               <span className="text-[9px] text-gray-400">{formatDate(req.updatedAt)}</span>
                             </div>
@@ -293,7 +515,7 @@ export default function RequestStatusPage() {
         <aside className="fixed inset-y-0 right-0 z-50 lg:static w-full max-w-[360px] border-l border-gray-100 bg-white flex flex-col shrink-0 overflow-hidden shadow-2xl lg:shadow-none">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-bold text-gray-900 truncate">ID: {selectedRequest.vehicleId}</span>
+              <span className="text-xs font-bold text-gray-900 truncate">ID: {selectedRequest._id}</span>
               <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${getStatusBadge(selectedRequest.status)}`}>
                 {selectedRequest.status}
               </span>
@@ -309,10 +531,10 @@ export default function RequestStatusPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
             {/* VEHICLE INFO */}
             <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-              {selectedRequest.vehicleDetails?.image && (
+              {selectedRequest.photos?.front?.path && (
                 <img
-                  src={selectedRequest.vehicleDetails.image}
-                  alt="Vehicle"
+                  src={selectedRequest.photos.front.path}
+                  alt="Vehicle Front"
                   className="w-16 h-12 rounded object-cover border shrink-0"
                 />
               )}
@@ -321,11 +543,11 @@ export default function RequestStatusPage() {
                   {selectedRequest.vehicleDetails?.registrationNumber || 'No Reg Number'}
                 </h3>
                 <p className="text-[10px] text-gray-500 font-medium truncate">
-                  {selectedRequest.vehicleDetails?.model} • {selectedRequest.vehicleDetails?.variant || 'Standard'}
+                  {selectedRequest.vehicleDetails?.carName || selectedRequest.vehicleDetails?.model} • {selectedRequest.vehicleDetails?.variant || 'Standard'}
                 </p>
                 {selectedRequest.pickup && (
                   <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                    Pickup: {selectedRequest.pickup.houseNumber}, {selectedRequest.pickup.street}, {selectedRequest.pickup.area}
+                    Pickup: {selectedRequest.pickup.houseNumber}, {selectedRequest.pickup.street}, {selectedRequest.pickup.area}, {selectedRequest.pickup.city}
                   </p>
                 )}
               </div>
@@ -334,18 +556,13 @@ export default function RequestStatusPage() {
             {/* OWNER & PARTNER */}
             <div className="grid grid-cols-2 gap-3 text-[11px] pb-3 border-b border-gray-100">
               <div className="space-y-1">
-                <span className="text-gray-400 font-medium block text-[10px]">Owner</span>
+                <span className="text-gray-400 font-medium block text-[10px]">Owner / Contact</span>
                 <span className="font-bold text-gray-800 block truncate">
-                  {selectedRequest.ownerDetails?.name || selectedRequest.ownerId}
+                  {selectedRequest.pickup?.contactName || selectedRequest.owner}
                 </span>
-                {selectedRequest.ownerDetails?.phone && (
+                {selectedRequest.pickup?.mobileNumber && (
                   <span className="text-gray-500 text-[10px] flex items-center gap-1">
-                    <Phone size={10} /> {selectedRequest.ownerDetails.phone}
-                  </span>
-                )}
-                {selectedRequest.ownerDetails?.email && (
-                  <span className="text-gray-500 text-[10px] flex items-center gap-1 truncate">
-                    <Mail size={10} /> {selectedRequest.ownerDetails.email}
+                    <Phone size={10} /> {selectedRequest.pickup.mobileNumber}
                   </span>
                 )}
               </div>
@@ -369,30 +586,33 @@ export default function RequestStatusPage() {
               {selectedRequest.timeline && selectedRequest.timeline.length > 0 ? (
                 <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-200">
                   {selectedRequest.timeline.map((step, idx) => {
-                    const isDone = step.status === 'Completed';
+                    const isDone = step.completed;
                     return (
                       <div key={idx} className="relative">
                         <div
-                          className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 bg-white ${isDone ? 'border-emerald-500 text-emerald-600' : 'border-gray-300 text-gray-300'
-                            }`}
+                          className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 bg-white ${
+                            isDone ? 'border-emerald-500 text-emerald-600' : 'border-gray-300 text-gray-300'
+                          }`}
                         >
                           {isDone ? (
                             <CheckCircle2 size={12} className="fill-emerald-50 text-emerald-600" />
                           ) : (
-                            <span className="text-[9px] font-bold">{step.step || idx + 1}</span>
+                            <span className="text-[9px] font-bold">{idx + 1}</span>
                           )}
                         </div>
                         <div className="flex items-start justify-between">
                           <div>
                             <h5 className="font-bold text-gray-900 text-[11px] leading-tight">{step.title}</h5>
-                            {step.date && <p className="text-[9px] text-gray-400 mt-0.5">{step.date}</p>}
-                            {step.description && <p className="text-[10px] text-gray-500 mt-0.5">{step.description}</p>}
+                            {step.completedAt && (
+                              <p className="text-[9px] text-gray-400 mt-0.5">{formatDate(step.completedAt)}</p>
+                            )}
                           </div>
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${isDone ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-400'
-                              }`}
+                            className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                              isDone ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-gray-100 text-gray-400'
+                            }`}
                           >
-                            {step.status}
+                            {isDone ? 'Completed' : 'Pending'}
                           </span>
                         </div>
                       </div>

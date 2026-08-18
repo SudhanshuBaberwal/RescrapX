@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Search, RotateCcw, ChevronDown, Trophy, Truck, IndianRupee, 
-  MoreVertical, MapPin, Clock, Tag, ArrowUpDown, X, Loader2, Eye, AlertTriangle 
+import {
+  Search, RotateCcw, ChevronDown, Trophy, Truck, IndianRupee,
+  MoreVertical, MapPin, Clock, Tag, ArrowUpDown, X, Loader2, Eye, AlertTriangle
 } from 'lucide-react';
 import { wonVehiclesData } from '@/hooks/wonVehiclesData';
 import { getVehicle } from '@/services/vehicle.service';
@@ -109,7 +109,7 @@ export default function WonVehiclesDashboard() {
 
   // Redux store selector
   const partnerData = useSelector((state: RootState) => (state as any).partner?.PartnerWonVehiclesdata) as PartnerWonVehiclesData | undefined;
-  
+
   // Extract raw backend vehicles list
   const rawVehicles: WonVehicleItem[] = useMemo(() => {
     return partnerData?.vehicles || [];
@@ -160,7 +160,7 @@ export default function WonVehiclesDashboard() {
     } else if (rawPhotos && typeof rawPhotos === 'object') {
       Object.entries(rawPhotos).forEach(([key, photoObj]) => {
         const url = getMediaUrl(photoObj);
-        const rawPath = typeof photoObj === 'string' ? photoObj : photoObj?.path || '';
+        const rawPath = typeof photoObj === 'string' ? photoObj : (photoObj as { path?: string })?.path || '';
         if (url) {
           initialList.push({
             label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),
@@ -231,27 +231,27 @@ export default function WonVehiclesDashboard() {
 
   // Dynamic Metrics Cards Setup
   const stats = useMemo(() => [
-    { 
-      title: 'Total Won Vehicles', 
-      count: backendStats?.totalWonVehicles ?? rawVehicles.length ?? 0, 
-      sub: 'All time', 
-      icon: Trophy, 
-      bg: 'bg-emerald-50 text-emerald-700' 
+    {
+      title: 'Total Won Vehicles',
+      count: backendStats?.totalWonVehicles ?? rawVehicles.length ?? 0,
+      sub: 'All time',
+      icon: Trophy,
+      bg: 'bg-emerald-50 text-emerald-700'
     },
-    { 
-      title: 'Awaiting Pickup', 
-      count: rawVehicles.filter(v => v.vehicle?.assignedStatus === 'ASSIGNED').length, 
-      sub: 'To be picked up', 
-      icon: Truck, 
-      bg: 'bg-blue-50 text-blue-700' 
+    {
+      title: 'Awaiting Pickup',
+      count: rawVehicles.filter(v => v.vehicle?.assignedStatus === 'ASSIGNED').length,
+      sub: 'To be picked up',
+      icon: Truck,
+      bg: 'bg-blue-50 text-blue-700'
     },
-    { 
-      title: 'Total Won Value', 
-      count: `₹${(backendStats?.totalWonValue ?? rawVehicles.reduce((acc, curr) => acc + (curr.vehicle?.winnerBid || 0), 0)).toLocaleString('en-IN')}`, 
-      sub: 'All time', 
-      icon: IndianRupee, 
-      bg: 'bg-teal-50 text-teal-700', 
-      isValue: true 
+    {
+      title: 'Total Won Value',
+      count: `₹${(backendStats?.totalWonValue ?? rawVehicles.reduce((acc, curr) => acc + (curr.vehicle?.winnerBid || 0), 0)).toLocaleString('en-IN')}`,
+      sub: 'All time',
+      icon: IndianRupee,
+      bg: 'bg-teal-50 text-teal-700',
+      isValue: true
     },
   ], [backendStats, rawVehicles]);
 
@@ -268,19 +268,19 @@ export default function WonVehiclesDashboard() {
         const vehicle = item.vehicle || {};
         const search = searchQuery.toLowerCase().trim();
 
-        const matchesSearch = 
+        const matchesSearch =
           !search ||
           item.auctionId.toLowerCase().includes(search) ||
           vehicle.vehicleId?.toLowerCase().includes(search) ||
           vehicle.district?.toLowerCase().includes(search) ||
           vehicle.state?.toLowerCase().includes(search);
 
-        const matchesPickupStatus = 
-          pickupStatusFilter === 'ALL' || 
+        const matchesPickupStatus =
+          pickupStatusFilter === 'ALL' ||
           vehicle.assignedStatus === pickupStatusFilter;
 
-        const matchesLocation = 
-          locationFilter === 'ALL' || 
+        const matchesLocation =
+          locationFilter === 'ALL' ||
           `${vehicle.district}, ${vehicle.state}` === locationFilter;
 
         return matchesSearch && matchesPickupStatus && matchesLocation;
@@ -311,7 +311,7 @@ export default function WonVehiclesDashboard() {
 
   return (
     <div className="space-y-6 w-full text-xs text-gray-700 antialiased relative">
-      
+
       {/* 1. TOP TITLE HEADER BAR */}
       <div className="border-b border-gray-100 pb-3">
         <h3 className="font-black text-gray-900 text-sm tracking-tight">Won Vehicles</h3>
@@ -342,14 +342,14 @@ export default function WonVehiclesDashboard() {
       {/* 3. MULTI-FILTER WORKSPACE TOOLBAR STRIP */}
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-3xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
-          
+
           {/* Search Term Input */}
           <div className="space-y-1 xl:col-span-2">
             <label className="text-[10px] text-gray-400 font-black block">Search Vehicle</label>
             <div className="relative">
-              <input 
-                type="text" 
-                placeholder="Search by ID, District, or State..." 
+              <input
+                type="text"
+                placeholder="Search by ID, District, or State..."
                 className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-900 font-bold placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-[#0B5B32] focus:bg-white"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -362,7 +362,7 @@ export default function WonVehiclesDashboard() {
           <div className="space-y-1">
             <label className="text-[10px] text-gray-400 font-black block">Pickup Status</label>
             <div className="relative">
-              <select 
+              <select
                 value={pickupStatusFilter}
                 onChange={(e) => setPickupStatusFilter(e.target.value)}
                 className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-900 font-bold appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#0B5B32] focus:bg-white cursor-pointer"
@@ -379,7 +379,7 @@ export default function WonVehiclesDashboard() {
           <div className="space-y-1">
             <label className="text-[10px] text-gray-400 font-black block">Location</label>
             <div className="relative">
-              <select 
+              <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-900 font-bold appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#0B5B32] focus:bg-white cursor-pointer"
@@ -397,7 +397,7 @@ export default function WonVehiclesDashboard() {
           <div className="space-y-1">
             <label className="text-[10px] text-gray-400 font-black block">Sort Order</label>
             <div className="relative">
-              <select 
+              <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as any)}
                 className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-900 font-bold appearance-none focus:outline-hidden focus:ring-1 focus:ring-[#0B5B32] focus:bg-white cursor-pointer"
@@ -413,7 +413,7 @@ export default function WonVehiclesDashboard() {
 
           {/* Clear Filter Button */}
           <div className="flex gap-2 w-full pt-1 sm:pt-0">
-            <button 
+            <button
               onClick={handleClearFilters}
               className="w-full text-gray-400 hover:text-gray-600 font-black py-2 px-1 flex items-center justify-center gap-1 cursor-pointer border border-gray-200 rounded-xl hover:bg-gray-50"
             >
@@ -447,14 +447,14 @@ export default function WonVehiclesDashboard() {
                   </td>
                 </tr>
               ) : (
-                processedVehicles.map((row,index) => {
+                processedVehicles.map((row, index) => {
                   const endDate = new Date(row.endTime || row.startTime);
                   const formattedDate = endDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                   const formattedTime = endDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
                   return (
-                   <tr key={`${row.auctionId}-${row.vehicle?.vehicleId || index}`} className="hover:bg-gray-50/30 transition-colors">
-                      
+                    <tr key={`${row.auctionId}-${row.vehicle?.vehicleId || index}`} className="hover:bg-gray-50/30 transition-colors">
+
                       {/* Column A: Vehicle Specs Details */}
                       <td className="py-3.5 px-4 min-w-[200px]">
                         <div className="flex items-start gap-3">
@@ -506,11 +506,10 @@ export default function WonVehiclesDashboard() {
                       {/* Column D: Pickup Status */}
                       <td className="py-3.5 px-4">
                         <div className="space-y-1">
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black inline-block border ${
-                            row.vehicle?.assignedStatus === 'ASSIGNED' 
-                              ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-black inline-block border ${row.vehicle?.assignedStatus === 'ASSIGNED'
+                              ? 'bg-blue-50 text-blue-700 border-blue-100'
                               : 'bg-amber-50 text-amber-700 border-amber-100'
-                          }`}>
+                            }`}>
                             {row.vehicle?.assignedStatus || 'UNASSIGNED'}
                           </span>
                         </div>
@@ -530,7 +529,7 @@ export default function WonVehiclesDashboard() {
                       {/* Column F: Action Trigger Utilities */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button 
+                          <button
                             onClick={() => handleViewVehicleDetails(row.vehicle?.vehicleId)}
                             disabled={loadingVehicleId === row.vehicle?.vehicleId}
                             className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-2.5 py-1 rounded-xl text-[10px] shadow-3xs transition-all cursor-pointer inline-flex items-center gap-1"
@@ -562,7 +561,7 @@ export default function WonVehiclesDashboard() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={handleCloseDrawer} />
           <div className="fixed inset-y-0 right-0 pl-10 max-w-full flex">
             <div className="w-screen max-w-2xl bg-white shadow-2xl flex flex-col">
-              
+
               {/* Drawer Header */}
               <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                 <div className="flex items-center gap-2">

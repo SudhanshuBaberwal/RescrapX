@@ -325,7 +325,7 @@ export default function LiveAuctionsDashboard({ loggedPartnerId }: LiveAuctionsD
     } else if (rawPhotos && typeof rawPhotos === 'object') {
       Object.entries(rawPhotos).forEach(([key, photoObj]) => {
         const url = getMediaUrl(photoObj);
-        const rawPath = typeof photoObj === 'string' ? photoObj : photoObj?.path || '';
+       const rawPath = typeof photoObj === 'string' ? photoObj : (photoObj as { path?: string })?.path || '';
         if (url) {
           initialList.push({
             label: key.replace(/([A-Z])/g, ' $1').toUpperCase(),

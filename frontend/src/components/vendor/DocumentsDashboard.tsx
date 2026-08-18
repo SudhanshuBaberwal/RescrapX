@@ -63,9 +63,9 @@ export default function DocumentsDashboard() {
 
   const { PartnerDocumentUploadData } = useSelector((state: RootState) => state.partner);
 
-  const rawData: DocumentRecord[] = Array.isArray(PartnerDocumentUploadData)
-    ? PartnerDocumentUploadData
-    : [];
+ const rawData: DocumentRecord[] = Array.isArray(PartnerDocumentUploadData)
+  ? (PartnerDocumentUploadData as unknown as DocumentRecord[])
+  : [];
 
   const [activeTab, setActiveTab] = useState('All Documents');
   const [searchQuery, setSearchQuery] = useState('');

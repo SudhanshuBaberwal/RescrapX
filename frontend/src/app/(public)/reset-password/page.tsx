@@ -1,11 +1,12 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { resetPassword } from '@/services/auth.service';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ResetPassword() {
+// 1. Child Component handling the Form and searchParams hook
+function ResetPasswordContent() {
     const { showToast } = useToast();
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
@@ -13,10 +14,10 @@ export default function ResetPassword() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPass, setShowPass] = useState(false);
 
-    const router = useRouter()
+    const router = useRouter();
     const searchParams = useSearchParams();
     const email = searchParams.get("email");
-    console.log(email)
+
     const handleReset = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -76,7 +77,141 @@ export default function ResetPassword() {
     };
 
     return (
-        /* Strict Viewport Locking to match the RescrapX standard framework */
+        <div className="w-full bg-[#0b0f19]/75 border border-white/[0.08] backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_32px_70px_-20px_rgba(0,0,0,0.9)] space-y-5 relative overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-b before:from-white/[0.03] before:to-transparent">
+
+            {/* Header */}
+            <div className="text-center space-y-1.5">
+                <div className="mx-auto h-10 w-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-lg text-slate-300">
+                    🛡️
+                </div>
+                <div className="space-y-0.5">
+                    <h2 className="text-lg font-semibold text-white tracking-tight">Reset Node Credentials</h2>
+                    <p className="text-[11px] text-slate-400 font-medium">Input verification dispatch parameters to define new access keys.</p>
+                </div>
+            </div>
+
+            {/* Reset Input Form */}
+            <form onSubmit={handleReset} className="space-y-3.5">
+
+                {/* 1. Verification Code Field */}
+                <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
+                        Secure Verification Code
+                    </label>
+                    <div className="relative group">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+                            🔑
+                        </span>
+                        <input
+                            type="text"
+                            value={code}
+                            onChange={(e) => setCode(e.target.value)}
+                            placeholder="Enter 6-digit pipeline token"
+                            disabled={isLoading}
+                            maxLength={6}
+                            className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none tracking-widest font-mono transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
+                            required
+                        />
+                    </div>
+                </div>
+
+                {/* 2. New Password Field */}
+                <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
+                        New Access Key
+                    </label>
+                    <div className="relative group">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+                            🔒
+                        </span>
+                        <input
+                            type={showPass ? "text" : "password"}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            disabled={isLoading}
+                            className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-slate-600 outline-none transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
+                            required
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPass(!showPass)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-[10px] font-mono font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                        >
+                            {showPass ? "HIDE" : "SHOW"}
+                        </button>
+                    </div>
+                </div>
+
+                {/* 3. Confirm Password Field */}
+                <div className="space-y-1">
+                    <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
+                        Confirm Access Key
+                    </label>
+                    <div className="relative group">
+                        <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+                            🔄
+                        </span>
+                        <input
+                            type={showPass ? "text" : "password"}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="••••••••••••"
+                            disabled={isLoading}
+                            className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
+                            required
+                        />
+                    </div>
+                </div>
+
+                {/* Submit Actions */}
+                <button
+                    type="submit"
+                    disabled={isLoading}
+                    className={`w-full font-semibold text-[11px] py-3 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase relative overflow-hidden group mt-2 ${isLoading
+                        ? 'bg-white/[0.02] text-slate-500 border border-white/[0.05] cursor-wait'
+                        : 'bg-white text-black hover:bg-slate-100 cursor-pointer active:scale-[0.98] drop-shadow-[0_0_25px_rgba(255,255,255,0.1)]'
+                        }`}
+                >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                        {isLoading ? (
+                            <>
+                                <span className="h-3 w-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                                Updating Node Security...
+                            </>
+                        ) : (
+                            <>
+                                Authorize Update <span className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
+                            </>
+                        )}
+                    </span>
+                </button>
+            </form>
+
+            {/* Navigation Options */}
+            <div className="pt-3.5 border-t border-white/[0.06] text-center">
+                <p className="text-[10px] text-slate-400 font-medium">
+                    Aborting operations? <a href="/login" className="text-emerald-400 font-semibold hover:text-emerald-300 hover:underline transition-colors">Cancel Session</a>
+                </p>
+            </div>
+
+        </div>
+    );
+}
+
+// Loading Skeleton Fallback for Suspense
+function ResetPasswordFallback() {
+    return (
+        <div className="w-full bg-[#0b0f19]/75 border border-white/[0.08] backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_32px_70px_-20px_rgba(0,0,0,0.9)] space-y-5 flex flex-col items-center justify-center min-h-[300px]">
+            <span className="h-6 w-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-400 font-mono">Initializing Security Parameters...</p>
+        </div>
+    );
+}
+
+// 2. Main Exported Component wrapped with Suspense boundary
+export default function ResetPassword() {
+    return (
         <div className="h-screen w-screen bg-[#030712] text-slate-200 selection:bg-emerald-500/30 selection:text-emerald-300 font-sans antialiased flex flex-col justify-between relative isolate overflow-hidden">
 
             {/* 🌌 Ambient Grid Background Layer */}
@@ -101,127 +236,9 @@ export default function ResetPassword() {
 
             {/* Main Reset Form Content Container */}
             <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 z-10 w-full max-w-md mx-auto my-auto h-[calc(100vh-60px)]">
-
-                {/* 🔒 Glassmorphism Credential Frame */}
-                <div className="w-full bg-[#0b0f19]/75 border border-white/[0.08] backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_32px_70px_-20px_rgba(0,0,0,0.9)] space-y-5 relative overflow-hidden before:absolute before:inset-0 before:-z-10 before:bg-gradient-to-b before:from-white/[0.03] before:to-transparent">
-
-                    {/* Header */}
-                    <div className="text-center space-y-1.5">
-                        <div className="mx-auto h-10 w-10 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-lg text-slate-300">
-                            🛡️
-                        </div>
-                        <div className="space-y-0.5">
-                            <h2 className="text-lg font-semibold text-white tracking-tight">Reset Node Credentials</h2>
-                            <p className="text-[11px] text-slate-400 font-medium">Input verification dispatch parameters to define new access keys.</p>
-                        </div>
-                    </div>
-
-                    {/* Reset Input Form */}
-                    <form onSubmit={handleReset} className="space-y-3.5">
-
-                        {/* 1. Verification Code Field */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
-                                Secure Verification Code
-                            </label>
-                            <div className="relative group">
-                                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
-                                    🔑
-                                </span>
-                                <input
-                                    type="text"
-                                    value={code}
-                                    onChange={(e) => setCode(e.target.value)}
-                                    placeholder="Enter 6-digit pipeline token"
-                                    disabled={isLoading}
-                                    maxLength={6}
-                                    className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none tracking-widest font-mono transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* 2. New Password Field */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
-                                New Access Key
-                            </label>
-                            <div className="relative group">
-                                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
-                                    🔒
-                                </span>
-                                <input
-                                    type={showPass ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••••••"
-                                    disabled={isLoading}
-                                    className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-10 py-2.5 text-xs text-white placeholder-slate-600 outline-none transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
-                                    required
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPass(!showPass)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[10px] font-mono font-bold text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                    {showPass ? "HIDE" : "SHOW"}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* 3. Confirm Password Field */}
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block pl-1">
-                                Confirm Access Key
-                            </label>
-                            <div className="relative group">
-                                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs text-slate-500 group-focus-within:text-emerald-400 transition-colors">
-                                    🔄
-                                </span>
-                                <input
-                                    type={showPass ? "text" : "password"}
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="••••••••••••"
-                                    disabled={isLoading}
-                                    className="w-full bg-[#111625]/50 border border-white/[0.06] focus:border-emerald-500/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-600 outline-none transition-all duration-300 focus:shadow-[0_0_20px_-5px_rgba(16,185,129,0.15)] disabled:opacity-50"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Submit Actions */}
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`w-full font-semibold text-[11px] py-3 px-5 rounded-xl transition-all duration-300 shadow-md text-center tracking-wider uppercase relative overflow-hidden group mt-2 ${isLoading
-                                ? 'bg-white/[0.02] text-slate-500 border border-white/[0.05] cursor-wait'
-                                : 'bg-white text-black hover:bg-slate-100 cursor-pointer active:scale-[0.98] drop-shadow-[0_0_25px_rgba(255,255,255,0.1)]'
-                                }`}
-                        >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                {isLoading ? (
-                                    <>
-                                        <span className="h-3 w-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-                                        Updating Node Security...
-                                    </>
-                                ) : (
-                                    <>
-                                        Authorize Update <span className="text-xs transition-transform group-hover:translate-x-0.5">→</span>
-                                    </>
-                                )}
-                            </span>
-                        </button>
-                    </form>
-
-                    {/* Navigation Options */}
-                    <div className="pt-3.5 border-t border-white/[0.06] text-center">
-                        <p className="text-[10px] text-slate-400 font-medium">
-                            Aborting operations? <a href="/login" className="text-emerald-400 font-semibold hover:text-emerald-300 hover:underline transition-colors">Cancel Session</a>
-                        </p>
-                    </div>
-
-                </div>
+                <Suspense fallback={<ResetPasswordFallback />}>
+                    <ResetPasswordContent />
+                </Suspense>
             </main>
 
             {/* Flat Standard Footer */}
