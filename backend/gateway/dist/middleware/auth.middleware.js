@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
-import env from "../config/env.ts";
+// Replace line 2 with:
+import env from "../config/env.js";
 export const protect = (req, res, next) => {
     try {
         let token = req.cookies?.accessToken;

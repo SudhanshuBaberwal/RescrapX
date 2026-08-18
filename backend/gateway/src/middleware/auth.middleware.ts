@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
-import env from "../config/env.ts";
+// Replace line 2 with:
+import env from "../config/env.js";
 
 export interface JwtUserPayload {
   userId: string;

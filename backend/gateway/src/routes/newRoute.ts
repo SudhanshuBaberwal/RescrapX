@@ -1,7 +1,6 @@
 import  { Router } from "express"
-import { getAdminDashboard } from "../controller/admin.controller.ts";
-import { protect } from "../middleware/auth.middleware.ts";
-import adminOnly from "../middleware/adminOnly.ts";
+import { protect } from "../middleware/auth.middleware.js";
+import { getAdminDashboard } from "../controller/admin.controller.js";
 
 const router = Router()
 

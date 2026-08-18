@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import env from "../config/env";
+// Replace line 2 with:
+import env from "../config/env.js";
 const proxyRoutes = Router();
 proxyRoutes.use("/auth", createProxyMiddleware({
     target: env.AUTH_SERVICE_URL,

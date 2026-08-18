@@ -1,5 +1,6 @@
 import axios from "axios";
-import env from "../config/env.ts";
+// Replace line 2 with:
+import env from "../config/env.js";
 import type { Request, Response } from "express";
 
 export const getAdminDashboard = async (req: Request, res: Response) => {
