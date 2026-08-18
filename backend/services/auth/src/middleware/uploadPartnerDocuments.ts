@@ -1,4 +1,5 @@
-import multer from "multer";
+import { Request } from "express";
+import multer, { FileFilterCallback } from "multer";
 
 const storage = multer.memoryStorage();
 
@@ -39,7 +40,11 @@ export const uploaduserDocuments = multer({
     fileSize: 5 * 1024 * 1024, // 5 MB
   },
 
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback
+  ) => {
     const allowedMimeTypes = [
       "image/jpeg",
       "image/jpg",
@@ -54,4 +59,5 @@ export const uploaduserDocuments = multer({
     cb(null, true);
   },
 });
+
 export default uploadPartnerDocuments;
