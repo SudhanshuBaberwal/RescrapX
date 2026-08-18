@@ -72,7 +72,7 @@ export default function SignUpPage() {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
       });
-      // dispatch(setUserData(result.data))
+      dispatch(setUserData(result.data))
       showToast(
         "Registration initialized successfully!",
         "success"
@@ -263,13 +263,11 @@ export default function SignUpPage() {
                 <GoogleLogin
                   onSuccess={async (credentialResponse) => {
                     if (!credentialResponse.credential) return;
-
                     const response = await googleLogin(
                       credentialResponse.credential
                     );
                     dispatch(setUserData(response.data))
-
-                    router.replace("/");
+                    router.replace("/roles");
                   }}
                   onError={() => {
                     console.log("Google Login Failed");
