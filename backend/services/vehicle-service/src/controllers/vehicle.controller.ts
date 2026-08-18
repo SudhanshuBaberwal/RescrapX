@@ -366,14 +366,18 @@ export const getVehicleDashboardStats = asyncHandler(async (req, res) => {
 });
 
 export const getPickupMap = asyncHandler(async (req, res) => {
-  const data = await vehicleRepository.getActivePickupLocations();
+  try {
+    const data = await vehicleRepository.getActivePickupLocations();
 
-  return ApiResponse.success(
-    res,
-    200,
-    "Pickup locations fetched successfully",
-    data,
-  );
+    return ApiResponse.success(
+      res,
+      200,
+      "Pickup locations fetched successfully",
+      data,
+    );
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 export const schedulePickup = async (req: Request, res: Response) => {
