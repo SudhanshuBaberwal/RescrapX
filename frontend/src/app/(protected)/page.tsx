@@ -2,7 +2,7 @@
 
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 
 import { RootState } from "@/store/store";
 
@@ -10,7 +10,19 @@ import HomePage from "@/components/user/HomePage";
 import VendorPage from "@/components/vendor/VendorPage";
 import AdminLayout from "@/components/admin/AdminLayout";
 
-export default function Page() {
+// Plain loading skeleton without useSearchParams() for SSG build
+function PageLoadingSkeleton() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-white">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-3 border-[#0B5B32] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-bold text-gray-500">Loading RescrapX...</p>
+      </div>
+    </div>
+  );
+}
+
+function MainContent() {
   const router = useRouter();
 
   const { userData, loading } = useSelector((state: RootState) => state.user);
@@ -22,7 +34,6 @@ export default function Page() {
       userData.partnerNextStep !== "DASHBOARD");
 
   useEffect(() => {
-    // Only redirect PARTNER if they need approval
     if (!loading && shouldRedirectPartner) {
       router.replace("/partner/waiting-approval");
     }
@@ -32,13 +43,11 @@ export default function Page() {
     return <HomePage />;
   }
 
-  // 1. DEFAULT FOR GUESTS / UNAUTHENTICATED USERS:
-  // Show HomePage directly instead of redirecting to /login
   if (!userData) {
     return <HomePage />;
   }
 
-  // 2. LOGGED-IN ROLE ROUTING:
+  // LOGGED-IN ROLE ROUTING:
   switch (userData.role) {
     case "USER":
       return <HomePage />;
@@ -55,4 +64,12 @@ export default function Page() {
     default:
       return <HomePage />;
   }
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<PageLoadingSkeleton />}>
+      <MainContent />
+    </Suspense>
+  );
 }
