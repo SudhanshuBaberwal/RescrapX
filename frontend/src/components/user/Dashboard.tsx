@@ -55,7 +55,7 @@ export default function UserDashBoard() {
             <ArrowRight size={14} />
           </button>
           <button onClick={() => router.push("/user/my-vehicles")} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs px-5 py-3.5 rounded-xl flex items-center gap-2 shadow-2xs transition">
-            <span >{userData ? "My Vehicles" : "Check My Vehicles"}</span>
+            <span >{userData ? "My Vehicles" : "Check My"}</span>
             <Play size={12} className="fill-gray-500 stroke-none" />
           </button>
         </div>
@@ -76,7 +76,7 @@ export default function UserDashBoard() {
       {/* ========================================== */}
       {/* RIGHT COLUMN: CURRENT LIVE BOOKING CARD PANEL */}
       {/* ========================================== */}
-      <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-5 shadow-xs space-y-4">
+      {/* <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-gray-100">
           <h3 className="text-xs font-black text-gray-900 tracking-wide">Your Current Booking</h3>
           <span className="bg-[#E6F4EA] text-[#0B5B32] text-[9px] font-black px-2 py-0.5 rounded-md uppercase">Active</span>
@@ -95,7 +95,6 @@ export default function UserDashBoard() {
           </button>
         </div>
 
-        {/* Vehicle Metadata Render info */}
         <div className="flex items-center gap-3 py-1">
           <img
             src="https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=120&q=80"
@@ -111,7 +110,6 @@ export default function UserDashBoard() {
           </div>
         </div>
 
-        {/* Dispatch Live State Node Block */}
         <div className="bg-gray-50/50 border border-gray-100 rounded-xl p-3 space-y-2">
           <div>
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Current Status</p>
@@ -124,7 +122,6 @@ export default function UserDashBoard() {
             </p>
           </div>
 
-          {/* Structured Date Block details */}
           <div className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 text-[11px] font-black text-gray-700">
             <div className="flex items-center gap-2">
               <Calendar size={12} className="text-[#0B5B32]" />
@@ -146,7 +143,7 @@ export default function UserDashBoard() {
           <span>View All Bookings</span>
           <ChevronRight size={12} />
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

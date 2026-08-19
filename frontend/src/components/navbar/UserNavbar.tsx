@@ -17,14 +17,14 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs backdrop-blur-md">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
 
         {/* Left Side: RescrapX Official Image Logo */}
         <div 
           onClick={() => router.push('/')} 
           className="flex items-center cursor-pointer select-none py-1 h-full overflow-visible"
         >
-          <div className="w-auto relative w-60 sm:w-52 h-14 flex items-center">
+          <div className="relative w-44 sm:w-52 h-14 flex items-center">
             <Image
               src="/logo2.png"
               alt="RescrapX Logo"
@@ -36,7 +36,7 @@ export default function Navbar() {
         </div>
 
         {/* Center: Sleek Navigation Directory */}
-        <nav className="hidden lg:flex items-center gap-6 text-xs font-bold text-gray-600">
+        <nav className="hidden lg:flex items-center gap-20 text-lg font-bold text-gray-600">
           <a href="#" className="text-[#0B5B32] border-b-2 border-[#0B5B32] pb-1 transition duration-150">Home</a>
           <a href="#" className="hover:text-gray-900 transition duration-150">How It Works</a>
           <div className="flex items-center gap-0.5 cursor-pointer hover:text-gray-900 transition duration-150">
@@ -51,18 +51,18 @@ export default function Navbar() {
         </nav>
 
         {/* Right Side: Actions Hub */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-6">
 
           {/* Notification Alert Icon */}
           <button className="relative p-2 text-gray-500 hover:text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-150">
-            <Bell size={18} />
+            <Bell size={27} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-600 rounded-full ring-2 ring-white"></span>
           </button>
 
           {/* Booking Tracking Shortcut Pill */}
           <button 
             onClick={() => router.push('/?tab=bookings')}
-            className="hidden sm:flex items-center gap-2 border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-1.5 rounded-lg text-xs font-bold text-[#0B5B32] transition duration-150"
+            className="hidden sm:flex items-center gap-2 border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-1.5 rounded-lg text-sm font-bold text-[#0B5B32] transition duration-150"
           >
             <span className="text-xs">📋</span>
             <div className="text-left">
