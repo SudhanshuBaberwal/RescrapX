@@ -3,23 +3,27 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion'; // Make sure to install: npm install framer-motion
+import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, FileText, Settings,
-  HelpCircle, LogOut, CheckCircle, ShieldCheck,
-  Wallet
+  HelpCircle, LogOut, LogIn, CheckCircle, ShieldCheck,
+  Wallet, User
 } from 'lucide-react';
-import api from '@/utils/api';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { logout } from '@/services/auth.service';
 import queryClient from '@/lib/query/queryClient';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { showToast } = useToast();
+
+  const { userData } = useSelector((state: RootState) => state.user);
   const currentTab = searchParams.get("tab") || "overview";
-  const { showToast } = useToast()
-  // Clean consolidated items removing the duplicate profile settings row
+
   const sidebarItems = [
     { title: "Overview", href: "overview", icon: LayoutDashboard },
     { title: "My Bookings", href: "bookings", icon: Package },
@@ -28,35 +32,49 @@ export default function Sidebar() {
     { title: "Support & Help", href: "support", icon: HelpCircle },
     { title: "Settings", href: "settings", icon: Settings },
   ];
-  const router = useRouter()
-  const handleLogout = async () => {
-    try {
-      await logout()
-      queryClient.removeQueries({ queryKey: ["current-user"] });
-      window.location.href = "/register"
-    } catch (error: any) {
-      showToast(error?.message || "Login failed. Please try again.", "error");
+
+  const handleAuthAction = async () => {
+    if (userData) {
+      // Logout Logic
+      try {
+        await logout();
+        queryClient.removeQueries({ queryKey: ["current-user"] });
+        window.location.href = "/login";
+      } catch (error: any) {
+        showToast(error?.message || "Logout failed. Please try again.", "error");
+      }
+    } else {
+      // Login Logic
+      router.push('/login');
     }
-  }
+  };
 
   return (
     <div className="w-full bg-white border border-gray-100 rounded-2xl p-5 shadow-xs space-y-6">
       {/* User Header Details */}
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200 shrink-0">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
+          <User className="w-6 h-6 text-gray-400" />
         </div>
         <div>
-          <h3 className="text-sm font-black text-gray-900 leading-tight">Shubham Mavi</h3>
-          <p className="text-xs font-semibold text-gray-400">shubham@gmail.com</p>
+          <h3 className="text-sm font-black text-gray-900 leading-tight">
+            {userData?.fullName || "Guest User"}
+          </h3>
+          <p className="text-xs font-semibold text-gray-400">
+            {userData?.email || "Welcome to Rescrap X"}
+          </p>
 
-          {/* Verified Badge */}
-          <div className="inline-flex items-center gap-1 bg-[#E6F4EA] text-[#0B5B32] text-[10px] font-black px-2 py-0.5 rounded-md mt-1.5">
-            <span>Verified</span>
-            <CheckCircle size={10} className="fill-[#0B5B32] text-white" />
-          </div>
+          {/* Status Badge */}
+          {userData ? (
+            <div className="inline-flex items-center gap-1 bg-[#E6F4EA] text-[#0B5B32] text-[10px] font-black px-2 py-0.5 rounded-md mt-1.5">
+              <span>Verified</span>
+              <CheckCircle size={10} className="fill-[#0B5B32] text-white" />
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-md mt-1.5">
+              <span>Not Logged In</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -72,8 +90,9 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={`?tab=${item.href}`}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-colors duration-300 relative select-none group ${active ? "text-[#0B5B32] font-black" : "text-gray-600 font-bold hover:text-gray-900"
-                }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition-colors duration-300 relative select-none group ${
+                active ? "text-[#0B5B32] font-black" : "text-gray-600 font-bold hover:text-gray-900"
+              }`}
             >
               {/* Animated Floating Background Capsule Indicator */}
               {active && (
@@ -95,8 +114,9 @@ export default function Sidebar() {
 
               <Icon
                 size={16}
-                className={`transition-transform duration-200 group-active:scale-95 ${active ? "text-[#0B5B32]" : "text-gray-400 group-hover:text-gray-600"
-                  }`}
+                className={`transition-transform duration-200 group-active:scale-95 ${
+                  active ? "text-[#0B5B32]" : "text-gray-400 group-hover:text-gray-600"
+                }`}
               />
               <span className="transition-transform duration-200 group-active:translate-x-0.5">
                 {item.title}
@@ -105,13 +125,26 @@ export default function Sidebar() {
           );
         })}
 
-        {/* Logout Link */}
+        {/* Dynamic Auth Button (Logout / Login) */}
         <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50/50 transition-all duration-150 group active:scale-[0.98]"
+          onClick={handleAuthAction}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 group active:scale-[0.98] ${
+            userData
+              ? "text-red-600 hover:bg-red-50/50"
+              : "text-[#0B5B32] hover:bg-[#E6F4EA]/50"
+          }`}
         >
-          <LogOut size={16} className="text-red-400 transition-transform group-hover:-translate-x-0.5" />
-          <span>Logout</span>
+          {userData ? (
+            <>
+              <LogOut size={16} className="text-red-400 transition-transform group-hover:-translate-x-0.5" />
+              <span>Logout</span>
+            </>
+          ) : (
+            <>
+              <LogIn size={16} className="text-[#0B5B32] transition-transform group-hover:translate-x-0.5" />
+              <span>Login</span>
+            </>
+          )}
         </button>
       </nav>
 

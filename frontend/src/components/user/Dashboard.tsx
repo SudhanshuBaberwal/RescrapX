@@ -6,8 +6,13 @@ import {
   Calendar, Clock, Copy, ChevronRight
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useCurrentUser } from '@/hooks/getCurrentUser';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export default function UserDashBoard() {
+  useCurrentUser()
+  const {userData} = useSelector((state:RootState) => state.user)
   const handleCopy = () => {
     navigator.clipboard.writeText('RX240015');
   };
@@ -50,7 +55,7 @@ export default function UserDashBoard() {
             <ArrowRight size={14} />
           </button>
           <button onClick={() => router.push("/user/my-vehicles")} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs px-5 py-3.5 rounded-xl flex items-center gap-2 shadow-2xs transition">
-            <span >My Vehicles</span>
+            <span >{userData ? "My Vehicles" : "Check My Vehicles"}</span>
             <Play size={12} className="fill-gray-500 stroke-none" />
           </button>
         </div>
