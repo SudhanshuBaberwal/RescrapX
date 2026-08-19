@@ -37,7 +37,7 @@ async function updateVehicleAuctionResult(
     });
 
     const response = await axios.patch(
-      "http://localhost:8004/register/auction/status",
+      `${env.VEHICLE_SERVICE_URL}/register/auction/status`,
       {
         vehicleId,
         status,
@@ -78,7 +78,7 @@ class AuctionService {
     let vehicles: any[] = [];
     try {
       const response = await axios.get(
-        "http://localhost:8004/register/ready-for-auction",
+        `${env.VEHICLE_SERVICE_URL}/register/ready-for-auction`,
         {
           headers: {
             "x-service-key": env.INTERNAL_SERVICE_TOKEN,
@@ -103,7 +103,7 @@ class AuctionService {
 
     try {
       const response = await axios.get(
-        "http://localhost:8001/partner/ready-for-auction",
+        `${env.PARTNER_SERVICE_URL}/partner/ready-for-auction`,
         {
           headers: {
             "x-service-key": env.INTERNAL_SERVICE_TOKEN,

@@ -5,8 +5,17 @@ import cors from "cors";
 import vehicleRoutes from "./routes/vehicle.route.js";
 const app = express();
 app.use(helmet());
+const allowedOrigins = [
+    process.env.GATEWAY_URL || "http://localhost:8000",
+    "https://rescrap-x.vercel.app",
+    "http://localhost:3000"
+];
+if (process.env.ALLOWED_ORIGINS) {
+    const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+    allowedOrigins.push(...customOrigins);
+}
 app.use(cors({
-    origin: [process.env.GATEWAY_URL || "http://localhost:8000"],
+    origin: allowedOrigins,
     credentials: true,
 }));
 app.use(express.json({ limit: "20mb" }));

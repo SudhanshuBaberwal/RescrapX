@@ -70,7 +70,7 @@ export const RVSFPartners: React.FC = () => {
   const handleViewPDF = async (path: string) => {
     try {
       const { data } = await axios.post(
-        "http://localhost:8000/api/auth/admin/document/view",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/admin/document/view`,
         {
           path,
         },

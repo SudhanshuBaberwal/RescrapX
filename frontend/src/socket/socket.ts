@@ -6,7 +6,7 @@ export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(
       process.env.VITE_AUCTION_SOCKET_URL ||
-        "http://localhost:8005",
+        `${process.env.NEXT_PUBLIC_AUCTION_SOCKET_URL}`,
       {
         withCredentials: true,
         autoConnect: true,

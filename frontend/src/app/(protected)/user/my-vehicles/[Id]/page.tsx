@@ -22,7 +22,7 @@ import { useToast } from '@/lib/ui/toast/ToastContext';
 export const approveVehicleForPickup = async (vehicleId: string) => {
   try {
     const response = await axios.patch(
-      `http://localhost:8000/api/vehicle/register/approve-pickup?vehicleId=${vehicleId}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/approve-pickup?vehicleId=${vehicleId}`,
       {},
       { withCredentials: true }
     );
@@ -133,7 +133,7 @@ export default function VehicleDetailsPage() {
         initialList.map(async (item) => {
           try {
             const res = await axios.post(
-              "http://localhost:8000/api/vehicle/register/view-document",
+              `${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/view-document`,
               { path: item.rawPath },
               { withCredentials: true }
             );
@@ -168,7 +168,7 @@ export default function VehicleDetailsPage() {
 
     if (vehicleId) {
       axios
-        .get(`http://localhost:8000/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`, { withCredentials: true })
+        .get(`${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`, { withCredentials: true })
         .then((res) => {
           if (isMounted) {
             setVehicle(res.data?.data || res.data);
@@ -190,7 +190,7 @@ export default function VehicleDetailsPage() {
     if (!path) return;
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/vehicle/register/view-document",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/view-document`,
         { path },
         { withCredentials: true }
       );

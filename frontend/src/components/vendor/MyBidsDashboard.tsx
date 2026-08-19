@@ -155,7 +155,7 @@ export default function MyBidsDashboard() {
         initialList.map(async (item) => {
           try {
             const res = await axios.post(
-              "http://localhost:8000/api/vehicle/register/view-document",
+              `${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/view-document`,
               { path: item.rawPath },
               { withCredentials: true }
             );

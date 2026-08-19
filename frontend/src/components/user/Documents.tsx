@@ -142,7 +142,7 @@ export default function Documents() {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/vehicle/register/view-document",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/vehicle/register/view-document`,
         { path },
         { withCredentials: true }
       );
@@ -155,11 +155,11 @@ export default function Documents() {
         window.open(targetUrl, "_blank");
       } else {
         const cleanPath = path.replace(/^\/+/, '');
-        window.open(`http://localhost:8000/${cleanPath}`, "_blank");
+        window.open(`${process.env.NEXT_PUBLIC_API_URL}/${cleanPath}`, "_blank");
       }
     } catch {
       const cleanPath = path.replace(/^\/+/, '');
-      window.open(`http://localhost:8000/${cleanPath}`, "_blank");
+      window.open(`${process.env.NEXT_PUBLIC_API_URL}/${cleanPath}`, "_blank");
     }
   };
 

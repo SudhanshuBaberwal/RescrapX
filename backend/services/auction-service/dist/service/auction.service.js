@@ -19,7 +19,7 @@ async function updateVehicleAuctionResult(vehicleId, status, auctionId, partnerI
             partnerId,
             winningBid,
         });
-        const response = await axios.patch("http://localhost:8004/register/auction/status", {
+        const response = await axios.patch(`${env.VEHICLE_SERVICE_URL}/register/auction/status`, {
             vehicleId,
             status,
             auctionId,
@@ -48,7 +48,7 @@ class AuctionService {
     async createAuction(dto, adminId) {
         let vehicles = [];
         try {
-            const response = await axios.get("http://localhost:8004/register/ready-for-auction", {
+            const response = await axios.get(`${env.VEHICLE_SERVICE_URL}/register/ready-for-auction`, {
                 headers: {
                     "x-service-key": env.INTERNAL_SERVICE_TOKEN,
                 },
@@ -63,7 +63,7 @@ class AuctionService {
         }
         let partners = [];
         try {
-            const response = await axios.get("http://localhost:8001/partner/ready-for-auction", {
+            const response = await axios.get(`${env.PARTNER_SERVICE_URL}/partner/ready-for-auction`, {
                 headers: {
                     "x-service-key": env.INTERNAL_SERVICE_TOKEN,
                 },
