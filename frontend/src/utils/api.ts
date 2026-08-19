@@ -9,77 +9,77 @@ const api = axios.create({
   },
 });
 
-let isRefreshing = false;
+// let isRefreshing = false;
 
-let failedQueue: {
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}[] = [];
+// let failedQueue: {
+//   resolve: (value?: unknown) => void;
+//   reject: (reason?: any) => void;
+// }[] = [];
 
-const processQueue = (error?: AxiosError) => {
-  failedQueue.forEach((promise) => {
-    if (error) promise.reject(error);
-    else promise.resolve(true);
-  });
+// const processQueue = (error?: AxiosError) => {
+//   failedQueue.forEach((promise) => {
+//     if (error) promise.reject(error);
+//     else promise.resolve(true);
+//   });
 
-  failedQueue = [];
-};
+//   failedQueue = [];
+// };
 
-api.interceptors.response.use(
-  (response) => response,
+// api.interceptors.response.use(
+//   (response) => response,
 
-  async (error: AxiosError) => {
-    const originalRequest = error.config as
-      | (InternalAxiosRequestConfig & { _retry?: boolean })
-      | undefined;
+//   async (error: AxiosError) => {
+//     const originalRequest = error.config as
+//       | (InternalAxiosRequestConfig & { _retry?: boolean })
+//       | undefined;
 
-    if (!originalRequest) {
-      return Promise.reject(error);
-    }
+//     if (!originalRequest) {
+//       return Promise.reject(error);
+//     }
 
-    // ❌ Refresh endpoint fail hua to dobara refresh mat karo
-    if (originalRequest.url?.includes("/api/auth/refresh")) {
-      return Promise.reject(error);
-    }
+//     // ❌ Refresh endpoint fail hua to dobara refresh mat karo
+//     if (originalRequest.url?.includes("/api/auth/refresh")) {
+//       return Promise.reject(error);
+//     }
 
-    if (error.response?.status !== 401) {
-      return Promise.reject(error);
-    }
+//     if (error.response?.status !== 401) {
+//       return Promise.reject(error);
+//     }
 
-    if (originalRequest._retry) {
-      return Promise.reject(error);
-    }
+//     if (originalRequest._retry) {
+//       return Promise.reject(error);
+//     }
 
-    originalRequest._retry = true;
+//     originalRequest._retry = true;
 
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then(() => api(originalRequest));
-    }
+//     if (isRefreshing) {
+//       return new Promise((resolve, reject) => {
+//         failedQueue.push({ resolve, reject });
+//       }).then(() => api(originalRequest));
+//     }
 
-    isRefreshing = true;
+//     isRefreshing = true;
 
-    try {
-      // Refresh token cookie automatically jayegi
-      await api.post("/api/auth/refresh");
+//     try {
+//       // Refresh token cookie automatically jayegi
+//       await api.post("/api/auth/refresh");
 
-      processQueue();
+//       processQueue();
 
-      // Retry original request
-      return api(originalRequest);
-    } catch (refreshError) {
-      processQueue(refreshError as AxiosError);
+//       // Retry original request
+//       return api(originalRequest);
+//     } catch (refreshError) {
+//       processQueue(refreshError as AxiosError);
 
-      if (typeof window !== "undefined") {
-        window.location.replace("/login");
-      }
+//       if (typeof window !== "undefined") {
+//         window.location.replace("/login");
+//       }
 
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
-  }
-);
+//       return Promise.reject(refreshError);
+//     } finally {
+//       isRefreshing = false;
+//     }
+//   }
+// );
 
 export default api;
