@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Mail, Loader2 } from 'lucide-react';
 import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
@@ -35,7 +36,6 @@ export default function LoginPage() {
     setSuccessMessage(null);
 
     try {
-      // API call using your unified API module
       const result = await login({
         email: formData.email,
         password: formData.password,
@@ -66,30 +66,36 @@ export default function LoginPage() {
       <div className="w-full max-w-6xl mx-auto my-auto bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[750px]">
 
         {/* Left Column: Visual Hero Side (Visible on lg devices) */}
-        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-emerald-50 via-emerald-100/40 to-white p-12 flex-col justify-between relative overflow-hidden border-r border-gray-100">
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-emerald-50 via-emerald-100/40 to-white p-10 flex-col justify-between relative overflow-hidden border-r border-gray-100">
           <div className="absolute inset-0 opacity-40 pointer-events-none">
             <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-emerald-200/50 to-transparent border-t border-dashed border-emerald-300"></div>
           </div>
 
           {/* Logo Branding */}
-          <div className="relative z-10">
-            <div className="flex items-center gap-1.5 text-2xl font-bold text-gray-900 tracking-tight">
-              <span className="text-[#0B5B32]">🚗 Rescrap</span>
-              <span className="text-[#10B981]">X</span>
-            </div>
+          <div className="relative z-10 flex flex-col gap-1">
+            <Image 
+              src="/logo2.png" 
+              alt="RescrapX Logo" 
+              width={160} 
+              height={45} 
+              className="h-auto w-36 object-contain"
+              priority
+            />
             <p className="text-[#10B981] text-xs font-semibold tracking-wide mt-1">Recycle Today, Drive Tomorrow</p>
           </div>
 
           {/* Big Featured Graphic Showcase */}
-          <div className="relative my-auto flex flex-col items-center text-center z-10">
-            <div className="relative mb-6">
-              <div className="absolute -right-4 -top-4 bg-emerald-500 text-white p-3 rounded-2xl shadow-lg shadow-emerald-500/20 z-20 animate-bounce-slow">
-                <ShieldCheck size={32} className="stroke-2" />
+          <div className="relative my-auto flex flex-col items-center text-center z-10 py-4">
+            <div className="relative mb-6 w-100">
+              <div className="absolute -right-2 -top-3 bg-emerald-500 text-white p-2.5 rounded-2xl shadow-lg shadow-emerald-500/20 z-20 animate-bounce-slow">
+                <ShieldCheck size={28} className="stroke-2" />
               </div>
-              <img
-                src="https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=500&q=80"
-                alt="White Sedan showcasing vehicle scrapping service"
-                className="w-72 object-contain drop-shadow-2xl mix-blend-multiply"
+              <Image
+                src="/Tow.jpeg"
+                alt="RescrapX towing truck transporting scrapped vehicle"
+                width={500}
+                height={320}
+                className="w-full h-48 object-cover rounded-2xl shadow-md border border-emerald-100/80"
               />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Eco-Friendly Vehicle Scrapping</h3>
@@ -110,11 +116,14 @@ export default function LoginPage() {
 
           {/* Mobile Logo View (hidden on lg) */}
           <div className="flex flex-col items-center mb-8 lg:hidden">
-            <div className="flex items-center gap-1 text-2xl font-bold text-gray-900 tracking-tight">
-              <span className="text-[#0B5B32]">🚗 Rescrap</span>
-              <span className="text-[#10B981]">X</span>
-            </div>
-            <p className="text-[#10B981] text-xs font-medium tracking-wide mt-1">Recycle Today, Drive Tomorrow</p>
+            <Image 
+              src="/logo.png" 
+              alt="RescrapX Logo" 
+              width={180} 
+              height={50} 
+              className="h-auto w-40 object-contain mb-1"
+            />
+            <p className="text-[#10B981] text-xs font-medium tracking-wide">Recycle Today, Drive Tomorrow</p>
           </div>
 
           <div className="max-w-md w-full mx-auto my-auto space-y-7">
