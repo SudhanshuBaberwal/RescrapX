@@ -39,5 +39,27 @@ export const proxyRoutes = (target: string, serviceName: string = "Service") => 
 
       return proxyReqOpts;
     },
+
+    userResHeaderDecorator(headers, userReq, userRes) {
+      // Preserve Gateway's own CORS headers
+      const allowedOrigin = userRes.getHeader("access-control-allow-origin");
+      const allowedCredentials = userRes.getHeader("access-control-allow-credentials");
+      const allowedMethods = userRes.getHeader("access-control-allow-methods");
+      const allowedHeaders = userRes.getHeader("access-control-allow-headers");
+
+      // Remove downstream headers
+      delete headers["access-control-allow-origin"];
+      delete headers["access-control-allow-credentials"];
+      delete headers["access-control-allow-methods"];
+      delete headers["access-control-allow-headers"];
+
+      // Re-apply Gateway's CORS headers
+      if (allowedOrigin) headers["access-control-allow-origin"] = String(allowedOrigin);
+      if (allowedCredentials) headers["access-control-allow-credentials"] = String(allowedCredentials);
+      if (allowedMethods) headers["access-control-allow-methods"] = String(allowedMethods);
+      if (allowedHeaders) headers["access-control-allow-headers"] = String(allowedHeaders);
+
+      return headers;
+    },
   });
 };

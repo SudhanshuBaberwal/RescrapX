@@ -7,6 +7,7 @@ const errorHandler = (
   res: Response,
   next: NextFunction,
 ) => {
+  console.error("Auth Service Error:", err);
   try {
     const statusCode = err instanceof ApiError ? err.statusCode : 500;
   
