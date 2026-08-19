@@ -5,12 +5,14 @@ import { Eye, EyeOff, ArrowRight, ShieldCheck, Mail, Loader2 } from 'lucide-reac
 import api from '@/utils/api';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/ui/toast/ToastContext';
-import { login } from '@/services/auth.service';
+import { googleLogin, login } from '@/services/auth.service';
 import { setLoading, setUserData } from '@/store/userSlice';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store/store';
+import { GoogleLogin } from "@react-oauth/google";
+
 export default function LoginPage() {
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useDispatch<AppDispatch>();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { showToast } = useToast();
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -18,11 +20,12 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
+
   // Input Change Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({ ...prev, [name]: value }));
-};
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   // Main Form Submit Handler
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -37,7 +40,7 @@ export default function LoginPage() {
         email: formData.email,
         password: formData.password,
       });
-      dispatch(setUserData(result.data))
+      dispatch(setUserData(result.data));
       setSuccessMessage("Authentication successful! Redirecting...");
       showToast("Welcome back! Authentication successful.", "success");
       router.replace("/");
@@ -52,7 +55,7 @@ export default function LoginPage() {
       showToast(error?.message || "Login failed. Please try again.", "error");
     } finally {
       setIsLoading(false);
-      dispatch(setLoading(false))
+      dispatch(setLoading(false));
     }
   };
 
@@ -212,28 +215,26 @@ export default function LoginPage() {
             {/* Centered Single Google Login Wrapper */}
             <div className="w-full flex justify-center">
               <div className="w-full max-w-sm flex justify-center [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full">
-                {/* <GoogleLogin
+                <GoogleLogin
                   onSuccess={async (credentialResponse) => {
                     if (!credentialResponse.credential) return;
-
-                    const response = await googleLogin(
-                      credentialResponse.credential
-                    );
-
-                    // Update auth state cache
-                    queryClient.setQueryData(
-                      ["current-user"],
-                      response
-                    );
-
-                    await refetchUser();
-                    router.replace("/");
+                    try {
+                      const response = await googleLogin(credentialResponse.credential);
+                      dispatch(setUserData(response.data));
+                      showToast("Google authentication successful!", "success");
+                      router.replace("/roles");
+                    } catch (error: any) {
+                      showToast(
+                        error?.response?.data?.message || "Google authentication failed.",
+                        "error"
+                      );
+                    }
                   }}
                   onError={() => {
-                    console.log("Google Login Failed");
+                    showToast("Google Login Failed", "error");
                   }}
                   width="100%"
-                /> */}
+                />
               </div>
             </div>
 
