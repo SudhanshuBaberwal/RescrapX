@@ -222,7 +222,7 @@ export default function LoginPage() {
                       const response = await googleLogin(credentialResponse.credential);
                       dispatch(setUserData(response.data));
                       showToast("Google authentication successful!", "success");
-                      router.replace("/roles");
+                      router.replace("/");
                     } catch (error: any) {
                       showToast(
                         error?.response?.data?.message || "Google authentication failed.",
