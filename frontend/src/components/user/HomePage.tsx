@@ -11,8 +11,9 @@ export default function HomePage() {
   return (
     <main className="w-full min-h-screen bg-white flex flex-col antialiased">
       <Navbar />
-      <div className="w-full px-4 md:px-12 pt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <aside className="lg:col-span-3 w-full">
+      {/* Reduced pt-10 to pt-4 and corrected sticky top offset to top-20 */}
+      <div className="w-full px-4 md:px-12 pt-4 sm:pt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <aside className="lg:col-span-3 lg:sticky lg:top-20 h-fit">
           <Sidebar />
         </aside>
         <section className="lg:col-span-9 w-full">

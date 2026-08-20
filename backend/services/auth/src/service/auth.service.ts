@@ -41,10 +41,20 @@ class AuthService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     const verificationTokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // const isPartner = data.signupType === "PARTNER";
+
     const user = await authRepository.createUser({
       fullName: data.fullName,
       email,
       password: hashedPassword,
+      // role: isPartner ? UserRole.PARTNER : UserRole.USER,
+      // ...(isPartner && {
+      //   partnerStatus: PartnerStatus.PENDING,
+      //   partnerNextStep: PartnerNextStep.COMPLETE_COMPANY_PROFILE,
+      // }),
+
+      // roleSelected: true,
       verificationToken: otp,
       verificationTokenExpiresAt,
     });
@@ -458,6 +468,44 @@ class AuthService {
     return this.createAuthSession(user);
   }
 
+  async setPartner(userId: string) {
+    const user = await authRepository.findById(userId);
+
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    if (!user.isActive) {
+      throw new ApiError(403, "Account has been disabled");
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw new ApiError(403, "Administrator cannot become a partner");
+    }
+
+    if (user.role === UserRole.PARTNER) {
+      throw new ApiError(404,"Already a Partner")
+    }
+
+    const updatedUser = await authRepository.findByIdAndUpdate(userId, {
+      role: UserRole.PARTNER,
+      roleSelected: true,
+      partnerStatus: PartnerStatus.PENDING,
+      partnerNextStep: PartnerNextStep.COMPLETE_COMPANY_PROFILE,
+    });
+
+    if (!updatedUser) {
+      throw new ApiError(500, "Failed to upgrade account to partner");
+    }
+
+    return {
+      // alreadyPartner: false,
+      role: updatedUser.role,
+      partnerStatus: updatedUser.partnerStatus,
+      partnerNextStep: updatedUser.partnerNextStep,
+    };
+  }
+  
   async partnerSignup(data: PartnerSignupDto, usreId: string) {
     const existingUser = await authRepository.findById(usreId);
 

@@ -151,3 +151,14 @@ export const setRoleController = asyncHandler(
     return ApiResponse.success(res, 200, "Role updated successfully", user);
   },
 );
+
+export const setPartnerController = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.user.id;
+    if (!userId) {
+      throw new ApiError(404, "User Not Found");
+    }
+    const user = await authService.setPartner(userId);
+    return ApiResponse.success(res, 200, "Role updated successfully", user);
+  },
+);

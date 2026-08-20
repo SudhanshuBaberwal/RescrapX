@@ -11,6 +11,7 @@ import {
   refreshTokenController,
   resendVerificationController,
   resetPasswordController,
+  setPartnerController,
   setRoleController,
   signup,
   verifyOtpController,
@@ -86,5 +87,6 @@ authrouter.post(
   partnerSignupController,
 );
 
+authrouter.post("/partner/set-partner", protect, setPartnerController);
 
 export default authrouter;

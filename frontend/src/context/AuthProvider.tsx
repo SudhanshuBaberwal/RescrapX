@@ -36,6 +36,7 @@ export interface User {
     provider: AuthProvider;
 
     googleId?: string;
+    roleSelected: boolean;
 
     isVerified: boolean;
     isActive: boolean;

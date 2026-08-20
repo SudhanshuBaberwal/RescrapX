@@ -27,3 +27,12 @@ export const getPartnerStatus = async () => {
     console.log(error)
   }
 }
+
+export const setPartner = async () => {
+  try {
+    const data = await api.post("/api/auth/partner/set-partner")
+    return data.data;
+  } catch (error) {
+    console.log(error)
+  }
+}
