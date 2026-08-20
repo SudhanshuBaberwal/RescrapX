@@ -94,7 +94,7 @@ function OTPFormContent() {
 
       // Delay logic before pushing user details directly to operational dashboard
       setTimeout(() => {
-        router.push("/roles");
+        router.push("/");
       }, 2500);
 
     } catch (error: any) {

@@ -60,9 +60,13 @@ class AuthService {
     });
     await notificationClient.post("/email/verification", {
       email,
-      fullName,
+      // fullName,
       otp,
     });
+    // await notificationClient.post("/gmail/email/otp", {
+    //   email,
+    //   otp,
+    // });
     return user;
   }
   async getCurrentUser(userId: string) {
@@ -484,7 +488,7 @@ class AuthService {
     }
 
     if (user.role === UserRole.PARTNER) {
-      throw new ApiError(404,"Already a Partner")
+      throw new ApiError(404, "Already a Partner");
     }
 
     const updatedUser = await authRepository.findByIdAndUpdate(userId, {
@@ -505,7 +509,7 @@ class AuthService {
       partnerNextStep: updatedUser.partnerNextStep,
     };
   }
-  
+
   async partnerSignup(data: PartnerSignupDto, usreId: string) {
     const existingUser = await authRepository.findById(usreId);
 

@@ -1,28 +1,34 @@
 import emailService from "./email.service.js";
 class NotificationService {
     /**
-     * Email Verification
+     * Email verification OTP.
      */
     async sendVerificationEmail(email, fullName, otp) {
         await emailService.sendVerificationEmail(email, fullName, otp);
     }
     /**
-     * Welcome Email
+     * Welcome email.
      */
     async sendWelcomeEmail(email, fullName) {
         await emailService.sendWelcomeEmail(email, fullName);
     }
     /**
-     * Forgot Password
+     * Forgot-password OTP.
      */
     async sendForgotPasswordEmail(email, fullName, otp) {
         await emailService.sendForgotPasswordEmail(email, fullName, otp);
     }
     /**
-     * Password Changed
+     * Password changed confirmation.
      */
     async sendPasswordChangedEmail(email, fullName) {
         await emailService.sendPasswordChangedEmail(email, fullName);
+    }
+    /**
+     * Generic OTP email.
+     */
+    async sendOtpEmail(email, otp) {
+        await emailService.sendOtpEmail(email, otp);
     }
 }
 export default new NotificationService();

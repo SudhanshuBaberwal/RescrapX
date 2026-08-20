@@ -6,9 +6,11 @@ import {
   welcomeEmailSchema,
   forgotPasswordSchema,
   passwordChangeSchema,
+  otpEmailSchema,
 } from "../validations/notification.validation.js";
 
 const router = Router();
+
 router.get("/test", (_req, res) => {
   res.status(200).json({
     success: true,
@@ -18,8 +20,8 @@ router.get("/test", (_req, res) => {
 
 router.post(
   "/email/verification",
-  validate(verificationEmailSchema),
-  notificationController.sendVerificationEmail,
+  // validate(verificationEmailSchema),
+  notificationController.sendOtp,
 );
 
 router.post(
@@ -38,6 +40,12 @@ router.post(
   "/email/password-changed",
   validate(passwordChangeSchema),
   notificationController.sendPasswordChangedEmail,
+);
+
+router.post(
+  "/email/otp",
+  validate(otpEmailSchema),
+  notificationController.sendOtp,
 );
 
 export default router;

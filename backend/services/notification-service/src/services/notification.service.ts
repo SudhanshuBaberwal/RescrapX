@@ -2,59 +2,55 @@ import emailService from "./email.service.js";
 
 class NotificationService {
   /**
-   * Email Verification
+   * Email verification OTP.
    */
   async sendVerificationEmail(
     email: string,
     fullName: string,
-    otp: string
-  ) {
-    await emailService.sendVerificationEmail(
-      email,
-      fullName,
-      otp
-    );
+    otp: string,
+  ): Promise<void> {
+    await emailService.sendVerificationEmail(email, fullName, otp);
   }
 
   /**
-   * Welcome Email
+   * Welcome email.
    */
   async sendWelcomeEmail(
     email: string,
-    fullName: string
-  ) {
-    await emailService.sendWelcomeEmail(
-      email,
-      fullName
-    );
+    fullName: string,
+  ): Promise<void> {
+    await emailService.sendWelcomeEmail(email, fullName);
   }
 
   /**
-   * Forgot Password
+   * Forgot-password OTP.
    */
   async sendForgotPasswordEmail(
     email: string,
     fullName: string,
-    otp: string
-  ) {
-    await emailService.sendForgotPasswordEmail(
-      email,
-      fullName,
-      otp
-    );
+    otp: string,
+  ): Promise<void> {
+    await emailService.sendForgotPasswordEmail(email, fullName, otp);
   }
 
   /**
-   * Password Changed
+   * Password changed confirmation.
    */
   async sendPasswordChangedEmail(
     email: string,
-    fullName: string
-  ) {
-    await emailService.sendPasswordChangedEmail(
-      email,
-      fullName
-    );
+    fullName: string,
+  ): Promise<void> {
+    await emailService.sendPasswordChangedEmail(email, fullName);
+  }
+
+  /**
+   * Generic OTP email.
+   */
+  async sendOtpEmail(
+    email: string,
+    otp: string,
+  ): Promise<void> {
+    await emailService.sendOtpEmail(email, otp);
   }
 }
 
