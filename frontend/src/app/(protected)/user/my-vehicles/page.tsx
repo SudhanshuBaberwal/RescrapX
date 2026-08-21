@@ -1,21 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import UserNavbar from '@/components/navbar/UserNavbar';
+import UserNavbar from '@/components/navbar/user/UserNavbar';
 import Footer from '@/components/footer/Footer';
 import { createDraftVehicle } from '@/services/vehicle.service';
 import { useDispatch, useSelector } from 'react-redux';
 import { setVehicleData } from '@/store/vehicleSlice';
 import {
   Car, Plus, Calendar, Gauge, Fuel, ShieldCheck,
-  ArrowRight, Loader2, AlertCircle, CheckCircle2, XCircle, Clock
+  ArrowRight, Loader2, AlertCircle, CheckCircle2, XCircle, Clock,
+  MapPin,
+  Ban,
+  Truck,
+  UserCheck,
+  FileEdit
 } from 'lucide-react';
 import { getAllVehicles } from '@/hooks/getAllVehicles';
 import { RootState } from '@/store/store';
 import { IVehicle, VehicleStatus } from '@/context/vehicleProvider';
 
-export default function MyVehiclesPage() {
+// 1. Core Component Logic
+function MyVehiclesContent() {
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -56,19 +62,30 @@ export default function MyVehiclesPage() {
   const handleVehicleClick = (vehicle: IVehicle) => {
     const status = vehicle.status?.toUpperCase();
 
-    // If in draft or actively filling steps, resume registration
     if (status === VehicleStatus.DRAFT || (!vehicle.isRegistered && vehicle.currentStep && vehicle.currentStep < 8)) {
       dispatch(setVehicleData(vehicle));
       router.push(`/register-vehicle/${vehicle._id}/${vehicle.currentStep || 1}`);
     } else {
-      // For VERIFIED, REJECTED, SUBMITTED, READY_FOR_BIDDING, etc. open details page
       router.push(`/user/my-vehicles/${vehicle._id}`);
     }
   };
 
-  // Comprehensive Helper for Status Badges
+  // Helper for Status Badges
   const getStatusBadge = (status?: string) => {
     switch (status?.toUpperCase()) {
+      case VehicleStatus.DRAFT:
+        return (
+          <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <FileEdit size={12} /> Draft
+          </span>
+        );
+      case VehicleStatus.SUBMITTED:
+      case VehicleStatus.UNDER_VERIFICATION:
+        return (
+          <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Clock size={12} /> Under Verification
+          </span>
+        );
       case VehicleStatus.VERIFIED:
         return (
           <span className="bg-emerald-50 text-[#0B5B32] border border-emerald-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
@@ -79,13 +96,6 @@ export default function MyVehiclesPage() {
         return (
           <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
             <XCircle size={12} /> Rejected
-          </span>
-        );
-      case VehicleStatus.UNDER_VERIFICATION:
-      case VehicleStatus.SUBMITTED:
-        return (
-          <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
-            <Clock size={12} /> Under Verification
           </span>
         );
       case VehicleStatus.READY_FOR_BIDDING:
@@ -102,33 +112,51 @@ export default function MyVehiclesPage() {
         );
       case VehicleStatus.UNSOLD:
         return (
-          <span className="bg-yellow-50 text-yellow-700 border border-yellow-200 text-[10px] font-black px-2.5 py-1 rounded-full">
-            UNSOLD
-          </span>
-        );
-      case VehicleStatus.CANCELLED:
-        return (
-          <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black px-2.5 py-1 rounded-full">
-            Cancelled
+          <span className="bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-black px-2.5 py-1 rounded-full">
+            Unsold
           </span>
         );
       case VehicleStatus.READY_FOR_PICKUP:
         return (
-          <span className="bg-green-100 text-green-600 border border-green-200 text-[10px] font-black px-2.5 py-1 rounded-full">
-            Ready For Pick Up
+          <span className="bg-cyan-50 text-cyan-700 border border-cyan-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Clock size={12} /> Ready For Pickup
           </span>
         );
       case VehicleStatus.SCHEDULED:
         return (
-          <span className="bg-green-100 text-green-600 border border-green-200 text-[10px] font-black px-2.5 py-1 rounded-full">
-            Scheduled
+          <span className="bg-teal-50 text-teal-700 border border-teal-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Clock size={12} /> Scheduled
           </span>
         );
-      case VehicleStatus.DRAFT:
+      case VehicleStatus.DRIVER_ASSIGNED:
+        return (
+          <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <UserCheck size={12} /> Driver Assigned
+          </span>
+        );
+      case VehicleStatus.PICKED_UP:
+      case VehicleStatus.IN_TRANSIT:
+        return (
+          <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Truck size={12} /> In Transit
+          </span>
+        );
+      case VehicleStatus.ARRIVED:
+        return (
+          <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <MapPin size={12} /> Arrived
+          </span>
+        );
+      case VehicleStatus.CANCELLED:
+        return (
+          <span className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Ban size={12} /> Cancelled
+          </span>
+        );
       default:
         return (
           <span className="bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-black px-2.5 py-1 rounded-full">
-            Draft
+            Unknown
           </span>
         );
     }
@@ -230,7 +258,6 @@ export default function MyVehiclesPage() {
                 const details = vehicle?.vehicleDetails;
                 const status = vehicle.status?.toUpperCase();
 
-                // Custom Styling based on status
                 const isRejected = status === VehicleStatus.REJECTED;
                 const isVerified = status === VehicleStatus.VERIFIED;
 
@@ -253,7 +280,6 @@ export default function MyVehiclesPage() {
                     className={`bg-white border ${cardBorderClass} rounded-2xl p-5 shadow-3xs hover:shadow-xs transition-all flex flex-col justify-between space-y-4 group cursor-pointer`}
                     onClick={() => handleVehicleClick(vehicle)}
                   >
-                    {/* Card Top: Title & Badge */}
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <div className="flex items-center gap-3">
@@ -274,7 +300,6 @@ export default function MyVehiclesPage() {
 
                       <hr className="border-gray-50" />
 
-                      {/* Specs Grid */}
                       <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-600 font-medium">
                         <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg p-2">
                           <ShieldCheck size={13} className={isRejected ? "text-rose-500" : "text-[#0B5B32]"} />
@@ -295,7 +320,6 @@ export default function MyVehiclesPage() {
                       </div>
                     </div>
 
-                    {/* Card Bottom CTA */}
                     <div className={`pt-2 flex justify-between items-center text-xs font-bold ${actionTextColor} group-hover:translate-x-0.5 transition-transform`}>
                       <span>{getActionLabel(vehicle)}</span>
                       <ArrowRight size={14} />
@@ -310,5 +334,20 @@ export default function MyVehiclesPage() {
 
       <Footer />
     </div>
+  );
+}
+
+// 2. Export default page with Suspense wrapper
+export default function MyVehiclesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-screen flex items-center justify-center bg-[#F9FAFB]">
+          <Loader2 size={32} className="text-[#0B5B32] animate-spin" />
+        </div>
+      }
+    >
+      <MyVehiclesContent />
+    </Suspense>
   );
 }

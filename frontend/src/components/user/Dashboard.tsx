@@ -17,132 +17,55 @@ export default function UserDashBoard() {
   const { userData } = useSelector((state: RootState) => state.user);
   const router = useRouter();
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText('RX240015');
-  };
-
   return (
-    <div className="w-full space-y-12 pb-10">
-      
+    /* Center container with max-width matching navbar and side padding */
+    <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-10 space-y-12 py-8 w-full">
+
       {/* HERO SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-1">
-        
-        {/* Left Side: Hero Text Content */}
-        <div className="lg:col-span-7 space-y-5">
-          <div className="inline-flex items-center gap-1.5 bg-[#E6F4EA] text-[#0B5B32] text-xs font-bold px-3 py-1 rounded-full w-fit">
-            <span>Welcome back, {userData?.fullName?.split(' ')[0] || ""}!</span> 👋
+      <div className="w-full space-y-5 pt-1">
+        <div className="inline-flex items-center gap-1.5 bg-[#E6F4EA] text-[#0B5B32] text-xs font-bold px-3 py-1 rounded-full w-fit">
+          <span>Welcome back, {userData?.fullName?.split(' ')[0] || ""}!</span> 👋
+        </div>
+
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight leading-tight">
+          Let's create a <span className="text-[#0B5B32]">greener tomorrow.</span>
+        </h1>
+
+        <p className="text-gray-500 font-semibold text-xs sm:text-sm max-w-3xl leading-relaxed">
+          India's most trusted platform for end-of-life vehicle scrapping and responsible recycling operations.
+        </p>
+
+        {/* Inline feature badges with balanced spacing */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 text-[11px] sm:text-xs font-black text-gray-600">
+          <div className="flex items-center gap-1.5"><ShieldCheck size={16} className="text-[#0B5B32]" /> 100% Legal & Compliant</div>
+          <div className="flex items-center gap-1.5"><IndianRupee size={16} className="text-[#0B5B32]" /> Best Price Assured</div>
+          <div className="flex items-center gap-1.5"><Truck size={16} className="text-[#0B5B32]" /> Hassle-free Pickup</div>
+          <div className="flex items-center gap-1.5"><Leaf size={16} className="text-[#0B5B32]" /> Eco-friendly Process</div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 pt-2">
+          <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl flex items-center gap-2 shadow-xs transition active:scale-95 cursor-pointer">
+            <span>Get Instant Valuation</span>
+            <ArrowRight size={16} />
+          </button>
+          <button onClick={() => router.push("/user/my-vehicles")} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm px-6 py-3 rounded-xl flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer">
+            <span>{userData ? "My Vehicles" : "Check My"}</span>
+            <Play size={12} className="fill-gray-500 stroke-none" />
+          </button>
+        </div>
+
+        {/* Social Proof */}
+        <div className="flex items-center gap-3 pt-3 border-t border-gray-100 w-full">
+          <div className="flex -space-x-2">
+            <img className="w-8 h-8 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop" alt="User" />
+            <img className="w-8 h-8 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop" alt="User" />
+            <img className="w-8 h-8 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=60&h=60&fit=crop" alt="User" />
           </div>
-
-          <h1 className="text-3xl sm:text-5xl font-black text-gray-900 tracking-tight leading-tight">
-            Let's create a <br />
-            <span className="text-[#0B5B32]">greener tomorrow.</span>
-          </h1>
-
-          <p className="text-gray-500 font-semibold text-xs sm:text-sm max-w-xl leading-relaxed">
-            India's most trusted platform for end-of-life vehicle scrapping and responsible recycling operations.
+          <p className="text-xs font-bold text-gray-400">
+            <span className="text-gray-800 font-extrabold">10,000+</span> vehicles scrapped responsibly by RescrapX users.
           </p>
-
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1 text-[11px] font-black text-gray-600">
-            <div className="flex items-center gap-1"><ShieldCheck size={14} className="text-[#0B5B32]" /> 100% Legal & Compliant</div>
-            <div className="flex items-center gap-1"><IndianRupee size={14} className="text-[#0B5B32]" /> Best Price Assured</div>
-            <div className="flex items-center gap-1"><Truck size={14} className="text-[#0B5B32]" /> Hassle-free Pickup</div>
-            <div className="flex items-center gap-1"><Leaf size={14} className="text-[#0B5B32]" /> Eco-friendly Process</div>
-          </div>
-
-          <div className="flex items-center gap-2.5 pt-1">
-            <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-xs transition active:scale-95">
-              <span>Get Instant Valuation</span>
-              <ArrowRight size={14} />
-            </button>
-            <button onClick={() => router.push("/user/my-vehicles")} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shadow-2xs transition active:scale-95">
-              <span>{userData ? "My Vehicles" : "Check My"}</span>
-              <Play size={12} className="fill-gray-500 stroke-none" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-            <div className="flex -space-x-2">
-              <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&h=60&fit=crop" alt="User" />
-              <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop" alt="User" />
-              <img className="w-7 h-7 rounded-full border-2 border-white object-cover" src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=60&h=60&fit=crop" alt="User" />
-            </div>
-            <p className="text-[11px] font-bold text-gray-400">
-              <span className="text-gray-800 font-extrabold">10,000+</span> vehicles scrapped responsibly by RescrapX users.
-            </p>
-          </div>
         </div>
-
-        {/* Right Side: Current Live Booking Card */}
-        <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-5 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-            <h3 className="text-xs font-black text-gray-900 tracking-wide">Your Current Booking</h3>
-            <span className="bg-[#0B5B32] text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase">Active</span>
-          </div>
-
-          <div className="flex items-center justify-between bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-            <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Booking ID</p>
-              <p className="text-xs font-black text-gray-800">RX240015</p>
-            </div>
-            <button
-              onClick={handleCopy}
-              className="text-gray-400 hover:text-gray-600 p-1.5 bg-white rounded-lg border border-gray-200 shadow-2xs transition"
-              title="Copy Booking ID"
-            >
-              <Copy size={12} />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 py-1">
-            <img
-              src="https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=120&q=80"
-              alt="Maruti Swift Dzire"
-              className="w-16 h-12 object-contain mix-blend-multiply"
-            />
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-black text-gray-900">2014 Maruti Swift Dzire</h4>
-              <p className="text-[11px] font-bold text-gray-400">Petrol • Manual</p>
-              <div className="inline-block bg-gray-100 border border-gray-200 text-gray-700 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-xs uppercase tracking-wide">
-                DL 12 AB 1234
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-3 space-y-2">
-            <div>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Current Status</p>
-              <div className="flex items-center gap-1.5 text-xs font-black text-[#0B5B32] mt-0.5">
-                <span>🛻</span>
-                <h4>Pickup Scheduled</h4>
-              </div>
-              <p className="text-[11px] text-gray-500 font-semibold mt-0.5 leading-relaxed">
-                Our executive will pick up your vehicle as per the scheduled time.
-              </p>
-            </div>
-
-            <div className="bg-white border border-gray-100 rounded-lg p-2.5 space-y-1.5 text-[11px] font-black text-gray-700">
-              <div className="flex items-center gap-2">
-                <Calendar size={12} className="text-[#0B5B32]" />
-                <span>10 July 2026, Wednesday</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={12} className="text-[#0B5B32]" />
-                <span>11:00 AM – 02:00 PM</span>
-              </div>
-            </div>
-          </div>
-
-          <button className="w-full bg-[#0B5B32] hover:bg-[#094d2a] text-white py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
-            <span>Track Booking</span>
-            <ArrowRight size={14} />
-          </button>
-
-          <button className="w-full text-center text-[11px] font-bold text-gray-400 hover:text-gray-700 flex items-center justify-center gap-0.5 transition">
-            <span>View All Bookings</span>
-            <ChevronRight size={12} />
-          </button>
-        </div>
-
       </div>
 
       {/* HOW RESCRAPX WORKS STEPS */}
@@ -173,7 +96,7 @@ export default function UserDashBoard() {
       </div>
 
       {/* GREEN IMPACT BANNER */}
-      <div className="bg-[#0B5B32] text-white p-6 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-6 text-center shadow-sm">
+      <div className="bg-[#0B5B32] text-white p-6 sm:p-8 rounded-2xl grid grid-cols-2 md:grid-cols-4 gap-6 text-center shadow-sm">
         <div>
           <h3 className="text-xl sm:text-2xl font-black">1,500+ Tons</h3>
           <p className="text-[11px] text-emerald-200 font-bold mt-0.5">of CO₂ Reduced</p>
@@ -208,7 +131,7 @@ export default function UserDashBoard() {
           </div>
         </div>
 
-        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shrink-0 transition shadow-xs">
+        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shrink-0 transition shadow-xs cursor-pointer">
           <span>Get Instant Valuation</span>
           <ArrowRight size={14} />
         </button>
@@ -224,7 +147,7 @@ export default function UserDashBoard() {
           {/* Traditional Scrapping */}
           <div className="bg-[#F3F4F8] rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center space-y-6">
             <h3 className="text-base font-black text-gray-900 tracking-tight">Traditional Scrapping</h3>
-            
+
             <div className="relative w-36 h-28 flex items-end justify-center">
               <svg className="w-24 h-24 text-gray-400" viewBox="0 0 100 100" fill="none">
                 <circle cx="50" cy="35" r="18" stroke="currentColor" strokeWidth="3" />
@@ -253,7 +176,7 @@ export default function UserDashBoard() {
           {/* RescrapX Way */}
           <div className="bg-[#EBF7EE] rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center space-y-6">
             <h3 className="text-base font-black text-[#0B5B32] tracking-tight">RescrapX Way</h3>
-            
+
             <div className="relative w-36 h-28 flex items-end justify-center">
               <svg className="w-24 h-24 text-emerald-800" viewBox="0 0 100 100" fill="none">
                 <circle cx="50" cy="35" r="18" stroke="currentColor" strokeWidth="3" />
@@ -284,24 +207,19 @@ export default function UserDashBoard() {
         </div>
       </div>
 
-      {/* ========================================== */}
       {/* REAL-TIME VEHICLE TRACKING SECTION */}
-      {/* ========================================== */}
       <div className="bg-white border border-gray-200/80 rounded-3xl p-6 sm:p-8 space-y-8 shadow-xs">
-        {/* Header Row */}
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-black text-gray-900">Real-time Vehicle Tracking</h3>
-          <button className="text-xs font-bold text-[#0B5B32] hover:underline flex items-center gap-1">
+          <button className="text-xs font-bold text-[#0B5B32] hover:underline flex items-center gap-1 cursor-pointer">
             <span>View All</span>
             <ArrowRight size={13} />
           </button>
         </div>
 
-        {/* Top Horizontal Steps */}
         <div className="overflow-x-auto no-scrollbar py-2">
           <div className="flex items-center justify-between min-w-[700px] relative px-2">
-            
-            {/* Step 1 */}
+
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <FileText size={22} className="text-gray-400" />
               <span className="text-[11px] font-bold text-gray-700 leading-tight">Request<br />Received</span>
@@ -309,7 +227,6 @@ export default function UserDashBoard() {
 
             <ArrowRight size={14} className="text-[#0B5B32] shrink-0" />
 
-            {/* Step 2 */}
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <ClipboardCheck size={22} className="text-gray-400" />
               <span className="text-[11px] font-bold text-gray-700 leading-tight">Inspection<br />Scheduled</span>
@@ -317,7 +234,6 @@ export default function UserDashBoard() {
 
             <ArrowRight size={14} className="text-[#0B5B32] shrink-0" />
 
-            {/* Step 3 */}
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <Truck size={22} className="text-gray-400" />
               <span className="text-[11px] font-bold text-gray-700 leading-tight">Vehicle<br />Picked Up</span>
@@ -325,7 +241,6 @@ export default function UserDashBoard() {
 
             <ArrowRight size={14} className="text-[#0B5B32] shrink-0" />
 
-            {/* Step 4 - Active */}
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <div className="p-2 bg-[#0B5B32] text-white rounded-full shadow-xs">
                 <MapPin size={16} />
@@ -335,7 +250,6 @@ export default function UserDashBoard() {
 
             <ArrowRight size={14} className="text-gray-400 shrink-0" />
 
-            {/* Step 5 */}
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <CreditCard size={22} className="text-gray-400" />
               <span className="text-[11px] font-bold text-gray-700 leading-tight">Payment<br />In Process</span>
@@ -343,7 +257,6 @@ export default function UserDashBoard() {
 
             <ArrowRight size={14} className="text-gray-400 shrink-0" />
 
-            {/* Step 6 */}
             <div className="flex flex-col items-center gap-2 relative z-10 w-28 text-center">
               <CheckCircle2 size={22} className="text-gray-400" />
               <span className="text-[11px] font-bold text-gray-700 leading-tight">Completed</span>
@@ -352,10 +265,8 @@ export default function UserDashBoard() {
           </div>
         </div>
 
-        {/* Center Facility Graphic & Status Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-2">
-          
-          {/* Left Side: Location Details */}
+
           <div className="lg:col-span-4 space-y-5">
             <div>
               <h4 className="text-base font-black text-[#0B5B32]">At RVSF Facility</h4>
@@ -376,18 +287,13 @@ export default function UserDashBoard() {
             </div>
           </div>
 
-          {/* Center: 3D Facility Building Vector */}
           <div className="lg:col-span-5 flex justify-center items-center py-4">
             <div className="relative w-full max-w-[280px] h-[170px] flex items-center justify-center">
-              {/* Floor Shadow */}
               <div className="absolute bottom-2 w-64 h-8 bg-gray-200/80 rounded-[100%] blur-xs -z-0"></div>
-
-              {/* Building Body */}
               <img src="/Tow.jpeg" alt="img" className='rounded-3xl' />
             </div>
           </div>
 
-          {/* Right Side: Tracker Badges */}
           <div className="lg:col-span-3 space-y-3">
             <div className="bg-[#F8FAFC] border border-gray-100 p-4 rounded-2xl space-y-1">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tracker ID</p>
@@ -412,8 +318,8 @@ export default function UserDashBoard() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-black text-gray-900">What Our Customers Say</h2>
           <div className="flex gap-2">
-            <button className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition"><ChevronLeft size={16} /></button>
-            <button className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition"><ChevronRight size={16} /></button>
+            <button className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition cursor-pointer"><ChevronLeft size={16} /></button>
+            <button className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition cursor-pointer"><ChevronRight size={16} /></button>
           </div>
         </div>
 

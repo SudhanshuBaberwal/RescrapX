@@ -735,3 +735,49 @@ export const getPartnerVehicleDocuments = asyncHandler(async (req, res) => {
     vehicle,
   );
 });
+
+export const getCustomerBookings = asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] as string;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const bookings = await vehicleService.getCustomerBookings(userId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Customer bookings fetched successfully",
+    {
+      bookings,
+      total: bookings.length,
+    },
+  );
+});
+
+export const getCustomerBookingById = asyncHandler(async (req, res) => {
+  const userId = req.headers["x-user-id"] as string;
+
+  if (!userId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const vehicleId = req.query.vehicleId as string;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  const booking = await vehicleService.getCustomerBookingById(
+    userId,
+    vehicleId,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Booking details fetched successfully",
+    booking,
+  );
+});

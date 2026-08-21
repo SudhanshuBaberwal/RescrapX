@@ -903,8 +903,7 @@ class VehicleService {
       processingStage: vehicle.processingStage,
 
       documents: {
-        submissionStatus:
-          vehicle.partnerDocumentStatus ?? "NOT_STARTED",
+        submissionStatus: vehicle.partnerDocumentStatus ?? "NOT_STARTED",
 
         partnerDocuments: vehicle.partnerDocuments ?? [],
       },
@@ -970,6 +969,260 @@ class VehicleService {
     }
 
     return document;
+  }
+
+  async getBookingJourney(vehicle: IVehicle) {
+    const timeline = vehicle.timeline ?? [];
+
+    const hasTimeline = (titles: string[]) => {
+      return timeline.some(
+        (item: any) =>
+          item.completed && titles.includes(item.title?.toUpperCase()),
+      );
+    };
+
+    const getTimelineDate = (titles: string[]) => {
+      const item = timeline.find(
+        (item: any) =>
+          item.completed && titles.includes(item.title?.toUpperCase()),
+      );
+
+      return item?.completedAt ?? null;
+    };
+
+    const journey = [
+      {
+        step: 1,
+        title: "Sold",
+        completed:
+          vehicle.status !== VehicleStatus.UNSOLD &&
+          vehicle.auctionResult?.partnerId != null,
+
+        completedAt: vehicle.auctionResult?.wonAt ?? null,
+      },
+
+      {
+        step: 2,
+        title: "Ready For Pickup",
+        completed:
+          hasTimeline(["READY FOR PICKUP", "READY_FOR_PICKUP"]) ||
+          [
+            VehicleStatus.READY_FOR_PICKUP,
+            VehicleStatus.SCHEDULED,
+            VehicleStatus.DRIVER_ASSIGNED,
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+            VehicleStatus.ARRIVED,
+          ].includes(vehicle.status),
+
+        completedAt: getTimelineDate(["READY FOR PICKUP", "READY_FOR_PICKUP"]),
+      },
+
+      {
+        step: 3,
+        title: "Pickup Scheduled",
+        completed:
+          hasTimeline(["PICKUP SCHEDULED", "SCHEDULED"]) ||
+          [
+            VehicleStatus.SCHEDULED,
+            VehicleStatus.DRIVER_ASSIGNED,
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+            VehicleStatus.ARRIVED,
+          ].includes(vehicle.status),
+
+        completedAt:
+          vehicle.pickup?.confirmedAt ??
+          vehicle.pickup?.scheduledAt ??
+          getTimelineDate(["PICKUP SCHEDULED", "SCHEDULED"]),
+      },
+
+      {
+        step: 4,
+        title: "Driver Assigned",
+        completed:
+          hasTimeline(["DRIVER ASSIGNED", "DRIVER_ASSIGNED"]) ||
+          [
+            VehicleStatus.DRIVER_ASSIGNED,
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+            VehicleStatus.ARRIVED,
+          ].includes(vehicle.status),
+
+        completedAt: getTimelineDate(["DRIVER ASSIGNED", "DRIVER_ASSIGNED"]),
+      },
+
+      {
+        step: 5,
+        title: "Picked Up",
+        completed:
+          hasTimeline(["PICKED UP", "VEHICLE PICKED UP", "CAR PICKED UP"]) ||
+          [
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+            VehicleStatus.ARRIVED,
+          ].includes(vehicle.status),
+
+        completedAt: getTimelineDate([
+          "PICKED UP",
+          "VEHICLE PICKED UP",
+          "CAR PICKED UP",
+        ]),
+      },
+
+      {
+        step: 6,
+        title: "In Transit",
+        completed:
+          hasTimeline(["IN TRANSIT", "VEHICLE IN TRANSIT"]) ||
+          [VehicleStatus.IN_TRANSIT, VehicleStatus.ARRIVED].includes(
+            vehicle.status,
+          ),
+
+        completedAt: getTimelineDate(["IN TRANSIT", "VEHICLE IN TRANSIT"]),
+      },
+
+      {
+        step: 7,
+        title: "Arrived",
+        completed:
+          hasTimeline(["ARRIVED", "VEHICLE ARRIVED", "VEHICLE RECEIVED"]) ||
+          vehicle.status === VehicleStatus.ARRIVED,
+
+        completedAt: getTimelineDate([
+          "ARRIVED",
+          "VEHICLE ARRIVED",
+          "VEHICLE RECEIVED",
+        ]),
+      },
+
+      {
+        step: 8,
+        title: "Inspection Complete",
+        completed:
+          hasTimeline(["INSPECTION", "INSPECTION COMPLETED"]) ||
+          vehicle.processingStage === ProcessingStage.INSPECTION_COMPLETED,
+
+        completedAt: getTimelineDate(["INSPECTION", "INSPECTION COMPLETED"]),
+      },
+    ];
+
+    return journey;
+  }
+
+  async getCustomerBookings(ownerId: string) {
+    const vehicles = await vehicleRepository.getCustomerBookings(ownerId);
+    return vehicles.map((vehicle: any) => {
+      const vehicleDetails = vehicle.vehicleDetails ?? {};
+      const pickup = vehicle.pickup ?? {};
+      const auction = vehicle.auctionResult ?? {};
+      const journey = this.getBookingJourney(vehicle);
+      return {
+        bookingId: auction.auctionId ?? vehicle._id.toString(),
+        vehicleId: vehicle._id.toString(),
+        status: vehicle.status,
+        vehicle: {
+          name:
+            vehicleDetails.carName ??
+            vehicleDetails.manufacturer ??
+            vehicleDetails.model ??
+            "Vehicle",
+          registrationNumber: vehicleDetails.registrationNumber ?? null,
+          fuelType: vehicleDetails.fuelType ?? null,
+          model: vehicleDetails.model ?? null,
+          variant: vehicleDetails.variant ?? null,
+        },
+        bookingDate: auction.wonAt ?? vehicle.createdAt ?? null,
+        offerAmount: auction.winningBid ?? null,
+        pickup: {
+          status: vehicle.status,
+          scheduledAt: pickup.scheduledAt ?? null,
+          address:
+            (pickup.formattedAddress ??
+              [pickup.area, pickup.city, pickup.state, pickup.pincode]
+                .filter(Boolean)
+                .join(", ")) ||
+            null,
+          city: pickup.city ?? null,
+          state: pickup.state ?? null,
+          pincode: pickup.pincode ?? null,
+          contactName: pickup.contactName ?? null,
+          assignedDriver: pickup.assignedDriver ?? null,
+        },
+        journey,
+      };
+    });
+  }
+
+  async getCustomerBookingById(ownerId: string, vehicleId: string) {
+    const vehicle = await vehicleRepository.getCustomerBookingById(
+      ownerId,
+      vehicleId,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(404, "Booking not found");
+    }
+
+    const vehicleDetails = vehicle.vehicleDetails ?? {};
+    const pickup = vehicle.pickup ?? {};
+    const auction = vehicle.auctionResult ;
+    if (!auction){
+      throw new ApiError(400,"No Auction Data for this vehicle ")
+    }
+
+    return {
+      bookingId: auction.auctionId ?? vehicle._id.toString(),
+
+      vehicleId: vehicle._id.toString(),
+
+      status: vehicle.status,
+
+      vehicle: {
+        name:
+          vehicleDetails.carName ??
+          vehicleDetails.carName ??
+          vehicleDetails.model ??
+          "Vehicle",
+
+        registrationNumber: vehicleDetails.registrationNumber ?? null,
+
+        fuelType: vehicleDetails.fuelType ?? null,
+
+        model: vehicleDetails.model ?? null,
+
+        variant: vehicleDetails.variant ?? null,
+      },
+
+      bookingDate: auction.wonAt ?? vehicle.createdAt ?? null,
+
+      offerAmount: auction.winningBid ?? null,
+
+      pickup: {
+        status: vehicle.status,
+
+        scheduledAt: pickup.scheduledAt ?? null,
+
+        address:
+          (pickup.formattedAddress ??
+            [pickup.area, pickup.city, pickup.state, pickup.pincode]
+              .filter(Boolean)
+              .join(", ")) ||
+          null,
+
+        city: pickup.city ?? null,
+
+        state: pickup.state ?? null,
+
+        pincode: pickup.pincode ?? null,
+
+        contactName: pickup.contactName ?? null,
+
+        assignedDriver: pickup.assignedDriver ?? null,
+      },
+
+      journey: this.getBookingJourney(vehicle),
+    };
   }
 }
 

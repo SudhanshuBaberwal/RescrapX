@@ -2,14 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, ArrowRight, CheckSquare, Square, Loader2 } from 'lucide-react';
-// Imported custom toast hook
+import { Eye, EyeOff, User, Mail, Lock, ArrowRight, Phone, ShieldCheck } from 'lucide-react';
 import api from '@/utils/api';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { googleLogin, signup } from '@/services/auth.service';
-import {
-  GoogleLogin,
-} from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import { clearUser, setUserData } from "@/store/userSlice";
@@ -31,7 +28,7 @@ export default function SignUpPage() {
   const [agreeTerms, setAgreeTerms] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const dispatch = useDispatch<AppDispatch>()
+  const dispatch = useDispatch<AppDispatch>();
 
   // Unified Input Handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +69,7 @@ export default function SignUpPage() {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
       });
-      dispatch(setUserData(result.data))
+      dispatch(setUserData(result.data));
       showToast(
         "Registration initialized successfully!",
         "success"
@@ -88,185 +85,266 @@ export default function SignUpPage() {
         "Registration failed.",
         "error"
       );
-      dispatch(clearUser())
+      dispatch(clearUser());
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-between p-4 md:p-8 font-sans text-gray-800">
+    <div className="min-h-screen bg-[#F0F2F1] flex items-center justify-center p-3 sm:p-4 lg:p-6 font-sans text-gray-800">
 
-      {/* Main Container */}
-      <div className="w-full max-w-6xl mx-auto my-auto bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[820px]">
+      {/* Main Elevated Card Container */}
+      <div className="w-full max-w-7xl bg-white rounded-3xl shadow-2xl border border-gray-100/80 overflow-hidden grid grid-cols-1 lg:grid-cols-12 my-auto">
 
-        {/* Left Column: Form Content */}
-        <div className="col-span-1 lg:col-span-7 p-8 md:p-14 flex flex-col justify-between h-full order-2 lg:order-1">
+        {/* Left Section: Hidden on small screens, visible on LG screens and up */}
+        <div className="hidden lg:flex lg:col-span-6 bg-[#F2F5F2] p-8 xl:p-10 flex-col justify-between relative overflow-hidden">
 
-          {/* Mobile Head Logo */}
-          <div className="flex flex-col items-center mb-6 lg:hidden">
-            <div className="flex items-center gap-1 text-2xl font-bold text-gray-900 tracking-tight">
-              <span className="text-[#0B5B32]">🚗 Rescrap</span>
-              <span className="text-[#10B981]">X</span>
-            </div>
-            <p className="text-[#10B981] text-xs font-medium tracking-wide mt-1">Recycle Today, Drive Tomorrow</p>
+          {/* Brand Header with Desktop Logo */}
+          <div className="z-10 flex justify-center items-center">
+            <img
+              src="/logo2.png"
+              alt="RescrapX Logo"
+              className="h-16 md:h-24 lg:h-78 w-auto object-contain -ml-2"
+            />
           </div>
 
-          <div className="max-w-xl w-full mx-auto my-auto space-y-6">
-            {/* Header Content */}
-            <div className="text-center lg:text-left">
-              <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Create Your Account</h2>
-              <p className="text-gray-500 text-sm">Join RescrapX and initiate your green vehicle scrapping journey</p>
+          {/* Hero Content & Mobile Mockups */}
+          <div className="my-auto py-4 z-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-center max-w-2xl mx-auto xl:max-w-none">
+
+            {/* Tagline */}
+            <div className="md:col-span-5 space-y-3">
+              <h1 className="text-3xl xl:text-4xl font-extrabold text-[#0B5B32] leading-tight">
+                Recycle Today, <br />
+                Drive Tomorrow
+              </h1>
+              <p className="text-xs xl:text-sm text-slate-600 leading-relaxed font-medium">
+                Turn your old vehicle into sustainable value. Transparent, certified, and completely hassle-free.
+              </p>
             </div>
 
-            {/* Stepper Wizard Indicator Component */}
-            <div className="flex items-center justify-center lg:justify-start max-w-sm mx-auto lg:mx-0 py-2">
-              <div className="flex flex-col items-center lg:items-start flex-1">
-                <div className="w-8 h-8 rounded-full bg-[#0B5B32] text-white flex items-center justify-center text-xs font-bold ring-4 ring-emerald-50">1</div>
-                <span className="text-[11px] font-bold text-[#0B5B32] mt-1.5">Basic Info</span>
+            {/* Mobile Mockup Artwork */}
+            <div className="md:col-span-7 relative flex justify-center items-center my-2">
+
+              {/* Back Phone: Dashboard Mockup */}
+              <div className="w-48 h-96 bg-white rounded-[2.5rem] border-4 border-slate-900 shadow-xl p-3 absolute -left-6 top-3 transform -rotate-6 z-0 opacity-95 hidden sm:block">
+                <div className="w-16 h-3.5 bg-slate-900 rounded-full mx-auto mb-3"></div>
+                <div className="text-xs font-bold text-slate-700 border-b pb-1.5 mb-3">≡ Dashboard</div>
+                <div className="bg-slate-50 p-2.5 rounded-xl text-[10px] space-y-1 border border-slate-100">
+                  <div className="font-bold text-slate-800">Welcome Back!</div>
+                  <div className="text-slate-400">Track your vehicle scrapping status</div>
+                </div>
+                <div className="mt-4 space-y-2.5 text-[9px]">
+                  <div className="text-slate-500 font-bold">Your Scrapping Progress</div>
+                  <div className="space-y-2 text-emerald-700 font-semibold pl-1">
+                    <div className="flex items-center gap-1.5">✓ Request Submitted</div>
+                    <div className="flex items-center gap-1.5">✓ Vehicle Picked Up</div>
+                    <div className="flex items-center gap-1.5">✓ At RVSF Facility</div>
+                    <div className="text-slate-300 font-normal">○ Vehicle Scrapped</div>
+                  </div>
+                </div>
               </div>
-              <div className="h-0.5 bg-gray-100 w-16 -mt-5"></div>
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">2</div>
-                <span className="text-[11px] font-semibold text-gray-400 mt-1.5">Verify</span>
+
+              {/* Front Phone: Main Landing App Mockup */}
+              <div className="w-60 h-[460px] bg-slate-900 rounded-[3rem] p-3.5 shadow-2xl relative z-10 border-4 border-slate-800">
+                <div className="w-20 h-4 bg-slate-800 rounded-full mx-auto mb-3"></div>
+                <div className="bg-white rounded-[2.2rem] h-[calc(100%-1.5rem)] overflow-hidden p-4 flex flex-col justify-between text-center relative">
+
+                  {/* Brand inside app */}
+                  <div className="mt-1">
+                    <div className="text-base font-black tracking-tight text-slate-900">Rescrap<span className="text-[#0B5B32]">X</span></div>
+                    <div className="text-[8px] font-extrabold text-[#0B5B32] uppercase">Scrap Right. Scrap Safe.</div>
+                  </div>
+
+                  {/* App Center Text */}
+                  <div className="my-auto space-y-1.5">
+                    <div className="text-[#0B5B32] font-black text-base leading-tight">Scrap Right, <br />Scrap Safe.</div>
+                    <p className="text-[9px] text-slate-500 px-2 leading-tight">
+                      We make vehicle scrapping easy, eco-friendly, and totally hassle-free.
+                    </p>
+                  </div>
+
+                  {/* Tow Truck / Banner graphic representative area */}
+                  <div className="bg-[#0B5B32] rounded-xl p-2 text-white my-2">
+                    <div className="text-[8px] font-black tracking-wider">&gt;&gt;&gt; WE PICK UP, YOU RELAX. &lt;&lt;&lt;</div>
+                  </div>
+
+                  {/* Eco Badge Card */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2.5 text-left flex items-center gap-2 mt-auto">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-[#0B5B32] flex items-center justify-center text-xs flex-shrink-0">🌱</div>
+                    <div>
+                      <div className="text-[9px] font-bold text-slate-800">Eco-Friendly Process</div>
+                      <div className="text-[7.5px] text-slate-400 leading-tight">We follow certified and environment safe scrapping practices.</div>
+                    </div>
+                  </div>
+
+                  {/* Pagination dots */}
+                  <div className="flex justify-center gap-1.5 mt-2.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span className="w-2 h-2 rounded-full bg-slate-200"></span>
+                    <span className="w-2 h-2 rounded-full bg-slate-200"></span>
+                  </div>
+                </div>
               </div>
-              <div className="h-0.5 bg-gray-100 w-16 -mt-5"></div>
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">3</div>
-                <span className="text-[11px] font-semibold text-gray-400 mt-1.5">Complete</span>
-              </div>
+
+            </div>
+          </div>
+
+          {/* Verification Badge */}
+          <div className="z-10 pt-2">
+            <div className="inline-flex items-center gap-2 bg-emerald-100/80 text-[#0B5B32] px-4 py-2 rounded-full text-xs font-bold border border-emerald-200/60">
+              <ShieldCheck size={18} />
+              <span>100% Government Approved Process</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Right Section: Form Content */}
+        <div className="lg:col-span-6 p-6 sm:p-8 xl:p-12 flex flex-col justify-center">
+          <div className="max-w-lg w-full mx-auto space-y-4">
+
+            {/* Mobile-Only Logo Header */}
+            <div className=" lg:hidden mb-2 flex items-center justify-center">
+              <img
+                src="/logo2.png"
+                alt="RescrapX Logo"
+                className="h-50 w-auto object-contain"
+              />
             </div>
 
-            {/* Main Multi-input Form */}
-            <form onSubmit={handleSignUp} className="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
+            {/* Form Header */}
+            <div>
+              <h2 className="text-3xl xl:text-4xl font-extrabold text-slate-900">Create Your Account</h2>
+              <p className="text-xs xl:text-sm text-slate-500 font-medium mt-1">Join RescrapX and start your scrapping journey</p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSignUp} className="space-y-3">
+
               {/* Full Name */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Full Name</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
-                  <User size={18} className="absolute left-4 text-gray-400" />
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 tracking-wider mb-1">FULL NAME</label>
+                <div className="relative flex items-center">
+                  <User size={18} className="absolute left-4 text-slate-400" />
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
-                    className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800"
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0B5B32] focus:bg-white transition text-slate-800 font-medium"
                     disabled={isLoading}
                     required
                   />
                 </div>
               </div>
 
-              {/* Email Address Fields */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Email Address</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
-                  <Mail size={18} className="absolute left-4 text-gray-400" />
+              {/* Email Address */}
+              <div>
+                <label className="block text-[11px] font-black uppercase text-slate-700 tracking-wider mb-1">EMAIL ADDRESS</label>
+                <div className="relative flex items-center">
+                  <Mail size={18} className="absolute left-4 text-slate-400" />
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="Enter your email address"
-                    className="w-full pl-11 pr-4 py-3 text-sm outline-none font-medium text-gray-800"
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0B5B32] focus:bg-white transition text-slate-800 font-medium"
                     disabled={isLoading}
                     required
                   />
                 </div>
               </div>
 
-              {/* Create Password */}
+              {/* Password */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Password</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
-                  <Lock size={18} className="absolute left-4 text-gray-400" />
+                <label className="block text-[11px] font-black uppercase text-slate-700 tracking-wider mb-1">PASSWORD</label>
+                <div className="relative flex items-center">
+                  <Lock size={18} className="absolute left-4 text-slate-400" />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="Create a password"
-                    className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800"
+                    className="w-full pl-11 pr-11 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0B5B32] focus:bg-white transition text-slate-800 font-medium"
                     disabled={isLoading}
                     required
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isLoading} className="absolute right-3 text-gray-400 hover:text-gray-600 transition">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} disabled={isLoading} className="absolute right-4 text-slate-400 hover:text-slate-600 transition">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-400 font-medium mt-1 leading-normal">Min. 8 characters with numbers & letters</p>
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Confirm Password</label>
-                <div className="relative flex items-center border-2 border-gray-100 rounded-xl overflow-hidden focus-within:border-emerald-600 transition bg-white">
-                  <Lock size={18} className="absolute left-4 text-gray-400" />
+                <label className="block text-[11px] font-black uppercase text-slate-700 tracking-wider mb-1">CONFIRM PASSWORD</label>
+                <div className="relative flex items-center">
+                  <Lock size={18} className="absolute left-4 text-slate-400" />
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="Confirm password"
-                    className="w-full pl-11 pr-10 py-3 text-sm outline-none font-medium text-gray-800"
+                    className="w-full pl-11 pr-11 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#0B5B32] focus:bg-white transition text-slate-800 font-medium"
                     disabled={isLoading}
                     required
                   />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={isLoading} className="absolute right-3 text-gray-400 hover:text-gray-600 transition">
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} disabled={isLoading} className="absolute right-4 text-slate-400 hover:text-slate-600 transition">
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
 
-              {/* Terms and conditions segment */}
-              <div className="sm:col-span-2 flex items-start gap-3 py-2">
-                <button type="button" onClick={() => setAgreeTerms(!agreeTerms)} disabled={isLoading} className="mt-0.5 text-[#0B5B32] flex-shrink-0 disabled:opacity-50">
-                  {agreeTerms ? <CheckSquare size={20} className="fill-[#0B5B32] stroke-white" /> : <Square size={20} className="text-gray-300" />}
-                </button>
-                <p className="text-xs text-gray-500 leading-normal font-medium selection:bg-transparent">
-                  I expressly verify and agree to the <a href="#" className="text-[#0B5B32] font-bold hover:underline">Terms & Conditions</a> along with the company's detailed <a href="#" className="text-[#0B5B32] font-bold hover:underline">Privacy Policy</a>.
-                </p>
+              {/* Checkbox Agreement */}
+              <div className="flex items-center gap-2.5 pt-1">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  disabled={isLoading}
+                  className="w-4 h-4 text-[#0B5B32] border-slate-300 rounded focus:ring-[#0B5B32] cursor-pointer"
+                />
+                <label htmlFor="terms" className="text-xs xl:text-sm text-slate-600 font-medium leading-none cursor-pointer">
+                  I agree to the <a href="#" className="text-[#0B5B32] font-bold hover:underline">Terms & Conditions</a> and <a href="#" className="text-[#0B5B32] font-bold hover:underline">Privacy Policy</a>
+                </label>
               </div>
 
-              {/* Register Call to Action */}
-              <div className="sm:col-span-2">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#0B5B32] hover:bg-[#094d2a] disabled:bg-gray-200 disabled:text-gray-400 text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md transition disabled:transform-none disabled:cursor-not-allowed"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>Creating Secure Account...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Continue Registration</span>
-                      <ArrowRight size={18} />
-                    </>
-                  )}
-                </button>
-              </div>
+              {/* Submit CTA */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-[#0B5B32] hover:bg-[#084827] text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg disabled:opacity-50 mt-2"
+              >
+                <span>{isLoading ? "Creating Account..." : "Create Account"}</span>
+                <ArrowRight size={16} />
+              </button>
             </form>
 
-            {/* Social Oauth Splitting */}
-            <div className="relative flex items-center pt-2">
-              <div className="flex-grow border-t border-gray-100"></div>
-              <span className="flex-shrink mx-4 text-xs text-gray-400 font-bold uppercase tracking-wider">or sign up with</span>
-              <div className="flex-grow border-t border-gray-100"></div>
+            {/* Social Divider */}
+            <div className="relative flex items-center py-1">
+              <div className="flex-grow border-t border-slate-100"></div>
+              <span className="flex-shrink mx-4 text-[11px] font-bold text-slate-400 tracking-wider uppercase">OR SIGN UP WITH</span>
+              <div className="flex-grow border-t border-slate-100"></div>
             </div>
 
-            {/* Centered Single Google Login Wrapper */}
-            <div className="w-full flex justify-center">
-              <div className="w-full max-w-sm flex justify-center [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full">
+            {/* OAuth buttons wrapper */}
+            <div className="space-y-2.5">
+
+              {/* Google OAuth Component */}
+              <div className="w-full flex justify-center [&>div]:w-full [&_iframe]:!w-full [&_iframe]:!max-w-full">
                 <GoogleLogin
                   onSuccess={async (credentialResponse) => {
                     if (!credentialResponse.credential) return;
                     const response = await googleLogin(
                       credentialResponse.credential
                     );
-                    dispatch(setUserData(response.data))
+                    dispatch(setUserData(response.data));
                     router.replace("/roles");
                   }}
                   onError={() => {
@@ -275,63 +353,29 @@ export default function SignUpPage() {
                   width="100%"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* Core redirection linking */}
-          <div className="text-center mt-6 text-sm text-gray-500 font-medium">
-            Already registered an account?{' '}
-            <a href="/login" className="text-[#10B981] font-extrabold hover:underline">
-              Login here
-            </a>
-          </div>
-        </div>
-
-        {/* Right Column: Dynamic Informative Feature Grid Showcase Sidebar */}
-        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-tr from-gray-900 to-emerald-950 p-12 flex-col justify-between text-white relative order-1 lg:order-2">
-
-          {/* Top Brand Tag */}
-          <div>
-            <div className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
-              <span>🚗 Rescrap</span>
-              <span className="text-[#10B981]">X</span>
-            </div>
-            <p className="text-emerald-400 text-xs font-medium tracking-wide mt-1">Recycle Today, Drive Tomorrow</p>
-          </div>
-
-          {/* Core Corporate Values List Block */}
-          <div className="space-y-8 my-auto pr-4">
-            <div>
-              <h4 className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-1">01 / Secure Assets</h4>
-              <h3 className="text-lg font-bold text-white mb-2">Bank-Level Security Structuring</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">Every piece of user information, document upload, and credential hash is preserved under protected isolated databases.</p>
+              {/* Alternative Mobile Login Secondary Action */}
+              <button
+                type="button"
+                className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 py-2.5 rounded-xl font-bold text-xs xl:text-sm flex items-center justify-center gap-2 transition"
+              >
+                <Phone size={16} className="text-[#0B5B32]" />
+                <span>Continue with Mobile Number</span>
+              </button>
             </div>
 
-            <div>
-              <h4 className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-1">02 / Open Framework</h4>
-              <h3 className="text-lg font-bold text-white mb-2">100% Operational Transparency</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">No hidden processing dues, zero regulatory surprises. Keep real-time tracking loops over valuation estimates directly.</p>
-            </div>
+            {/* Redirect Footer */}
+            <p className="text-center text-xs xl:text-sm text-slate-500 font-medium pt-1">
+              Already have an account?{' '}
+              <a href="/login" className="text-[#0B5B32] font-extrabold hover:underline">
+                Login
+              </a>
+            </p>
 
-            <div>
-              <h4 className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-1">03 / Certified Scrapping</h4>
-              <h3 className="text-lg font-bold text-white mb-2">Legal Compliance Protocols</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">Fully aligned with governmental vehicle deregistration frameworks, delivering formal destruction certifications seamlessly.</p>
-            </div>
-          </div>
-
-          {/* Footer stats signature */}
-          <div className="border-t border-emerald-800/60 pt-4 flex justify-between items-center text-[11px] font-medium text-emerald-300">
-            <span>Clean Tech Certified Platform</span>
-            <span>v2.4.0</span>
           </div>
         </div>
 
       </div>
-
-      <p className="text-center text-xs text-gray-400 font-medium mt-8">
-        © 2026 RescrapX Inc. All legal architecture secured.
-      </p>
     </div>
   );
 }

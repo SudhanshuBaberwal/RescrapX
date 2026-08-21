@@ -643,6 +643,44 @@ class VehicleRepository {
 
     return vehicle.toObject();
   }
+
+  async getCustomerBookings(ownerId: string) {
+    return Vehicle.find({
+      owner: ownerId,
+
+      // Only vehicles which actually became bookings.
+      "auctionResult.partnerId": {
+        $ne: null,
+      },
+
+      status: {
+        $in: [
+          VehicleStatus.SOLD,
+          VehicleStatus.READY_FOR_PICKUP,
+          VehicleStatus.SCHEDULED,
+          VehicleStatus.DRIVER_ASSIGNED,
+          VehicleStatus.PICKED_UP,
+          VehicleStatus.IN_TRANSIT,
+          VehicleStatus.ARRIVED,
+          VehicleStatus.CANCELLED,
+        ],
+      },
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async getCustomerBookingById(ownerId: string, vehicleId: string) {
+    return Vehicle.findOne({
+      _id: vehicleId,
+      owner: ownerId,
+      "auctionResult.partnerId": {
+        $ne: null,
+      },
+    }).lean();
+  }
 }
 
 export default new VehicleRepository();

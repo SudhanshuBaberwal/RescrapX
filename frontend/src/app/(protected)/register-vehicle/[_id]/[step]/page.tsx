@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Footer from '@/components/footer/Footer';
-import Navbar from '@/components/navbar/UserNavbar';
+import Navbar from '@/components/navbar/user/UserNavbar';
 import { RootState } from '@/store/store';
 import { useParams, useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';

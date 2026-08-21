@@ -1,16 +1,19 @@
 import { User } from "@/context/AuthProvider";
 import { IUserDocuments } from "@/context/userDocumentProvider";
+import { CustomerBookingResponse } from "@/context/vehicleProvider";
 import { createSlice } from "@reduxjs/toolkit";
 
 interface UserState {
   userData: User | null;
   userProfileData: IUserDocuments | null;
+  userBookingData: CustomerBookingResponse[] | [];
   loading: boolean;
 }
 
 const initialState: UserState = {
   userData: null,
   userProfileData: null,
+  userBookingData: [],
   loading: true,
 };
 const userSlice = createSlice({
@@ -31,6 +34,10 @@ const userSlice = createSlice({
       state.loading = action.payload;
     },
 
+    setUserBookingData: (state, action) => {
+      state.userBookingData = action.payload;
+    },
+
     clearUser: (state) => {
       state.userData = null;
       state.loading = false;
@@ -38,6 +45,11 @@ const userSlice = createSlice({
   },
 });
 
-export const { setUserData, setLoading, clearUser, setUserProfileData } =
-  userSlice.actions;
+export const {
+  setUserData,
+  setLoading,
+  clearUser,
+  setUserProfileData,
+  setUserBookingData,
+} = userSlice.actions;
 export default userSlice.reducer;

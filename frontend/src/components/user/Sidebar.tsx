@@ -72,8 +72,8 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* Desktop Vertical Full-Height Sidebar (Sticky handled by parent <aside>) */}
-      <div className="hidden lg:flex flex-col justify-between w-full h-[calc(100vh-6rem)] bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
+      {/* Fixed Height Sidebar Container */}
+      <div className="hidden lg:flex flex-col justify-between w-full h-[calc(100vh-8rem)] bg-white border border-gray-100 rounded-2xl p-5 shadow-xs">
 
         {/* Top & Middle Section */}
         <div className="space-y-4 overflow-y-auto no-scrollbar pr-1">
@@ -173,7 +173,7 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Bottom Pinned Security Footer */}
+        {/* Bottom Security Footer */}
         <div className="bg-[#E6F4EA]/50 border border-[#A7F3D0]/40 rounded-xl p-3.5 space-y-1 mt-3 shrink-0">
           <div className="flex items-center gap-1.5 text-[#0B5B32] font-black text-xs">
             <ShieldCheck size={16} className="fill-[#0B5B32] text-white" />

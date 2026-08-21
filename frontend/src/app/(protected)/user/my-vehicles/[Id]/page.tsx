@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import UserNavbar from '@/components/navbar/UserNavbar';
+import UserNavbar from '@/components/navbar/user/UserNavbar';
 import Footer from '@/components/footer/Footer';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';

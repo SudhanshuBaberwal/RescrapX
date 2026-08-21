@@ -10,6 +10,8 @@ import {
   findVehicle,
   getAllVehicles,
   getAllVehiclesWithStatus,
+  getCustomerBookingById,
+  getCustomerBookings,
   getPartnerDocumentVehicles,
   getPartnerIncomingVehicles,
   getPartnerProcessingStats,
@@ -128,11 +130,11 @@ router.get("/admin/all-status", getAllVehiclesWithStatus);
 router.get("/admin/status", getVehicleStatusById);
 router.patch("/admin/arrived", markVehicleArrived);
 
-router.get("/partner/documents/vehicles",  getPartnerDocumentVehicles);
+router.get("/partner/documents/vehicles", getPartnerDocumentVehicles);
 
 router.get(
   "/partner/documents/vehicles/check",
-  
+
   getPartnerVehicleDocuments,
 );
 
@@ -143,5 +145,17 @@ router.post(
 );
 
 router.post("/partner/documents/submit", submitPartnerDocuments);
+
+router.get(
+  "/customer/bookings",
+
+  getCustomerBookings,
+);
+
+router.get(
+  "/customer/bookings",
+
+  getCustomerBookingById,
+);
 
 export default router;
