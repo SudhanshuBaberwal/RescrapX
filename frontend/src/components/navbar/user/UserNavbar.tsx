@@ -24,7 +24,7 @@ export default function Navbar() {
   const navbarItems = [
     { title: "Home", slug: "home", hasDropdown: false },
     { title: "How It Works", slug: "how-it-works", hasDropdown: false },
-    { title: "Services", slug: "services", hasDropdown: true },
+    { title: "Services", slug: "services", hasDropdown: false },
     { title: "Resources", slug: "resources", hasDropdown: true },
     { title: "About Us", slug: "about-us", hasDropdown: false },
     { title: "Contact Us", slug: "contact-us", hasDropdown: false },
@@ -156,7 +156,7 @@ export default function Navbar() {
             <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-600 rounded-full ring-2 ring-white"></span>
           </button>
 
-          <button
+          {userData && <button
             onClick={() => router.push('/?tab=bookings')}
             className="hidden sm:flex items-center gap-2 border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-1.5 rounded-lg text-sm font-bold text-[#0B5B32] transition duration-150"
           >
@@ -165,7 +165,7 @@ export default function Navbar() {
               <p className="leading-tight font-black text-[11px]">My Bookings</p>
               <p className="text-[9px] text-[#10B981] font-medium tracking-wide">Track Status</p>
             </div>
-          </button>
+          </button>}
 
           {userData ? (
             <>

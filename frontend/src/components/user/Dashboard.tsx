@@ -50,7 +50,7 @@ export default function UserDashBoard() {
             <ArrowRight size={16} />
           </button>
           <button onClick={() => router.push("/user/my-vehicles")} className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs sm:text-sm px-6 py-3 rounded-xl flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer">
-            <span>{userData ? "My Vehicles" : "Check My"}</span>
+            <span>{userData ? "My Vehicles" : "How it's work"}</span>
             <Play size={12} className="fill-gray-500 stroke-none" />
           </button>
         </div>
