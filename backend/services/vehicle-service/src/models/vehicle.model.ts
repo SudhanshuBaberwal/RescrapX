@@ -32,6 +32,13 @@ export interface IUploadedPhoto {
   uploadedAt: Date;
 }
 
+export enum PaymentStatus {
+  PENDING = "PENDING",
+  PROOF_UPLOADED = "PROOF_UPLOADED",
+  VERIFIED = "VERIFIED",
+  REJECTED = "REJECTED",
+}
+
 export enum PartnerDocumentSubmissionStatus {
   NOT_STARTED = "NOT_STARTED",
   IN_PROGRESS = "IN_PROGRESS",
@@ -135,6 +142,28 @@ export enum structuralDamage {
   MINOR_DAMAGE = "MINOR_DAMAGE",
   MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
+
+export interface IPaymentProof {
+  _id?: mongoose.Types.ObjectId;
+
+  type: "OWNER_PAYMENT_PROOF" | "PARTNER_PAYMENT_PROOF";
+
+  fileName: string;
+
+  fileUrl: string;
+
+  storagePath?: string | null;
+
+  uploadedBy?: mongoose.Types.ObjectId | null;
+
+  uploadedAt: Date;
+
+  verified: boolean;
+
+  verifiedAt?: Date | null;
+
+  rejectionReason?: string | null;
+}
 export interface IVehicle extends Document {
   owner: mongoose.Types.ObjectId;
   pickupCharges?: number;
@@ -147,6 +176,8 @@ export interface IVehicle extends Document {
   };
 
   status: VehicleStatus;
+  paymentStatus: PaymentStatus;
+  paymentProofs: IPaymentProof[];
   processingStage?: ProcessingStage;
   isRegistered?: boolean;
   currentStep: RegistrationStep;
@@ -650,6 +681,59 @@ const timelineSchema = new Schema(
   { _id: false },
 );
 
+const paymentProofSchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: ["OWNER_PAYMENT_PROOF", "PARTNER_PAYMENT_PROOF"],
+      required: true,
+    },
+
+    fileName: {
+      type: String,
+      required: true,
+    },
+
+    fileUrl: {
+      type: String,
+      required: true,
+    },
+
+    storagePath: {
+      type: String,
+      default: null,
+    },
+
+    uploadedBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+    },
+
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+  },
+  {
+    _id: true,
+  },
+);
+
 const vehicleSchema = new Schema<IVehicle>(
   {
     owner: {
@@ -695,6 +779,17 @@ const vehicleSchema = new Schema<IVehicle>(
 
     partnerDocuments: {
       type: [partnerDocumentSchema],
+      default: [],
+    },
+
+    paymentStatus: {
+      type: String,
+      enum: Object.values(PaymentStatus),
+      default: PaymentStatus.PENDING,
+    },
+
+    paymentProofs: {
+      type: [paymentProofSchema],
       default: [],
     },
     timeline: [timelineSchema],

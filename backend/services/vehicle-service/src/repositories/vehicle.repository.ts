@@ -6,6 +6,7 @@ import Vehicle, {
   PartnerDocumentStatus,
   PartnerDocumentSubmissionStatus,
   PartnerDocumentType,
+  PaymentStatus,
   ProcessingStage,
   RegistrationStep,
   VehicleStatus,
@@ -553,7 +554,7 @@ class VehicleRepository {
 
       status: VehicleStatus.ARRIVED,
 
-      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+      processingStage: ProcessingStage.CERTIFICATE_PENDING,
     })
       .select({
         vehicleDetails: 1,
@@ -574,7 +575,7 @@ class VehicleRepository {
       _id: vehicleId,
       "auctionResult.partnerId": partnerId,
       status: VehicleStatus.ARRIVED,
-      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+      processingStage: ProcessingStage.CERTIFICATE_PENDING,
     });
 
     if (!vehicle) {
@@ -599,7 +600,7 @@ class VehicleRepository {
       vehicle.partnerDocuments.push(document);
     }
 
-    vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.IN_PROGRESS;
+    vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.SUBMITTED;
 
     await vehicle.save();
 
@@ -1007,6 +1008,68 @@ class VehicleRepository {
           "partnerDocuments.$[].rejectionReason": null,
 
           partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
+  }
+
+  async getPaymentVehiclesForPartner(partnerId: string) {
+    return Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+
+      // Vehicle has arrived
+      status: VehicleStatus.ARRIVED,
+
+      // Partner documents approved
+      partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async uploadPartnerPaymentProof(
+    vehicleId: string,
+    partnerId: string,
+    document: {
+      type: string;
+      fileName: string;
+      fileUrl: string;
+      storagePath: string;
+    },
+  ) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        "auctionResult.partnerId": partnerId,
+
+        status: VehicleStatus.ARRIVED,
+
+        partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+      },
+
+      {
+        $push: {
+          paymentProofs: {
+            type: document.type,
+            fileName: document.fileName,
+            fileUrl: document.fileUrl,
+            storagePath: document.storagePath,
+            uploadedBy: partnerId,
+            uploadedAt: new Date(),
+            verified: false,
+          },
+        },
+
+        $set: {
+          paymentStatus: PaymentStatus.PROOF_UPLOADED,
         },
       },
 

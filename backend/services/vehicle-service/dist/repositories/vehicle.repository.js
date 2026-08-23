@@ -1,6 +1,6 @@
 import supabase from "../config/supabase.js";
 import ApiError from "../lib/ApiError.js";
-import Vehicle, { PartnerDocumentStatus, PartnerDocumentSubmissionStatus, PartnerDocumentType, ProcessingStage, RegistrationStep, VehicleStatus, } from "../models/vehicle.model.js";
+import Vehicle, { PartnerDocumentStatus, PartnerDocumentSubmissionStatus, PartnerDocumentType, PaymentStatus, ProcessingStage, RegistrationStep, VehicleStatus, } from "../models/vehicle.model.js";
 export const PROCESSING_STAGE_ORDER = [
     ProcessingStage.VEHICLE_RECEIVED,
     ProcessingStage.INSPECTION_COMPLETED,
@@ -419,7 +419,7 @@ class VehicleRepository {
             _id: vehicleId,
             "auctionResult.partnerId": partnerId,
             status: VehicleStatus.ARRIVED,
-            processingStage: ProcessingStage.VEHICLE_RECEIVED,
+            processingStage: ProcessingStage.CERTIFICATE_PENDING,
         })
             .select({
             vehicleDetails: 1,
@@ -435,7 +435,7 @@ class VehicleRepository {
             _id: vehicleId,
             "auctionResult.partnerId": partnerId,
             status: VehicleStatus.ARRIVED,
-            processingStage: ProcessingStage.VEHICLE_RECEIVED,
+            processingStage: ProcessingStage.CERTIFICATE_PENDING,
         });
         if (!vehicle) {
             return null;
@@ -453,7 +453,7 @@ class VehicleRepository {
         else {
             vehicle.partnerDocuments.push(document);
         }
-        vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.IN_PROGRESS;
+        vehicle.partnerDocumentStatus = PartnerDocumentSubmissionStatus.SUBMITTED;
         await vehicle.save();
         return vehicle.toObject();
     }
@@ -737,6 +737,45 @@ class VehicleRepository {
                 "partnerDocuments.$[].reviewedBy": reviewedBy,
                 "partnerDocuments.$[].rejectionReason": null,
                 partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+            },
+        }, {
+            new: true,
+            runValidators: true,
+        }).lean();
+    }
+    async getPaymentVehiclesForPartner(partnerId) {
+        return Vehicle.find({
+            "auctionResult.partnerId": partnerId,
+            // Vehicle has arrived
+            status: VehicleStatus.ARRIVED,
+            // Partner documents approved
+            partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+        })
+            .sort({
+            updatedAt: -1,
+        })
+            .lean();
+    }
+    async uploadPartnerPaymentProof(vehicleId, partnerId, document) {
+        return Vehicle.findOneAndUpdate({
+            _id: vehicleId,
+            "auctionResult.partnerId": partnerId,
+            status: VehicleStatus.ARRIVED,
+            partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+        }, {
+            $push: {
+                paymentProofs: {
+                    type: document.type,
+                    fileName: document.fileName,
+                    fileUrl: document.fileUrl,
+                    storagePath: document.storagePath,
+                    uploadedBy: partnerId,
+                    uploadedAt: new Date(),
+                    verified: false,
+                },
+            },
+            $set: {
+                paymentStatus: PaymentStatus.PROOF_UPLOADED,
             },
         }, {
             new: true,

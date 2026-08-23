@@ -459,3 +459,39 @@ export const approvePartnerDocuments = async (vehicleId: string) => {
     console.log(error);
   }
 };
+
+export const pendingVehiclesForPayment = async () => {
+  try {
+    const response = await api.get(
+      "/api/vehicle/register/partner/payments/vehicles",
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+export const addPaymentProof = async (data: {
+  vehicleId: string;
+  paymentProof: File;
+}) => {
+  try {
+    const formData = new FormData();
+    // Must match multer field name: 'paymentProof'
+    formData.append("paymentProof", data.paymentProof);
+    formData.append("vehicleId", data.vehicleId);
+
+    const response = await api.post(
+      "/api/vehicle/register/partner/payments/proof",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error in addPaymentProof:", error);
+    throw error;
+  }
+};

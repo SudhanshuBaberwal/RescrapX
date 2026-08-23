@@ -1,4 +1,11 @@
 import mongoose, { Schema } from "mongoose";
+export var PaymentStatus;
+(function (PaymentStatus) {
+    PaymentStatus["PENDING"] = "PENDING";
+    PaymentStatus["PROOF_UPLOADED"] = "PROOF_UPLOADED";
+    PaymentStatus["VERIFIED"] = "VERIFIED";
+    PaymentStatus["REJECTED"] = "REJECTED";
+})(PaymentStatus || (PaymentStatus = {}));
 export var PartnerDocumentSubmissionStatus;
 (function (PartnerDocumentSubmissionStatus) {
     PartnerDocumentSubmissionStatus["NOT_STARTED"] = "NOT_STARTED";
@@ -419,6 +426,47 @@ const timelineSchema = new Schema({
     completed: Boolean,
     completedAt: Date,
 }, { _id: false });
+const paymentProofSchema = new Schema({
+    type: {
+        type: String,
+        enum: ["OWNER_PAYMENT_PROOF", "PARTNER_PAYMENT_PROOF"],
+        required: true,
+    },
+    fileName: {
+        type: String,
+        required: true,
+    },
+    fileUrl: {
+        type: String,
+        required: true,
+    },
+    storagePath: {
+        type: String,
+        default: null,
+    },
+    uploadedBy: {
+        type: Schema.Types.ObjectId,
+        default: null,
+    },
+    uploadedAt: {
+        type: Date,
+        default: Date.now,
+    },
+    verified: {
+        type: Boolean,
+        default: false,
+    },
+    verifiedAt: {
+        type: Date,
+        default: null,
+    },
+    rejectionReason: {
+        type: String,
+        default: null,
+    },
+}, {
+    _id: true,
+});
 const vehicleSchema = new Schema({
     owner: {
         type: Schema.Types.ObjectId,
@@ -462,6 +510,15 @@ const vehicleSchema = new Schema({
     },
     partnerDocuments: {
         type: [partnerDocumentSchema],
+        default: [],
+    },
+    paymentStatus: {
+        type: String,
+        enum: Object.values(PaymentStatus),
+        default: PaymentStatus.PENDING,
+    },
+    paymentProofs: {
+        type: [paymentProofSchema],
         default: [],
     },
     timeline: [timelineSchema],

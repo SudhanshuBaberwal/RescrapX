@@ -17,6 +17,7 @@ import {
   getPartnerDocumentVehicles,
   getPartnerDocumentVehiclesForAdmin,
   getPartnerIncomingVehicles,
+  getPartnerPaymentVehicles,
   getPartnerProcessingStats,
   getPartnerProcessingVehicles,
   getPartnerVehicleDocuments,
@@ -39,6 +40,7 @@ import {
   updatePartnerProcessingStage,
   updateVehicleStatus,
   uploadPartnerDocument,
+  uploadPartnerPaymentProof,
   uploadVehicleDocumentController,
   uploadVehiclePhotosController,
   vehicleCondition,
@@ -55,6 +57,7 @@ import {
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
 import uploadVehicleDocument, {
+  paymentProofUpload,
   uploadVehicleDocumentByPartner,
   uploadVehiclePhotos,
 } from "../middlewares/uploadVehicleDocument.js";
@@ -187,6 +190,14 @@ router.patch(
   "/admin/partner-documents/vehicles/approve",
   adminOnly,
   approveAllPartnerDocuments,
+);
+
+router.get("/partner/payments/vehicles", getPartnerPaymentVehicles);
+
+router.post(
+  "/partner/payments/proof",
+  paymentProofUpload.single("paymentProof"),
+  uploadPartnerPaymentProof,
 );
 
 export default router;

@@ -536,3 +536,34 @@ export const approveAllPartnerDocuments = asyncHandler(async (req, res) => {
         data: vehicle,
     });
 });
+export const getPartnerPaymentVehicles = asyncHandler(async (req, res) => {
+    const partnerId = req.headers["x-user-id"];
+    if (!partnerId) {
+        throw new ApiError(401, "Partner authentication required");
+    }
+    const vehicles = await vehicleService.getPaymentVehiclesForPartner(partnerId);
+    return res.status(200).json({
+        success: true,
+        message: "Payment vehicles fetched successfully",
+        data: vehicles,
+    });
+});
+export const uploadPartnerPaymentProof = asyncHandler(async (req, res) => {
+    const { vehicleId } = req.body;
+    if (!vehicleId) {
+        throw new ApiError(400, "Vehicle ID is required");
+    }
+    if (!req.file) {
+        throw new ApiError(400, "Payment proof file is required");
+    }
+    const partnerId = req.headers["x-user-id"];
+    if (!partnerId) {
+        throw new ApiError(401, "Partner authentication required");
+    }
+    const vehicle = await vehicleService.uploadPartnerPaymentProof(vehicleId, partnerId, req.file);
+    return res.status(200).json({
+        success: true,
+        message: "Payment proof uploaded successfully",
+        data: vehicle,
+    });
+});

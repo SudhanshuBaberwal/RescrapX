@@ -16,7 +16,7 @@ class SupabaseService {
         const extension = file.originalname.split(".").pop();
         const fileName = `${prefix}-${randomUUID()}.${extension}`;
         // Ensure path doesn't have double leading slashes
-        const filePath = `${folder}/${fileName}`.replace(/^\/+/, '');
+        const filePath = `${folder}/${fileName}`.replace(/^\/+/, "");
         // Convert Buffer to Uint8Array for native fetch compatibility
         const fileData = new Uint8Array(file.buffer);
         const { data, error } = await supabase.storage
@@ -52,10 +52,28 @@ class SupabaseService {
     }
     async getPublicUrl(bucket, path) {
         const cleanPath = this.sanitizePath(bucket, path);
-        const { data } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(cleanPath);
+        const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath);
         return data.publicUrl;
     }
+    uploadPaymentProof = async (file, vehicleId) => {
+        const extension = file.originalname.split(".").pop();
+        const fileName = `payment-proofs/${vehicleId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const { error } = await supabase.storage
+            .from("vehicle-documents")
+            .upload(fileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+        });
+        if (error) {
+            throw new Error(`Payment proof upload failed: ${error.message}`);
+        }
+        const { data: publicData } = supabase.storage
+            .from("vehicle-documents")
+            .getPublicUrl(fileName);
+        return {
+            fileUrl: publicData.publicUrl,
+            storagePath: fileName,
+        };
+    };
 }
 export default new SupabaseService();

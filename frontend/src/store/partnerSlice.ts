@@ -14,6 +14,7 @@ interface PartnerState {
   PartnerProcessingYardVehiclesData: IVehicle[] | null;
   PartnerDocumentUploadData: IVehicle[] | null;
   PartnerDashboardData: PartnerDashboardResponse | null;
+  PartnerPaymentData: IVehicle | [];
 }
 
 const initialState: PartnerState = {
@@ -24,6 +25,7 @@ const initialState: PartnerState = {
   PartnerProcessingYardVehiclesData: [],
   PartnerDocumentUploadData: [],
   PartnerDashboardData: null,
+  PartnerPaymentData: [],
 };
 const partnerSlice = createSlice({
   name: "admin",
@@ -50,6 +52,9 @@ const partnerSlice = createSlice({
     setPartnerDashboardData: (state, action) => {
       state.PartnerDashboardData = action.payload;
     },
+    setPartnerPaymentData: (state, action) => {
+      state.PartnerPaymentData = action.payload;
+    },
   },
 });
 
@@ -61,5 +66,6 @@ export const {
   setPartnerProcessingYardData,
   setPartnerDocumentUploadData,
   setPartnerDashboardData,
+  setPartnerPaymentData,
 } = partnerSlice.actions;
 export default partnerSlice.reducer;

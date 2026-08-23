@@ -969,7 +969,6 @@ class VehicleService {
     if (!updatedVehicle) {
       throw new ApiError(404, "Vehicle not found");
     }
-
     return document;
   }
 
@@ -1472,7 +1471,6 @@ class VehicleService {
     return vehicles;
   }
 
-
   async getPartnerDocumentsForAdmin(vehicleId: string) {
     const vehicle =
       await vehicleRepository.getPartnerDocumentsForAdmin(vehicleId);
@@ -1565,6 +1563,136 @@ class VehicleService {
 
     if (!updatedVehicle) {
       throw new ApiError(409, "Documents could not be approved");
+    }
+
+    return updatedVehicle;
+  }
+
+  async getPaymentVehiclesForPartner(partnerId: string) {
+    const vehicles =
+      await vehicleRepository.getPaymentVehiclesForPartner(partnerId);
+
+    return vehicles.map((vehicle) => ({
+      vehicleId: vehicle._id,
+
+      vehicleDetails: {
+        carName: vehicle.vehicleDetails?.carName ?? null,
+        model: vehicle.vehicleDetails?.model ?? null,
+        variant: vehicle.vehicleDetails?.variant ?? null,
+        registrationNumber: vehicle.vehicleDetails?.registrationNumber ?? null,
+        manufacturingYear: vehicle.vehicleDetails?.manufacturingYear ?? null,
+      },
+
+      auction: {
+        auctionId: vehicle.auctionResult?.auctionId ?? null,
+
+        winningBid: vehicle.auctionResult?.winningBid ?? 0,
+
+        wonAt: vehicle.auctionResult?.wonAt ?? null,
+      },
+
+      status: vehicle.status,
+
+      processingStage: vehicle.processingStage,
+
+      partnerDocumentStatus: vehicle.partnerDocumentStatus,
+
+      paymentStatus: vehicle.paymentStatus,
+
+      paymentProofs: vehicle.paymentProofs ?? [],
+
+      updatedAt: vehicle.updatedAt,
+    }));
+  }
+
+  async uploadPartnerPaymentProof(
+    vehicleId: string,
+    partnerId: string,
+    file: Express.Multer.File,
+  ) {
+    // ==========================================
+    // VALIDATE FILE
+    // ==========================================
+
+    if (!file) {
+      throw new ApiError(400, "Payment proof file is required");
+    }
+
+    // ==========================================
+    // FIND VEHICLE
+    // ==========================================
+
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    // ==========================================
+    // VERIFY PARTNER
+    // ==========================================
+
+    if (vehicle.auctionResult?.partnerId?.toString() !== partnerId.toString()) {
+      throw new ApiError(403, "You are not authorized for this vehicle");
+    }
+
+    // ==========================================
+    // DOCUMENTS MUST BE APPROVED
+    // ==========================================
+
+    if (
+      vehicle.partnerDocumentStatus !== PartnerDocumentSubmissionStatus.APPROVED
+    ) {
+      throw new ApiError(400, "Partner documents are not approved yet");
+    }
+
+    // ==========================================
+    // VEHICLE MUST HAVE ARRIVED
+    // ==========================================
+
+    if (vehicle.status !== VehicleStatus.ARRIVED) {
+      throw new ApiError(400, "Vehicle has not arrived yet");
+    }
+
+    // ==========================================
+    // UPLOAD PAYMENT PROOF
+    // ==========================================
+
+    const uploadResult = await supabaseService.uploadToSupabase(
+      file,
+      `vehicles/${vehicleId}/partner-documents/payment-proofs`,
+      "payment-proof",
+    );
+
+    // ==========================================
+    // GENERATE URL
+    // ==========================================
+
+    const fileUrl = await supabaseService.getPublicUrl(
+      "partner-documents",
+      uploadResult.path,
+    );
+
+    // ==========================================
+    // SAVE PAYMENT PROOF IN MONGODB
+    // ==========================================
+
+    const updatedVehicle = await vehicleRepository.uploadPartnerPaymentProof(
+      vehicleId,
+      partnerId,
+      {
+        type: "PARTNER_PAYMENT_PROOF",
+
+        fileName: file.originalname,
+
+        fileUrl,
+
+        storagePath: uploadResult.path,
+      },
+    );
+
+    if (!updatedVehicle) {
+      throw new ApiError(400, "Unable to save payment proof");
     }
 
     return updatedVehicle;

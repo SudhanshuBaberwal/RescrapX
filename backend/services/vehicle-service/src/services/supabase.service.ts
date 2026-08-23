@@ -25,35 +25,35 @@ class SupabaseService {
   }
 
   async uploadToSupabase(
-  file: UploadedFile,
-  folder: string,
-  prefix: string,
-): Promise<UploadResult> {
-  const extension = file.originalname.split(".").pop();
-  const fileName = `${prefix}-${randomUUID()}.${extension}`;
-  
-  // Ensure path doesn't have double leading slashes
-  const filePath = `${folder}/${fileName}`.replace(/^\/+/, '');
+    file: UploadedFile,
+    folder: string,
+    prefix: string,
+  ): Promise<UploadResult> {
+    const extension = file.originalname.split(".").pop();
+    const fileName = `${prefix}-${randomUUID()}.${extension}`;
 
-  // Convert Buffer to Uint8Array for native fetch compatibility
-  const fileData = new Uint8Array(file.buffer);
+    // Ensure path doesn't have double leading slashes
+    const filePath = `${folder}/${fileName}`.replace(/^\/+/, "");
 
-  const { data, error } = await supabase.storage
-    .from("partner-documents")
-    .upload(filePath, fileData, {
-      contentType: file.mimetype,
-      upsert: false,
-    });
+    // Convert Buffer to Uint8Array for native fetch compatibility
+    const fileData = new Uint8Array(file.buffer);
 
-  if (error) {
-    throw error;
+    const { data, error } = await supabase.storage
+      .from("partner-documents")
+      .upload(filePath, fileData, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      path: data.path,
+      fullPath: data.fullPath,
+    };
   }
-
-  return {
-    path: data.path,
-    fullPath: data.fullPath,
-  };
-}
 
   async deleteFile(bucket: string, path: string) {
     const cleanPath = this.sanitizePath(bucket, path);
@@ -65,7 +65,11 @@ class SupabaseService {
     }
   }
 
-  async getSignedUrl(bucket: string, path: string, expiresInSeconds: number = 3600) {
+  async getSignedUrl(
+    bucket: string,
+    path: string,
+    expiresInSeconds: number = 3600,
+  ) {
     const cleanPath = this.sanitizePath(bucket, path);
 
     const { data, error } = await supabase.storage
@@ -82,12 +86,36 @@ class SupabaseService {
   async getPublicUrl(bucket: string, path: string) {
     const cleanPath = this.sanitizePath(bucket, path);
 
-    const { data } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(cleanPath);
+    const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath);
 
     return data.publicUrl;
   }
+
+  uploadPaymentProof = async (file: Express.Multer.File, vehicleId: string) => {
+    const extension = file.originalname.split(".").pop();
+
+    const fileName = `payment-proofs/${vehicleId}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+    const { error } = await supabase.storage
+      .from("vehicle-documents")
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Payment proof upload failed: ${error.message}`);
+    }
+
+    const { data: publicData } = supabase.storage
+      .from("vehicle-documents")
+      .getPublicUrl(fileName);
+
+    return {
+      fileUrl: publicData.publicUrl,
+      storagePath: fileName,
+    };
+  };
 }
 
 export default new SupabaseService();
