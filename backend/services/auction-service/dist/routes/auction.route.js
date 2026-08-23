@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { approveAuction, approveAuctionStart, cancelAdminAuction, checkStartApproval, condifureAuctionVehicle, createAuction, finalizeAuction, getAdminAuctionActivity, getAdminAuctionById, getAdminAuctions, getAdminAuctionStats, getAdminDashboardAuctionData, getAuctionData, getAuctionDataForPartner, getPartnerWonVehicles, getPendingApprovalAuctions, getPendingStartApproval, placeBid, rejectAuctionStart, } from "../controllers/auction.controller.js";
+import { approveAuction, approveAuctionStart, cancelAdminAuction, checkStartApproval, condifureAuctionVehicle, createAuction, finalizeAuction, getAdminAuctionActivity, getAdminAuctionById, getAdminAuctions, getAdminAuctionStats, getAdminDashboardAuctionData, getAuctionData, getAuctionDataForPartner, getPartnerLiveBidding, getPartnerWonVehicles, getPendingApprovalAuctions, getPendingStartApproval, placeBid, rejectAuctionStart, } from "../controllers/auction.controller.js";
 import adminOnly from "../middlewares/adminOnly.js";
 import partnerOnly from "../middlewares/partnerOnly.js";
 import { MyBids } from "../controllers/bid.controller.js";
@@ -27,4 +27,5 @@ router.patch("/admin/:auctionId/cancel", cancelAdminAuction);
 router.get("/partner/my-bids", partnerOnly, MyBids);
 router.get("/admin/dashboard", adminOnly, getAdminDashboardAuctionData);
 router.get("/partner/won-vehicles", partnerOnly, getPartnerWonVehicles);
+router.get("/partner/live-opportunities", partnerOnly, getPartnerLiveBidding);
 export default router;

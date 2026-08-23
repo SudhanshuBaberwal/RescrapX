@@ -1,4 +1,6 @@
-import vehicleRepository from "../repositories/vehicle.repository.js";
+import vehicleRepository, {
+  PROCESSING_STAGE_ORDER,
+} from "../repositories/vehicle.repository.js";
 import Vehicle, {
   IVehicle,
   PartnerDocumentStatus,
@@ -1166,9 +1168,9 @@ class VehicleService {
 
     const vehicleDetails = vehicle.vehicleDetails ?? {};
     const pickup = vehicle.pickup ?? {};
-    const auction = vehicle.auctionResult ;
-    if (!auction){
-      throw new ApiError(400,"No Auction Data for this vehicle ")
+    const auction = vehicle.auctionResult;
+    if (!auction) {
+      throw new ApiError(400, "No Auction Data for this vehicle ");
     }
 
     return {
@@ -1223,6 +1225,349 @@ class VehicleService {
 
       journey: this.getBookingJourney(vehicle),
     };
+  }
+
+  async getPartnerDashboard(partnerId: string) {
+    const [
+      vehicles,
+      ordersWonToday,
+      monthlyRevenue,
+      pendingDocuments,
+      processingStats,
+    ] = await Promise.all([
+      vehicleRepository.getPartnerDashboardVehicles(partnerId),
+
+      vehicleRepository.getPartnerOrdersWonToday(partnerId),
+
+      vehicleRepository.getPartnerMonthlyRevenue(partnerId),
+
+      vehicleRepository.getPartnerPendingDocuments(partnerId),
+
+      vehicleRepository.getPartnerProcessingStats(partnerId),
+    ]);
+
+    const getProcessingCount = (stage: ProcessingStage) => {
+      return (
+        processingStats.find((item: any) => item._id === stage)?.count ?? 0
+      );
+    };
+
+    const vehiclesAwaitingArrival = vehicles.filter((vehicle: any) =>
+      [
+        VehicleStatus.READY_FOR_PICKUP,
+        VehicleStatus.SCHEDULED,
+        VehicleStatus.DRIVER_ASSIGNED,
+        VehicleStatus.PICKED_UP,
+        VehicleStatus.IN_TRANSIT,
+      ].includes(vehicle.status),
+    ).length;
+
+    const vehiclesInProcessing = vehicles.filter((vehicle: any) =>
+      [
+        ProcessingStage.VEHICLE_RECEIVED,
+        ProcessingStage.INSPECTION_COMPLETED,
+        ProcessingStage.DISMANTLING,
+        ProcessingStage.RECYCLING,
+        ProcessingStage.CERTIFICATE_PENDING,
+      ].includes(vehicle.processingStage),
+    ).length;
+
+    const incomingVehicles = vehicles
+      .filter((vehicle: any) =>
+        [
+          VehicleStatus.READY_FOR_PICKUP,
+          VehicleStatus.SCHEDULED,
+          VehicleStatus.DRIVER_ASSIGNED,
+          VehicleStatus.PICKED_UP,
+          VehicleStatus.IN_TRANSIT,
+        ].includes(vehicle.status),
+      )
+      .slice(0, 10)
+      .map((vehicle: any) => ({
+        vehicleId: vehicle._id.toString(),
+
+        vehicleName:
+          vehicle.vehicleDetails?.carName ??
+          vehicle.vehicleDetails?.model ??
+          "Vehicle",
+
+        registrationNumber: vehicle.vehicleDetails?.registrationNumber ?? null,
+
+        status: vehicle.status,
+
+        driver: vehicle.pickup?.assignedDriver ?? null,
+
+        scheduledAt: vehicle.pickup?.scheduledAt ?? null,
+
+        pickupAddress: vehicle.pickup?.formattedAddress ?? null,
+      }));
+
+    const processingOverview = {
+      waitingForArrival: getProcessingCount(
+        ProcessingStage.WAITING_FOR_ARRIVAL,
+      ),
+
+      vehicleReceived: getProcessingCount(ProcessingStage.VEHICLE_RECEIVED),
+
+      inspectionCompleted: getProcessingCount(
+        ProcessingStage.INSPECTION_COMPLETED,
+      ),
+
+      dismantling: getProcessingCount(ProcessingStage.DISMANTLING),
+
+      recycling: getProcessingCount(ProcessingStage.RECYCLING),
+
+      certificatePending: getProcessingCount(
+        ProcessingStage.CERTIFICATE_PENDING,
+      ),
+
+      completed: getProcessingCount(ProcessingStage.COMPLETED),
+    };
+
+    return {
+      summary: {
+        ordersWonToday: ordersWonToday.count,
+
+        ordersWonTodayValue: ordersWonToday.totalValue,
+
+        vehiclesAwaitingArrival,
+
+        vehiclesInProcessing,
+
+        pendingDocuments: pendingDocuments.length,
+
+        monthlyRevenue,
+      },
+
+      liveBiddingOpportunities: [],
+
+      incomingVehicles,
+
+      processingOverview,
+
+      documentsRequired: pendingDocuments.slice(0, 10),
+
+      earnings: {
+        totalRevenue: monthlyRevenue,
+
+        netSettlement: null,
+
+        pendingSettlements: null,
+
+        completedSettlements: null,
+      },
+    };
+  }
+
+  async updatePartnerProcessingStage(
+    vehicleId: string,
+    partnerId: string,
+    nextStage: ProcessingStage,
+  ) {
+    // ==========================================
+    // VALIDATE VEHICLE ID
+    // ==========================================
+
+    if (!vehicleId) {
+      throw new ApiError(400, "Vehicle ID is required");
+    }
+
+    // ==========================================
+    // VALIDATE NEXT STAGE
+    // ==========================================
+
+    const nextStageIndex = PROCESSING_STAGE_ORDER.indexOf(nextStage);
+
+    if (nextStageIndex === -1) {
+      throw new ApiError(400, "Invalid processing stage");
+    }
+
+    // ==========================================
+    // FIND VEHICLE
+    // ==========================================
+
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    // ==========================================
+    // VERIFY PARTNER
+    // ==========================================
+
+    const vehiclePartnerId = vehicle.auctionResult?.partnerId;
+
+    if (!vehiclePartnerId || vehiclePartnerId !== partnerId) {
+      throw new ApiError(403, "You are not authorized to manage this vehicle");
+    }
+
+    // ==========================================
+    // VEHICLE MUST HAVE ARRIVED
+    // ==========================================
+
+    if (vehicle.status !== VehicleStatus.ARRIVED) {
+      throw new ApiError(
+        400,
+        "Vehicle must be arrived before processing can start",
+      );
+    }
+
+    // ==========================================
+    // CURRENT PROCESSING STAGE
+    // ==========================================
+
+    const currentStage = vehicle.processingStage!;
+
+    const currentStageIndex = PROCESSING_STAGE_ORDER.indexOf(currentStage);
+
+    if (currentStageIndex === -1) {
+      throw new ApiError(400, "Current processing stage is invalid");
+    }
+
+    // ==========================================
+    // ALREADY COMPLETED
+    // ==========================================
+
+    if (currentStage === ProcessingStage.COMPLETED) {
+      throw new ApiError(400, "Vehicle processing is already completed");
+    }
+
+    // ==========================================
+    // ONLY ALLOW NEXT STAGE
+    // ==========================================
+
+    if (nextStageIndex !== currentStageIndex + 1) {
+      throw new ApiError(
+        400,
+        `Invalid stage transition. Vehicle is currently at ${currentStage}. It can only move to ${PROCESSING_STAGE_ORDER[currentStageIndex + 1]}.`,
+      );
+    }
+
+    // ==========================================
+    // UPDATE
+    // ==========================================
+
+    const updatedVehicle = await vehicleRepository.updateProcessingStage(
+      vehicleId,
+      partnerId,
+      currentStage,
+      nextStage,
+    );
+
+    if (!updatedVehicle) {
+      throw new ApiError(
+        409,
+        "Vehicle stage was changed by another request. Please refresh and try again.",
+      );
+    }
+
+    return updatedVehicle;
+  }
+
+  async getVehiclesWithPartnerDocumentsForAdmin() {
+    const vehicles =
+      await vehicleRepository.getVehiclesWithPartnerDocumentsForAdmin();
+
+    return vehicles;
+  }
+
+
+  async getPartnerDocumentsForAdmin(vehicleId: string) {
+    const vehicle =
+      await vehicleRepository.getPartnerDocumentsForAdmin(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    return vehicle;
+  }
+
+  async reviewPartnerDocument(
+    vehicleId: string,
+    documentId: string,
+    status: PartnerDocumentStatus,
+    adminId: string,
+    rejectionReason?: string,
+  ) {
+    if (
+      status !== PartnerDocumentStatus.APPROVED &&
+      status !== PartnerDocumentStatus.REJECTED
+    ) {
+      throw new ApiError(400, "Invalid document review status");
+    }
+
+    if (status === PartnerDocumentStatus.REJECTED && !rejectionReason?.trim()) {
+      throw new ApiError(400, "Rejection reason is required");
+    }
+
+    const vehicle = await vehicleRepository.reviewPartnerDocument(
+      vehicleId,
+      documentId,
+      status,
+      adminId,
+      rejectionReason ?? null,
+    );
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle or document not found");
+    }
+
+    return vehicle;
+  }
+
+  async approveAllPartnerDocuments(vehicleId: string, adminId: string) {
+    const vehicle =
+      await vehicleRepository.getPartnerDocumentsForAdmin(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
+    }
+
+    if (
+      vehicle.partnerDocumentStatus !==
+      PartnerDocumentSubmissionStatus.SUBMITTED
+    ) {
+      throw new ApiError(400, "Documents have not been submitted for approval");
+    }
+
+    const documents = vehicle.partnerDocuments ?? [];
+
+    if (documents.length === 0) {
+      throw new ApiError(400, "No partner documents found");
+    }
+
+    // Required documents
+    const requiredDocuments = documents.filter(
+      (document) => document.required === true,
+    );
+
+    if (requiredDocuments.length === 0) {
+      throw new ApiError(400, "No required documents found");
+    }
+    // Check that every required document exists
+    const hasPendingRequiredDocument = requiredDocuments.some(
+      (document) => document.status !== PartnerDocumentStatus.PENDING,
+    );
+
+    if (hasPendingRequiredDocument) {
+      throw new ApiError(
+        400,
+        "Some required documents have already been reviewed",
+      );
+    }
+
+    const updatedVehicle = await vehicleRepository.approveAllPartnerDocuments(
+      vehicleId,
+      adminId,
+    );
+
+    if (!updatedVehicle) {
+      throw new ApiError(409, "Documents could not be approved");
+    }
+
+    return updatedVehicle;
   }
 }
 

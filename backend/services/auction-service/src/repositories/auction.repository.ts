@@ -787,6 +787,44 @@ class AuctionRepository {
 
     return result;
   }
+
+  async getPartnerLiveAuctions(partnerId: string) {
+    const now = new Date();
+
+    return Auction.find({
+      status: AuctionStatus.LIVE,
+
+      startTime: {
+        $lte: now,
+      },
+
+      endTime: {
+        $gt: now,
+      },
+
+      partners: {
+        $elemMatch: {
+          partnerId,
+        },
+      },
+
+      "vehicles.assignedPartnerId": null,
+    })
+      .select({
+        auctionId: 1,
+        startTime: 1,
+        endTime: 1,
+        type: 1,
+        vehicles: 1,
+      })
+      .lean();
+  }
+
+
+
+  
+  
+  
 }
 
 export default new AuctionRepository();

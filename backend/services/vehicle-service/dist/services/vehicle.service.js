@@ -1,5 +1,5 @@
-import vehicleRepository from "../repositories/vehicle.repository.js";
-import Vehicle, { PartnerDocumentStatus, PartnerDocumentSubmissionStatus, PartnerDocumentType, RegistrationStep, VehicleStatus, } from "../models/vehicle.model.js";
+import vehicleRepository, { PROCESSING_STAGE_ORDER, } from "../repositories/vehicle.repository.js";
+import Vehicle, { PartnerDocumentStatus, PartnerDocumentSubmissionStatus, PartnerDocumentType, ProcessingStage, RegistrationStep, VehicleStatus, } from "../models/vehicle.model.js";
 import ApiError from "../lib/ApiError.js";
 import { vehicleDocumentSchema, } from "../validations/vehicle.validation.js";
 import getEditableVehicle from "../helper/editableVehicle.js";
@@ -634,6 +634,384 @@ class VehicleService {
             throw new ApiError(404, "Vehicle not found");
         }
         return document;
+    }
+    async getBookingJourney(vehicle) {
+        const timeline = vehicle.timeline ?? [];
+        const hasTimeline = (titles) => {
+            return timeline.some((item) => item.completed && titles.includes(item.title?.toUpperCase()));
+        };
+        const getTimelineDate = (titles) => {
+            const item = timeline.find((item) => item.completed && titles.includes(item.title?.toUpperCase()));
+            return item?.completedAt ?? null;
+        };
+        const journey = [
+            {
+                step: 1,
+                title: "Sold",
+                completed: vehicle.status !== VehicleStatus.UNSOLD &&
+                    vehicle.auctionResult?.partnerId != null,
+                completedAt: vehicle.auctionResult?.wonAt ?? null,
+            },
+            {
+                step: 2,
+                title: "Ready For Pickup",
+                completed: hasTimeline(["READY FOR PICKUP", "READY_FOR_PICKUP"]) ||
+                    [
+                        VehicleStatus.READY_FOR_PICKUP,
+                        VehicleStatus.SCHEDULED,
+                        VehicleStatus.DRIVER_ASSIGNED,
+                        VehicleStatus.PICKED_UP,
+                        VehicleStatus.IN_TRANSIT,
+                        VehicleStatus.ARRIVED,
+                    ].includes(vehicle.status),
+                completedAt: getTimelineDate(["READY FOR PICKUP", "READY_FOR_PICKUP"]),
+            },
+            {
+                step: 3,
+                title: "Pickup Scheduled",
+                completed: hasTimeline(["PICKUP SCHEDULED", "SCHEDULED"]) ||
+                    [
+                        VehicleStatus.SCHEDULED,
+                        VehicleStatus.DRIVER_ASSIGNED,
+                        VehicleStatus.PICKED_UP,
+                        VehicleStatus.IN_TRANSIT,
+                        VehicleStatus.ARRIVED,
+                    ].includes(vehicle.status),
+                completedAt: vehicle.pickup?.confirmedAt ??
+                    vehicle.pickup?.scheduledAt ??
+                    getTimelineDate(["PICKUP SCHEDULED", "SCHEDULED"]),
+            },
+            {
+                step: 4,
+                title: "Driver Assigned",
+                completed: hasTimeline(["DRIVER ASSIGNED", "DRIVER_ASSIGNED"]) ||
+                    [
+                        VehicleStatus.DRIVER_ASSIGNED,
+                        VehicleStatus.PICKED_UP,
+                        VehicleStatus.IN_TRANSIT,
+                        VehicleStatus.ARRIVED,
+                    ].includes(vehicle.status),
+                completedAt: getTimelineDate(["DRIVER ASSIGNED", "DRIVER_ASSIGNED"]),
+            },
+            {
+                step: 5,
+                title: "Picked Up",
+                completed: hasTimeline(["PICKED UP", "VEHICLE PICKED UP", "CAR PICKED UP"]) ||
+                    [
+                        VehicleStatus.PICKED_UP,
+                        VehicleStatus.IN_TRANSIT,
+                        VehicleStatus.ARRIVED,
+                    ].includes(vehicle.status),
+                completedAt: getTimelineDate([
+                    "PICKED UP",
+                    "VEHICLE PICKED UP",
+                    "CAR PICKED UP",
+                ]),
+            },
+            {
+                step: 6,
+                title: "In Transit",
+                completed: hasTimeline(["IN TRANSIT", "VEHICLE IN TRANSIT"]) ||
+                    [VehicleStatus.IN_TRANSIT, VehicleStatus.ARRIVED].includes(vehicle.status),
+                completedAt: getTimelineDate(["IN TRANSIT", "VEHICLE IN TRANSIT"]),
+            },
+            {
+                step: 7,
+                title: "Arrived",
+                completed: hasTimeline(["ARRIVED", "VEHICLE ARRIVED", "VEHICLE RECEIVED"]) ||
+                    vehicle.status === VehicleStatus.ARRIVED,
+                completedAt: getTimelineDate([
+                    "ARRIVED",
+                    "VEHICLE ARRIVED",
+                    "VEHICLE RECEIVED",
+                ]),
+            },
+            {
+                step: 8,
+                title: "Inspection Complete",
+                completed: hasTimeline(["INSPECTION", "INSPECTION COMPLETED"]) ||
+                    vehicle.processingStage === ProcessingStage.INSPECTION_COMPLETED,
+                completedAt: getTimelineDate(["INSPECTION", "INSPECTION COMPLETED"]),
+            },
+        ];
+        return journey;
+    }
+    async getCustomerBookings(ownerId) {
+        const vehicles = await vehicleRepository.getCustomerBookings(ownerId);
+        return vehicles.map((vehicle) => {
+            const vehicleDetails = vehicle.vehicleDetails ?? {};
+            const pickup = vehicle.pickup ?? {};
+            const auction = vehicle.auctionResult ?? {};
+            const journey = this.getBookingJourney(vehicle);
+            return {
+                bookingId: auction.auctionId ?? vehicle._id.toString(),
+                vehicleId: vehicle._id.toString(),
+                status: vehicle.status,
+                vehicle: {
+                    name: vehicleDetails.carName ??
+                        vehicleDetails.manufacturer ??
+                        vehicleDetails.model ??
+                        "Vehicle",
+                    registrationNumber: vehicleDetails.registrationNumber ?? null,
+                    fuelType: vehicleDetails.fuelType ?? null,
+                    model: vehicleDetails.model ?? null,
+                    variant: vehicleDetails.variant ?? null,
+                },
+                bookingDate: auction.wonAt ?? vehicle.createdAt ?? null,
+                offerAmount: auction.winningBid ?? null,
+                pickup: {
+                    status: vehicle.status,
+                    scheduledAt: pickup.scheduledAt ?? null,
+                    address: (pickup.formattedAddress ??
+                        [pickup.area, pickup.city, pickup.state, pickup.pincode]
+                            .filter(Boolean)
+                            .join(", ")) ||
+                        null,
+                    city: pickup.city ?? null,
+                    state: pickup.state ?? null,
+                    pincode: pickup.pincode ?? null,
+                    contactName: pickup.contactName ?? null,
+                    assignedDriver: pickup.assignedDriver ?? null,
+                },
+                journey,
+            };
+        });
+    }
+    async getCustomerBookingById(ownerId, vehicleId) {
+        const vehicle = await vehicleRepository.getCustomerBookingById(ownerId, vehicleId);
+        if (!vehicle) {
+            throw new ApiError(404, "Booking not found");
+        }
+        const vehicleDetails = vehicle.vehicleDetails ?? {};
+        const pickup = vehicle.pickup ?? {};
+        const auction = vehicle.auctionResult;
+        if (!auction) {
+            throw new ApiError(400, "No Auction Data for this vehicle ");
+        }
+        return {
+            bookingId: auction.auctionId ?? vehicle._id.toString(),
+            vehicleId: vehicle._id.toString(),
+            status: vehicle.status,
+            vehicle: {
+                name: vehicleDetails.carName ??
+                    vehicleDetails.carName ??
+                    vehicleDetails.model ??
+                    "Vehicle",
+                registrationNumber: vehicleDetails.registrationNumber ?? null,
+                fuelType: vehicleDetails.fuelType ?? null,
+                model: vehicleDetails.model ?? null,
+                variant: vehicleDetails.variant ?? null,
+            },
+            bookingDate: auction.wonAt ?? vehicle.createdAt ?? null,
+            offerAmount: auction.winningBid ?? null,
+            pickup: {
+                status: vehicle.status,
+                scheduledAt: pickup.scheduledAt ?? null,
+                address: (pickup.formattedAddress ??
+                    [pickup.area, pickup.city, pickup.state, pickup.pincode]
+                        .filter(Boolean)
+                        .join(", ")) ||
+                    null,
+                city: pickup.city ?? null,
+                state: pickup.state ?? null,
+                pincode: pickup.pincode ?? null,
+                contactName: pickup.contactName ?? null,
+                assignedDriver: pickup.assignedDriver ?? null,
+            },
+            journey: this.getBookingJourney(vehicle),
+        };
+    }
+    async getPartnerDashboard(partnerId) {
+        const [vehicles, ordersWonToday, monthlyRevenue, pendingDocuments, processingStats,] = await Promise.all([
+            vehicleRepository.getPartnerDashboardVehicles(partnerId),
+            vehicleRepository.getPartnerOrdersWonToday(partnerId),
+            vehicleRepository.getPartnerMonthlyRevenue(partnerId),
+            vehicleRepository.getPartnerPendingDocuments(partnerId),
+            vehicleRepository.getPartnerProcessingStats(partnerId),
+        ]);
+        const getProcessingCount = (stage) => {
+            return (processingStats.find((item) => item._id === stage)?.count ?? 0);
+        };
+        const vehiclesAwaitingArrival = vehicles.filter((vehicle) => [
+            VehicleStatus.READY_FOR_PICKUP,
+            VehicleStatus.SCHEDULED,
+            VehicleStatus.DRIVER_ASSIGNED,
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+        ].includes(vehicle.status)).length;
+        const vehiclesInProcessing = vehicles.filter((vehicle) => [
+            ProcessingStage.VEHICLE_RECEIVED,
+            ProcessingStage.INSPECTION_COMPLETED,
+            ProcessingStage.DISMANTLING,
+            ProcessingStage.RECYCLING,
+            ProcessingStage.CERTIFICATE_PENDING,
+        ].includes(vehicle.processingStage)).length;
+        const incomingVehicles = vehicles
+            .filter((vehicle) => [
+            VehicleStatus.READY_FOR_PICKUP,
+            VehicleStatus.SCHEDULED,
+            VehicleStatus.DRIVER_ASSIGNED,
+            VehicleStatus.PICKED_UP,
+            VehicleStatus.IN_TRANSIT,
+        ].includes(vehicle.status))
+            .slice(0, 10)
+            .map((vehicle) => ({
+            vehicleId: vehicle._id.toString(),
+            vehicleName: vehicle.vehicleDetails?.carName ??
+                vehicle.vehicleDetails?.model ??
+                "Vehicle",
+            registrationNumber: vehicle.vehicleDetails?.registrationNumber ?? null,
+            status: vehicle.status,
+            driver: vehicle.pickup?.assignedDriver ?? null,
+            scheduledAt: vehicle.pickup?.scheduledAt ?? null,
+            pickupAddress: vehicle.pickup?.formattedAddress ?? null,
+        }));
+        const processingOverview = {
+            waitingForArrival: getProcessingCount(ProcessingStage.WAITING_FOR_ARRIVAL),
+            vehicleReceived: getProcessingCount(ProcessingStage.VEHICLE_RECEIVED),
+            inspectionCompleted: getProcessingCount(ProcessingStage.INSPECTION_COMPLETED),
+            dismantling: getProcessingCount(ProcessingStage.DISMANTLING),
+            recycling: getProcessingCount(ProcessingStage.RECYCLING),
+            certificatePending: getProcessingCount(ProcessingStage.CERTIFICATE_PENDING),
+            completed: getProcessingCount(ProcessingStage.COMPLETED),
+        };
+        return {
+            summary: {
+                ordersWonToday: ordersWonToday.count,
+                ordersWonTodayValue: ordersWonToday.totalValue,
+                vehiclesAwaitingArrival,
+                vehiclesInProcessing,
+                pendingDocuments: pendingDocuments.length,
+                monthlyRevenue,
+            },
+            liveBiddingOpportunities: [],
+            incomingVehicles,
+            processingOverview,
+            documentsRequired: pendingDocuments.slice(0, 10),
+            earnings: {
+                totalRevenue: monthlyRevenue,
+                netSettlement: null,
+                pendingSettlements: null,
+                completedSettlements: null,
+            },
+        };
+    }
+    async updatePartnerProcessingStage(vehicleId, partnerId, nextStage) {
+        // ==========================================
+        // VALIDATE VEHICLE ID
+        // ==========================================
+        if (!vehicleId) {
+            throw new ApiError(400, "Vehicle ID is required");
+        }
+        // ==========================================
+        // VALIDATE NEXT STAGE
+        // ==========================================
+        const nextStageIndex = PROCESSING_STAGE_ORDER.indexOf(nextStage);
+        if (nextStageIndex === -1) {
+            throw new ApiError(400, "Invalid processing stage");
+        }
+        // ==========================================
+        // FIND VEHICLE
+        // ==========================================
+        const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+        if (!vehicle) {
+            throw new ApiError(404, "Vehicle not found");
+        }
+        // ==========================================
+        // VERIFY PARTNER
+        // ==========================================
+        const vehiclePartnerId = vehicle.auctionResult?.partnerId;
+        if (!vehiclePartnerId || vehiclePartnerId !== partnerId) {
+            throw new ApiError(403, "You are not authorized to manage this vehicle");
+        }
+        // ==========================================
+        // VEHICLE MUST HAVE ARRIVED
+        // ==========================================
+        if (vehicle.status !== VehicleStatus.ARRIVED) {
+            throw new ApiError(400, "Vehicle must be arrived before processing can start");
+        }
+        // ==========================================
+        // CURRENT PROCESSING STAGE
+        // ==========================================
+        const currentStage = vehicle.processingStage;
+        const currentStageIndex = PROCESSING_STAGE_ORDER.indexOf(currentStage);
+        if (currentStageIndex === -1) {
+            throw new ApiError(400, "Current processing stage is invalid");
+        }
+        // ==========================================
+        // ALREADY COMPLETED
+        // ==========================================
+        if (currentStage === ProcessingStage.COMPLETED) {
+            throw new ApiError(400, "Vehicle processing is already completed");
+        }
+        // ==========================================
+        // ONLY ALLOW NEXT STAGE
+        // ==========================================
+        if (nextStageIndex !== currentStageIndex + 1) {
+            throw new ApiError(400, `Invalid stage transition. Vehicle is currently at ${currentStage}. It can only move to ${PROCESSING_STAGE_ORDER[currentStageIndex + 1]}.`);
+        }
+        // ==========================================
+        // UPDATE
+        // ==========================================
+        const updatedVehicle = await vehicleRepository.updateProcessingStage(vehicleId, partnerId, currentStage, nextStage);
+        if (!updatedVehicle) {
+            throw new ApiError(409, "Vehicle stage was changed by another request. Please refresh and try again.");
+        }
+        return updatedVehicle;
+    }
+    async getVehiclesWithPartnerDocumentsForAdmin() {
+        const vehicles = await vehicleRepository.getVehiclesWithPartnerDocumentsForAdmin();
+        return vehicles;
+    }
+    async getPartnerDocumentsForAdmin(vehicleId) {
+        const vehicle = await vehicleRepository.getPartnerDocumentsForAdmin(vehicleId);
+        if (!vehicle) {
+            throw new ApiError(404, "Vehicle not found");
+        }
+        return vehicle;
+    }
+    async reviewPartnerDocument(vehicleId, documentId, status, adminId, rejectionReason) {
+        if (status !== PartnerDocumentStatus.APPROVED &&
+            status !== PartnerDocumentStatus.REJECTED) {
+            throw new ApiError(400, "Invalid document review status");
+        }
+        if (status === PartnerDocumentStatus.REJECTED && !rejectionReason?.trim()) {
+            throw new ApiError(400, "Rejection reason is required");
+        }
+        const vehicle = await vehicleRepository.reviewPartnerDocument(vehicleId, documentId, status, adminId, rejectionReason ?? null);
+        if (!vehicle) {
+            throw new ApiError(404, "Vehicle or document not found");
+        }
+        return vehicle;
+    }
+    async approveAllPartnerDocuments(vehicleId, adminId) {
+        const vehicle = await vehicleRepository.getPartnerDocumentsForAdmin(vehicleId);
+        if (!vehicle) {
+            throw new ApiError(404, "Vehicle not found");
+        }
+        if (vehicle.partnerDocumentStatus !==
+            PartnerDocumentSubmissionStatus.SUBMITTED) {
+            throw new ApiError(400, "Documents have not been submitted for approval");
+        }
+        const documents = vehicle.partnerDocuments ?? [];
+        if (documents.length === 0) {
+            throw new ApiError(400, "No partner documents found");
+        }
+        // Required documents
+        const requiredDocuments = documents.filter((document) => document.required === true);
+        if (requiredDocuments.length === 0) {
+            throw new ApiError(400, "No required documents found");
+        }
+        // Check that every required document exists
+        const hasPendingRequiredDocument = requiredDocuments.some((document) => document.status !== PartnerDocumentStatus.PENDING);
+        if (hasPendingRequiredDocument) {
+            throw new ApiError(400, "Some required documents have already been reviewed");
+        }
+        const updatedVehicle = await vehicleRepository.approveAllPartnerDocuments(vehicleId, adminId);
+        if (!updatedVehicle) {
+            throw new ApiError(409, "Documents could not be approved");
+        }
+        return updatedVehicle;
     }
 }
 export default new VehicleService();

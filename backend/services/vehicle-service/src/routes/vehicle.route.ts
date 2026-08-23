@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   allVehiclesDataForAdmin,
   ApplyForBiddingVehicleController,
+  approveAllPartnerDocuments,
   approveVehicleForPickup,
   assignDriver,
   createVehicleDraft,
@@ -12,7 +13,9 @@ import {
   getAllVehiclesWithStatus,
   getCustomerBookingById,
   getCustomerBookings,
+  getPartnerDashboard,
   getPartnerDocumentVehicles,
+  getPartnerDocumentVehiclesForAdmin,
   getPartnerIncomingVehicles,
   getPartnerProcessingStats,
   getPartnerProcessingVehicles,
@@ -25,6 +28,7 @@ import {
   markVehicleArrived,
   registerBasicVehicleDetails,
   requestPickupOtp,
+  reviewPartnerDocument,
   reviewVehicle,
   schedulePickup,
   scheduleVehiclePickup,
@@ -32,6 +36,7 @@ import {
   submitPartnerDocuments,
   underVerification,
   updateAuctionVehicleStatus,
+  updatePartnerProcessingStage,
   updateVehicleStatus,
   uploadPartnerDocument,
   uploadVehicleDocumentController,
@@ -156,6 +161,32 @@ router.get(
   "/customer/bookings",
 
   getCustomerBookingById,
+);
+
+router.get(
+  "/partner/dashboard",
+
+  getPartnerDashboard,
+);
+
+router.patch("/partner/processing-stage", updatePartnerProcessingStage);
+
+router.get(
+  "/admin/partner-documents/vehicles",
+  adminOnly,
+  getPartnerDocumentVehiclesForAdmin,
+);
+
+router.patch(
+  "/admin/partner-documents/vehicles/review",
+  adminOnly,
+  reviewPartnerDocument,
+);
+
+router.patch(
+  "/admin/partner-documents/vehicles/approve",
+  adminOnly,
+  approveAllPartnerDocuments,
 );
 
 export default router;

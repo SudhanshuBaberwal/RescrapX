@@ -1,316 +1,554 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Wallet, ArrowDownCircle, FileText, Clock, CheckCircle2, 
-  TrendingUp, Calendar, Search, SlidersHorizontal, RotateCcw, 
-  ChevronDown, ChevronLeft, ChevronRight, MoreVertical, 
-  Download, FileCheck, Landmark, ArrowUpRight
+import {
+  FileText, ArrowDownRight, Calendar, Hourglass, CheckCircle2,
+  XCircle, Eye, Copy, X, Filter, ChevronRight, Info
 } from 'lucide-react';
 
+interface Transaction {
+  id: string;
+  bookingId: string;
+  regNumber: string;
+  vehicleName: string;
+  vehicleYear: string;
+  vehicleImage: string;
+  amount: number;
+  serviceFee?: number;
+  date: string;
+  time: string;
+  status: 'Paid' | 'Unpaid';
+  ownerProofName?: string;
+  ownerProofSize?: string;
+  rescrapProofName?: string;
+  rescrapProofSize?: string;
+}
+
+const mockTransactions: Transaction[] = [
+  {
+    id: 'TXN250822001',
+    bookingId: 'BK250822041',
+    regNumber: 'KA 03 AB 1234',
+    vehicleName: 'Maruti Swift VDI',
+    vehicleYear: '2012',
+    vehicleImage: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=150&auto=format&fit=crop&q=80',
+    amount: 18500,
+    serviceFee: 2775,
+    date: '22 Aug 2025',
+    time: '10:35 AM',
+    status: 'Paid',
+    ownerProofName: 'Owner_Payment_Proof.jpg',
+    ownerProofSize: '245 KB • JPG',
+    rescrapProofName: 'RescrapX_Payment_Proof.jpg',
+    rescrapProofSize: '312 KB • JPG',
+  },
+  {
+    id: 'TXN250822002',
+    bookingId: 'BK250822007',
+    regNumber: 'KA 07 MD 7700',
+    vehicleName: 'Toyota Innova 2.5 G',
+    vehicleYear: '2011',
+    vehicleImage: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?w=150&auto=format&fit=crop&q=80',
+    amount: 27000,
+    serviceFee: 4050,
+    date: '22 Aug 2025',
+    time: '09:15 AM',
+    status: 'Paid',
+    ownerProofName: 'Owner_Proof_Innova.pdf',
+    ownerProofSize: '1.2 MB • PDF',
+    rescrapProofName: 'Rescrap_Innova_Receipt.pdf',
+    rescrapProofSize: '890 KB • PDF',
+  },
+  {
+    id: 'TXN250821017',
+    bookingId: 'BK250821012',
+    regNumber: 'KA 05 CD 5678',
+    vehicleName: 'Hyundai i10 Era',
+    vehicleYear: '2011',
+    vehicleImage: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=150&auto=format&fit=crop&q=80',
+    amount: 22000,
+    serviceFee: 3300,
+    date: '21 Aug 2025',
+    time: '04:15 PM',
+    status: 'Paid',
+  },
+  {
+    id: 'TXN250820011',
+    bookingId: 'BK250820029',
+    regNumber: 'KA 02 EF 9101',
+    vehicleName: 'Honda City ZX',
+    vehicleYear: '2010',
+    vehicleImage: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=150&auto=format&fit=crop&q=80',
+    amount: 31000,
+    serviceFee: 4650,
+    date: '20 Aug 2025',
+    time: '11:20 AM',
+    status: 'Paid',
+  },
+  {
+    id: 'TXN250819003',
+    bookingId: 'BK250819008',
+    regNumber: 'KA 04 GH 2245',
+    vehicleName: 'Tata Indica Vista',
+    vehicleYear: '2009',
+    vehicleImage: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?w=150&auto=format&fit=crop&q=80',
+    amount: 12800,
+    serviceFee: 1920,
+    date: '19 Aug 2025',
+    time: '02:45 PM',
+    status: 'Paid',
+  },
+  {
+    id: 'TXN250822008',
+    bookingId: 'BK250822010',
+    regNumber: 'KA 09 XY 4455',
+    vehicleName: 'Mahindra Bolero SLX',
+    vehicleYear: '2013',
+    vehicleImage: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=150&auto=format&fit=crop&q=80',
+    amount: 35000,
+    date: '22 Aug 2025',
+    time: '01:48 PM',
+    status: 'Unpaid',
+  },
+  {
+    id: 'TXN250821020',
+    bookingId: 'BK250821071',
+    regNumber: 'KA 04 MN 3344',
+    vehicleName: 'Skoda Rapid Elegance',
+    vehicleYear: '2012',
+    vehicleImage: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=150&auto=format&fit=crop&q=80',
+    amount: 28600,
+    date: '21 Aug 2025',
+    time: '06:20 PM',
+    status: 'Unpaid',
+  },
+];
+
 export default function PaymentsSettlementsDashboard() {
-  const [activeTab, setActiveTab] = useState('All Transactions');
+  const [selectedTxn, setSelectedTxn] = useState<Transaction>(mockTransactions[0]);
+  const [copied, setCopied] = useState(false);
 
-  const overviewMetrics = [
-    { title: 'Total Earnings', value: '₹28,56,000', label: 'All time', icon: Wallet, style: 'text-emerald-600 bg-emerald-50' },
-    { title: 'Total Deductions', value: '₹1,86,500', label: 'All time', icon: ArrowDownCircle, style: 'text-blue-600 bg-blue-50' },
-    { title: 'Settlements', value: '₹26,69,500', label: 'All time', icon: FileText, style: 'text-purple-600 bg-purple-50' },
-    { title: 'Pending Settlements', value: '₹3,25,000', label: '2 Settlements', icon: Clock, style: 'text-amber-600 bg-amber-50' },
-    { title: 'Paid Settlements', value: '₹23,44,500', label: '12 Settlements', icon: CheckCircle2, style: 'text-emerald-600 bg-emerald-50' },
-    { title: 'This Month Earnings', value: '₹4,85,000', label: '8 Jun - 8 Jul 2025', icon: TrendingUp, style: 'text-amber-600 bg-amber-50' },
-  ];
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  const transactions = [
-    { id: 'WO-250708-0012', vehicle: 'Maruti Swift Dzire 2014', subText: 'Won Order', type: 'Earning', typeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', description: 'Final Offer Amount', subDesc: 'Winning Bid', amount: '+ ₹28,500', amountColor: 'text-emerald-600 font-black', status: 'Pending Settlement', statusColor: 'bg-amber-50 text-amber-700 border-amber-100', date: '08 Jul 2025', time: '10:15 AM' },
-    { id: 'WO-250708-0012-D1', idDisplay: 'WO-250708-0012', vehicle: 'Maruti Swift Dzire 2014', type: 'Deduction', typeColor: 'bg-red-50 text-red-700 border-red-100', description: 'Pickup Charges', subDesc: 'Flat charge', amount: '- ₹1,200', amountColor: 'text-red-600 font-bold', status: 'Deducted', statusColor: 'bg-red-50 text-red-700 border-red-100', date: '08 Jul 2025', time: '10:15 AM' },
-    { id: 'WO-250708-0012-D2', idDisplay: 'WO-250708-0012', vehicle: 'Maruti Swift Dzire 2014', type: 'Deduction', typeColor: 'bg-red-50 text-red-700 border-red-100', description: 'Documentation Charges', subDesc: 'RC & Legal Processing', amount: '- ₹850', amountColor: 'text-red-600 font-bold', status: 'Deducted', statusColor: 'bg-red-50 text-red-700 border-red-100', date: '08 Jul 2025', time: '10:15 AM' },
-    { id: 'WO-250708-0009', vehicle: 'Hyundai i20 2016', subText: 'Won Order', type: 'Earning', typeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', description: 'Final Offer Amount', subDesc: 'Winning Bid', amount: '+ ₹31,000', amountColor: 'text-emerald-600 font-black', status: 'Paid', statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', date: '07 Jul 2025', time: '09:30 AM' },
-    { id: 'WO-250708-0009-D1', idDisplay: 'WO-250708-0009', vehicle: 'Hyundai i20 2016', type: 'Deduction', typeColor: 'bg-red-50 text-red-700 border-red-100', description: 'Pickup Charges', subDesc: 'Flat charge', amount: '- ₹1,200', amountColor: 'text-red-600 font-bold', status: 'Paid', statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', date: '07 Jul 2025', time: '09:30 AM' },
-    { id: 'WO-250708-0009-D2', idDisplay: 'WO-250708-0009', vehicle: 'Hyundai i20 2016', type: 'Deduction', typeColor: 'bg-red-50 text-red-700 border-red-100', description: 'Documentation Charges', subDesc: 'RC & Legal Processing', amount: '- ₹850', amountColor: 'text-red-600 font-bold', status: 'Paid', statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', date: '07 Jul 2025', time: '09:30 AM' },
-    { id: 'WO-250708-0015', vehicle: 'Honda City 2012', subText: 'Won Order', type: 'Earning', typeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', description: 'Final Offer Amount', subDesc: 'Winning Bid', amount: '+ ₹30,000', amountColor: 'text-emerald-600 font-black', status: 'Pending Settlement', statusColor: 'bg-amber-50 text-amber-700 border-amber-100', date: '07 Jul 2025', time: '11:05 AM' },
-    { id: 'WO-250708-0007', vehicle: 'Tata Indica Vista 2011', subText: 'Won Order', type: 'Earning', typeColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', description: 'Final Offer Amount', subDesc: 'Winning Bid', amount: '+ ₹24,000', amountColor: 'text-emerald-600 font-black', status: 'Paid', statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-100', date: '07 Jul 2025', time: '10:20 AM' },
-  ];
+  const formatCurrency = (val: number) => {
+    return '₹' + val.toLocaleString('en-IN');
+  };
 
   return (
-    <div className="space-y-6 w-full text-xs">
-      
-      {/* 1. TOP HEADER BRAND CONTROL ROW */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-        <div>
-          <h3 className="font-black text-gray-900 text-sm">Payments & Settlements</h3>
-          <p className="text-[10px] text-gray-400 font-bold">Track payments, deductions and settlement history.</p>
-        </div>
-        <button className="bg-white border border-gray-200 hover:bg-gray-50 rounded-xl px-3 py-1.5 font-black text-gray-700 flex items-center gap-2 self-start sm:self-auto shadow-3xs cursor-pointer">
-          <Calendar size={13} className="text-[#0B5B32]" />
-          <span>8 Jun 2025 - 8 Jul 2025</span>
-          <ChevronDown size={11} className="text-gray-400" />
-        </button>
-      </div>
+    <div className="w-full space-y-5 text-gray-900 font-sans">
 
-      {/* 2. SUMMARY METRICS HORIZONTAL BANNER GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {overviewMetrics.map((m, idx) => {
-          const Icon = m.icon;
-          return (
-            <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-3xs flex justify-between items-start">
-              <div className="space-y-3">
-                <span className="text-gray-400 font-bold block leading-tight">{m.title}</span>
-                <div>
-                  <span className="text-base font-black text-gray-900 tracking-tight block">{m.value}</span>
-                  <span className="text-[9px] text-gray-400 font-bold block mt-0.5">{m.label}</span>
-                </div>
-              </div>
-              <div className={`p-2 rounded-xl shrink-0 ${m.style}`}><Icon size={14} /></div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 3. MULTI-VARIABLE INPUT FILTER BLOCK */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-3xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          
-          <div className="sm:col-span-2 lg:col-span-1">
-            <span className="text-[10px] text-gray-400 font-black block mb-1">Search</span>
-            <div className="relative">
-              <input type="text" placeholder="Search by Order ID, Vehicle, etc." className="w-full bg-gray-50/50 border border-gray-200 rounded-xl pl-3 pr-8 py-2 text-gray-700 font-medium placeholder-gray-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-700 focus:bg-white" />
-              <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            </div>
+      {/* TOP METRICS STATS CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Transactions */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 font-bold text-xs">Total Transactions</p>
+            <h3 className="text-2xl font-black text-gray-900 mt-1">56</h3>
+            <span className="text-[10px] text-gray-400 font-bold">All time</span>
           </div>
+          <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100/50">
+            <FileText size={20} />
+          </div>
+        </div>
 
-          {['Type', 'Status', 'Settlement Status'].map((fLabel, i) => (
-            <div key={i}>
-              <span className="text-[10px] text-gray-400 font-black block mb-1">{fLabel}</span>
-              <button className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-700 font-bold flex items-center justify-between hover:bg-gray-100/50 transition-all">
-                <span>All{i === 0 ? ' Types' : i === 1 ? ' Statuses' : ''}</span>
-                <ChevronDown size={12} className="text-gray-400" />
+        {/* Total Received */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 font-bold text-xs">Total Received</p>
+            <h3 className="text-2xl font-black text-emerald-600 mt-1">₹8,72,450</h3>
+            <span className="text-[10px] text-gray-400 font-bold">All time</span>
+          </div>
+          <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100/50">
+            <ArrowDownRight size={20} />
+          </div>
+        </div>
+
+        {/* This Month Received */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 font-bold text-xs">This Month Received</p>
+            <h3 className="text-2xl font-black text-blue-600 mt-1">₹1,25,300</h3>
+            <span className="text-[10px] text-gray-400 font-bold">Aug 2025</span>
+          </div>
+          <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100/50">
+            <Calendar size={20} />
+          </div>
+        </div>
+
+        {/* Pending Payouts */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-2xs flex items-center justify-between">
+          <div>
+            <p className="text-gray-400 font-bold text-xs">Pending Payouts</p>
+            <h3 className="text-2xl font-black text-amber-600 mt-1">₹68,200</h3>
+            <span className="text-[10px] text-gray-400 font-bold">5 Transactions</span>
+          </div>
+          <div className="p-3 bg-amber-50 rounded-xl text-amber-600 border border-amber-100/50">
+            <Hourglass size={20} />
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTAINER: TABLE (LEFT) + DETAILS DRAWER (RIGHT) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+
+        {/* LEFT SECTION: TRANSACTIONS TABLE */}
+        <div className="xl:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-4">
+          
+          {/* Filters Bar */}
+          <div className="flex flex-wrap items-center gap-3 border-b border-gray-50 pb-4">
+            <div className="relative">
+              <button className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                <Calendar size={14} className="text-gray-400" />
+                <span>01 Aug 2025 - 22 Aug 2025</span>
               </button>
             </div>
-          ))}
 
-          <div>
-            <span className="text-[10px] text-gray-400 font-black block mb-1">Date Range</span>
-            <button className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2 text-gray-600 font-bold flex items-center justify-between hover:bg-gray-100/50 transition-all">
-              <span className="truncate">8 Jun 2025 - 8 Jul 2025</span>
-              <Calendar size={12} className="text-gray-400 shrink-0 ml-1" />
-            </button>
-          </div>
-
-          <div className="flex items-end gap-2">
-            <button className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl px-3 py-2 font-black text-gray-700 flex items-center justify-center gap-1.5 h-[34px] shadow-3xs cursor-pointer">
-              <SlidersHorizontal size={12} /> <span>Filters</span>
-            </button>
-            <button className="text-gray-400 hover:text-gray-600 font-bold flex items-center justify-center gap-1 text-[11px] h-[34px] px-2 cursor-pointer">
-              <RotateCcw size={11} /> <span className="whitespace-nowrap">Clear All</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 4. SPLIT DATA CANVAS VIEW: SPREADSHEET LEDGER + SIDEBAR INSPECTOR */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
-        
-        {/* MAIN LEDGER SHEET BLOCK */}
-        <div className="lg:col-span-2 xl:col-span-3 bg-white border border-gray-100 rounded-2xl shadow-3xs overflow-hidden">
-          
-          {/* Internal Navigation Anchor Tabs */}
-          <div className="border-b border-gray-100 px-4 pt-2">
-            <div className="flex gap-6 overflow-x-auto scrollbar-none">
-              {['All Transactions', 'Earnings', 'Deductions', 'Settlements'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`pb-2.5 font-black text-[11px] transition-all relative cursor-pointer whitespace-nowrap ${
-                    activeTab === tab ? 'text-[#0B5B32]' : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  {tab}
-                  {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0B5B32] rounded-full" />}
-                </button>
-              ))}
+            <div className="relative">
+              <button className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors">
+                <Filter size={14} className="text-gray-400" />
+                <span>All Status</span>
+              </button>
             </div>
           </div>
 
-          {/* DESKTOP RESPONSIVE GRID MATRIX TABULAR ENGINE */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[750px]">
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[620px]">
               <thead>
-                <tr className="bg-gray-50/60 border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
-                  <th className="py-3 px-4 font-black">Order ID / Vehicle</th>
-                  <th className="py-3 px-2 font-black">Type</th>
-                  <th className="py-3 px-2 font-black">Description</th>
-                  <th className="py-3 px-2 font-black">Amount</th>
-                  <th className="py-3 px-2 font-black">Status</th>
-                  <th className="py-3 px-2 font-black">Date & Time</th>
-                  <th className="py-3 px-4 font-black text-center">Action</th>
+                <tr className="border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
+                  <th className="pb-3 font-extrabold">Transaction ID</th>
+                  <th className="pb-3 font-extrabold">Vehicle Details</th>
+                  <th className="pb-3 font-extrabold">Amount</th>
+                  <th className="pb-3 font-extrabold">Date & Time</th>
+                  <th className="pb-3 font-extrabold">Status</th>
+                  <th className="pb-3 font-extrabold text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
-                {transactions.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50/40 transition-colors">
-                    <td className="py-3.5 px-4 max-w-xs">
-                      <div className="space-y-0.5">
-                        <span className="font-black text-gray-900 block tracking-tight">{item.idDisplay || item.id}</span>
-                        <p className="text-[10px] text-gray-500 font-bold block">{item.vehicle}</p>
-                        {item.subText && <span className="inline-block text-[8px] px-1 bg-gray-100 text-gray-500 rounded font-black mt-0.5 uppercase tracking-wide">{item.subText}</span>}
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-2">
-                      <span className={`px-2 py-0.5 rounded-md font-black text-[9px] uppercase tracking-wider border ${item.typeColor}`}>
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-2">
-                      <p className="font-bold text-gray-800">{item.description}</p>
-                      <p className="text-[9px] text-gray-400 font-medium">{item.subDesc}</p>
-                    </td>
-                    <td className={`py-3.5 px-2 text-[13px] ${item.amountColor}`}>{item.amount}</td>
-                    <td className="py-3.5 px-2">
-                      <span className={`px-2 py-0.5 rounded-md font-black text-[9px] uppercase tracking-wider border ${item.statusColor}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-2 text-gray-500 font-bold text-[10px]">
-                      <p className="text-gray-700">{item.date}</p>
-                      <p className="text-gray-400 font-normal">{item.time}</p>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button className="border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-2.5 py-1 rounded-xl shadow-3xs transition-all h-7 cursor-pointer">
-                          View Details
+              <tbody className="divide-y divide-gray-50 text-xs">
+                {mockTransactions.map((row) => {
+                  const isSelected = selectedTxn.id === row.id;
+                  const isPaid = row.status === 'Paid';
+
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => setSelectedTxn(row)}
+                      className={`group cursor-pointer transition-colors ${
+                        isSelected ? 'bg-gray-50/80' : 'hover:bg-gray-50/50'
+                      }`}
+                    >
+                      {/* Transaction & Booking ID */}
+                      <td className="py-3.5 pr-2">
+                        <p className="font-extrabold text-gray-900 group-hover:text-[#0B5B32] transition-colors">
+                          {row.id}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold">
+                          Booking ID: {row.bookingId}
+                        </p>
+                      </td>
+
+                      {/* Vehicle Details */}
+                      <td className="py-3.5 pr-3">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={row.vehicleImage}
+                            alt={row.vehicleName}
+                            className="w-10 h-10 rounded-lg object-cover border border-gray-100 shrink-0"
+                          />
+                          <div>
+                            <p className="font-extrabold text-gray-900 text-xs">
+                              {row.regNumber}
+                            </p>
+                            <p className="text-[11px] text-gray-500 font-medium leading-tight">
+                              {row.vehicleName}
+                            </p>
+                            <p className="text-[9px] text-gray-400 font-bold">
+                              {row.vehicleYear}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="py-3.5 pr-2">
+                        <p
+                          className={`font-black text-xs ${
+                            isPaid ? 'text-emerald-600' : 'text-red-500'
+                          }`}
+                        >
+                          {formatCurrency(row.amount)}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold">
+                          {isPaid ? 'Received' : 'Pending'}
+                        </p>
+                      </td>
+
+                      {/* Date & Time */}
+                      <td className="py-3.5 pr-2">
+                        <p className="font-extrabold text-gray-800 text-[11px]">
+                          {row.date}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-bold">
+                          {row.time}
+                        </p>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="py-3.5 pr-2">
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={11} /> Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-black bg-red-50 text-red-600 border border-red-200">
+                            <XCircle size={11} /> Unpaid
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Action Button */}
+                      <td className="py-3.5 text-center">
+                        <button
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all ${
+                            isPaid
+                              ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                              : 'bg-white border-red-200 text-red-600 hover:bg-red-50'
+                          }`}
+                        >
+                          <Eye size={12} />
+                          <span>{isPaid ? 'View Proof' : 'View Details'}</span>
+                          <ChevronRight size={12} />
                         </button>
-                        <button className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 cursor-pointer"><MoreVertical size={13} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-
-          {/* MOBILE FEED LIST CARD WRAPPER */}
-          <div className="md:hidden divide-y divide-gray-100">
-            {transactions.map((item, idx) => (
-              <div key={idx} className="p-4 space-y-3">
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <span className="font-black text-gray-900 text-xs">{item.idDisplay || item.id}</span>
-                    <p className="text-[10px] text-gray-500 font-bold">{item.vehicle}</p>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded-md font-black text-[8px] uppercase tracking-wider border ${item.typeColor}`}>
-                    {item.type}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 bg-gray-50/50 p-2.5 rounded-xl border border-gray-100/50">
-                  <div>
-                    <span className="text-[9px] text-gray-400 font-bold block">Description</span>
-                    <p className="font-bold text-gray-800 leading-tight">{item.description}</p>
-                    <p className="text-[9px] text-gray-400">{item.subDesc}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[9px] text-gray-400 font-bold block">Valuation</span>
-                    <p className={`text-sm ${item.amountColor}`}>{item.amount}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex gap-2">
-                    <span className={`px-1.5 py-0.2 rounded font-black text-[8px] uppercase tracking-wider border self-center ${item.statusColor}`}>
-                      {item.status}
-                    </span>
-                    <span className="text-gray-400 font-medium">{item.date} • {item.time}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button className="border border-gray-200 px-2.5 py-1 rounded-lg font-black text-gray-700 text-[10px] bg-white cursor-pointer">
-                      Details
-                    </button>
-                    <button className="p-1 text-gray-400"><MoreVertical size={13} /></button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* SHEET COUNTER PAGINATION FOOTER */}
-          <div className="bg-white border-t border-gray-100 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-400 font-bold text-[11px]">
-            <span>Showing <strong className="text-gray-800 font-black">1 to 8</strong> of <strong className="text-gray-800 font-black">24</strong> transactions</span>
-            <div className="flex items-center gap-1">
-              <button className="w-6 h-6 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400 disabled:opacity-40" disabled><ChevronLeft size={13} /></button>
-              <button className="w-6 h-6 rounded-lg flex items-center justify-center font-black bg-[#0B5B32] text-white">1</button>
-              <button className="w-6 h-6 rounded-lg flex items-center justify-center font-black border border-gray-200 text-gray-700 hover:bg-gray-50">2</button>
-              <button className="w-6 h-6 rounded-lg flex items-center justify-center font-black border border-gray-200 text-gray-700 hover:bg-gray-50">3</button>
-              <button className="w-6 h-6 border border-gray-200 rounded-lg flex items-center justify-center text-gray-400"><ChevronRight size={13} /></button>
-            </div>
-          </div>
-
         </div>
 
-        {/* STICKY STACKED SIDEBAR DETAILS PANEL INSPECTOR */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-3xs space-y-4 lg:sticky lg:top-4">
+        {/* RIGHT SECTION: TRANSACTION DETAILS SIDEBAR */}
+        <div className="xl:col-span-4 bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-5 sticky top-4">
           
-          <div className="flex items-center gap-2 pb-2.5 border-b border-gray-50">
-            <div className="p-1.5 rounded-lg bg-emerald-50 text-[#0B5B32] shrink-0">
-              <FileCheck size={14} />
-            </div>
-            <div>
-              <h4 className="font-black text-gray-900 text-[12px] tracking-tight">Transaction Details</h4>
-            </div>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+            <h3 className="text-sm font-black text-gray-900 tracking-tight">
+              Transaction Details
+            </h3>
+            <button className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Core Fields Content Parameters Matrix */}
-          <div className="space-y-2.5 text-[11px]">
-            {[
-              { label: 'Order ID', value: 'WO-250708-0012', emphasis: 'font-black text-gray-900' },
-              { label: 'Vehicle', value: 'Maruti Swift Dzire 2014', emphasis: 'font-bold text-gray-800' },
-              { label: 'Transaction Type', valBadge: true, valBadgeMarkup: <span className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-black px-2 py-0.2 rounded text-[9px] uppercase tracking-wider">Earning</span> },
-              { label: 'Description', value: 'Final Offer Amount (Winning Bid)', emphasis: 'text-gray-600 font-medium' },
-              { label: 'Amount', valBadge: true, valBadgeMarkup: <span className="text-emerald-600 font-black text-xs flex items-center gap-1"><span>+</span> <span>₹28,500</span></span> },
-              { label: 'Status', valBadge: true, valBadgeMarkup: <span className="bg-amber-50 border border-amber-100 text-amber-700 font-black px-2 py-0.2 rounded text-[9px] uppercase tracking-wider">Pending Settlement</span> },
-              { label: 'Date & Time', value: '08 Jul 2025, 10:15 AM', emphasis: 'text-gray-600 font-medium' },
-            ].map((row, rIdx) => (
-              <div key={rIdx} className="flex justify-between items-start gap-4">
-                <span className="text-gray-400 font-bold shrink-0">{row.label}</span>
-                {row.valBadge ? (
-                  <div className="text-right">{row.valBadgeMarkup}</div>
-                ) : (
-                  <span className={`text-right ${row.emphasis}`}>{row.value}</span>
+          {/* Status Banner */}
+          {selectedTxn.status === 'Paid' ? (
+            <div className="bg-emerald-50/60 border border-emerald-100 p-3 rounded-xl flex items-center gap-2.5 text-emerald-800">
+              <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+              <div>
+                <p className="text-xs font-black">Paid Transaction</p>
+                <p className="text-[10px] text-emerald-600 font-semibold">
+                  Payment has been completed for this booking.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-red-50/60 border border-red-100 p-3 rounded-xl flex items-center gap-2.5 text-red-800">
+              <XCircle size={18} className="text-red-500 shrink-0" />
+              <div>
+                <p className="text-xs font-black">Pending Settlement</p>
+                <p className="text-[10px] text-red-500 font-semibold">
+                  Payment proof is pending upload or verification.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Key Value Details Block */}
+          <div className="space-y-3.5 text-xs">
+            {/* Transaction ID */}
+            <div>
+              <p className="text-[10px] text-gray-400 font-extrabold uppercase">
+                Transaction ID
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="font-extrabold text-gray-900">
+                  {selectedTxn.id}
+                </span>
+                <button
+                  onClick={() => handleCopy(selectedTxn.id)}
+                  className="text-gray-400 hover:text-gray-700"
+                  title="Copy ID"
+                >
+                  <Copy size={13} />
+                </button>
+                {copied && (
+                  <span className="text-[9px] text-emerald-600 font-bold">
+                    Copied!
+                  </span>
                 )}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Secondary Settlement Accounting Meta Block */}
-          <div className="pt-3 border-t border-dashed border-gray-100 space-y-3">
-            <h5 className="font-black text-gray-900 text-[10px] uppercase tracking-wider flex items-center gap-1 text-gray-400">
-              <Landmark size={11} /> <span>Settlement Info</span>
-            </h5>
-            
-            <div className="space-y-2.5 text-[11px]">
-              {[
-                { label: 'Settlement ID', value: 'STL-250708-0004' },
-                { label: 'Expected Settlement Date', value: '10 Jul 2025', emphasis: 'font-black text-gray-800' },
-                { label: 'Settlement Method', value: 'Bank Transfer' },
-                { label: 'Bank Details', value: 'HDFC Bank\nA/c No. **** **** 4567', pre: true },
-              ].map((subRow, sIdx) => (
-                <div key={sIdx} className="flex justify-between items-start gap-4">
-                  <span className="text-gray-400 font-bold shrink-0">{subRow.label}</span>
-                  {subRow.pre ? (
-                    <pre className="text-right font-bold text-gray-800 font-sans leading-tight whitespace-pre-line">{subRow.value}</pre>
-                  ) : (
-                    <span className={`text-right font-bold text-gray-700 ${subRow.emphasis || ''}`}>{subRow.value}</span>
-                  )}
+            {/* Booking ID */}
+            <div>
+              <p className="text-[10px] text-gray-400 font-extrabold uppercase">
+                Booking ID
+              </p>
+              <p className="font-extrabold text-gray-700 mt-0.5">
+                {selectedTxn.bookingId}
+              </p>
+            </div>
+
+            {/* Vehicle Number */}
+            <div>
+              <p className="text-[10px] text-gray-400 font-extrabold uppercase">
+                Vehicle Number
+              </p>
+              <p className="font-black text-gray-900 mt-0.5 text-sm">
+                {selectedTxn.regNumber}
+              </p>
+            </div>
+
+            {/* Vehicle Card Mini */}
+            <div className="flex items-center gap-3 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+              <img
+                src={selectedTxn.vehicleImage}
+                alt={selectedTxn.vehicleName}
+                className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
+              />
+              <div>
+                <p className="font-extrabold text-gray-900 text-xs">
+                  {selectedTxn.vehicleName}
+                </p>
+                <p className="text-[10px] text-gray-400 font-bold">
+                  {selectedTxn.vehicleYear}
+                </p>
+              </div>
+            </div>
+
+            {/* Price Calculations Breakdown */}
+            <div className="border-t border-b border-gray-100 py-3 space-y-2">
+              <div className="flex justify-between text-gray-600 font-bold">
+                <span>Final Agreed Price</span>
+                <span className="text-gray-900">
+                  {formatCurrency(selectedTxn.amount)}
+                </span>
+              </div>
+              {selectedTxn.serviceFee && (
+                <div className="flex justify-between text-gray-500 font-bold">
+                  <span>RescrapX Service Fee</span>
+                  <span className="text-red-500">
+                    -{formatCurrency(selectedTxn.serviceFee)}
+                  </span>
                 </div>
-              ))}
+              )}
+              <div className="flex justify-between text-gray-900 font-black text-sm pt-1 border-t border-gray-50">
+                <span>Total Amount</span>
+                <span className="text-emerald-600">
+                  {formatCurrency(selectedTxn.amount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Status & Timestamp */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-extrabold text-[10px] uppercase">
+                  Payment Status
+                </span>
+                {selectedTxn.status === 'Paid' ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Paid
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-50 text-red-600 border border-red-200">
+                    Unpaid
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-extrabold text-[10px] uppercase">
+                  Date & Time
+                </span>
+                <span className="font-extrabold text-gray-800 text-[11px]">
+                  {selectedTxn.date}, {selectedTxn.time}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Invoice Document Download Button Wrapper */}
-          <div className="pt-2">
-            <button className="w-full bg-white border border-emerald-800/20 hover:bg-emerald-50 text-[#0B5B32] font-black py-2 rounded-xl text-center shadow-3xs transition-all flex items-center justify-center gap-1.5 h-8 border-dashed cursor-pointer">
-              <Download size={13} /> <span>Download Invoice</span>
-            </button>
+          {/* Uploaded Payment Proofs Section */}
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <h4 className="text-xs font-black text-gray-900">
+              Uploaded Payment Proofs
+            </h4>
+
+            {/* Owner Proof */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-gray-400 font-extrabold">
+                Payment Proof of Car Owner
+              </p>
+              <p className="text-[9px] text-gray-400 font-medium">
+                Uploaded on {selectedTxn.date}, 10:32 AM
+              </p>
+              <div className="border border-gray-100 bg-gray-50/50 p-2.5 rounded-xl flex items-center justify-between mt-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={16} className="text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-gray-800 text-[11px] truncate">
+                      {selectedTxn.ownerProofName || 'Owner_Payment_Proof.jpg'}
+                    </p>
+                    <p className="text-[9px] text-gray-400 font-bold">
+                      {selectedTxn.ownerProofSize || '245 KB • JPG'}
+                    </p>
+                  </div>
+                </div>
+                <button className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-extrabold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 shrink-0 shadow-2xs">
+                  <Eye size={12} />
+                  <span>View</span>
+                </button>
+              </div>
+            </div>
+
+            {/* RescrapX Proof */}
+            <div className="space-y-1 pt-1">
+              <p className="text-[10px] text-gray-400 font-extrabold">
+                Payment Proof of ReScrapX
+              </p>
+              <p className="text-[9px] text-gray-400 font-medium">
+                Uploaded on {selectedTxn.date}, 10:33 AM
+              </p>
+              <div className="border border-gray-100 bg-gray-50/50 p-2.5 rounded-xl flex items-center justify-between mt-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={16} className="text-gray-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-gray-800 text-[11px] truncate">
+                      {selectedTxn.rescrapProofName || 'RescrapX_Payment_Proof.jpg'}
+                    </p>
+                    <p className="text-[9px] text-gray-400 font-bold">
+                      {selectedTxn.rescrapProofSize || '312 KB • JPG'}
+                    </p>
+                  </div>
+                </div>
+                <button className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-extrabold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 shrink-0 shadow-2xs">
+                  <Eye size={12} />
+                  <span>View</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Info Notice */}
+          <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-xl flex items-start gap-2 text-blue-800">
+            <Info size={14} className="text-blue-600 shrink-0 mt-0.5" />
+            <p className="text-[10px] font-semibold text-blue-700 leading-snug">
+              You can view the uploaded payment proofs for this completed transaction.
+            </p>
           </div>
 
         </div>

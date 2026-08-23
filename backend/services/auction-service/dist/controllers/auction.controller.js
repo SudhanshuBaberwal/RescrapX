@@ -223,3 +223,14 @@ export const getPartnerWonVehicles = asyncHandler(async (req, res) => {
     const data = await auctionService.getPartnerWonVehicles(partnerId);
     return ApiResponse.success(res, 200, "Partner won vehicles fetched successfully.", data);
 });
+export const getPartnerLiveBidding = asyncHandler(async (req, res) => {
+    const partnerId = req.headers["x-user-id"];
+    if (!partnerId) {
+        throw new ApiError(401, "Unauthorized");
+    }
+    const opportunities = await auctionService.getPartnerLiveBiddingOpportunities(partnerId);
+    return ApiResponse.success(res, 200, "Live bidding opportunities fetched successfully", {
+        opportunities,
+        total: opportunities.length,
+    });
+});

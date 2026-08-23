@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import {
   FileText, Clock, UploadCloud, CheckCircle2, AlertOctagon,
   Calendar, Search, SlidersHorizontal, RotateCcw,
-  ChevronLeft, ChevronRight,
-  X, FileCheck, Loader2, ShieldAlert
+  ChevronLeft, ChevronRight, Eye,
+  X, FileCheck, Loader2, ShieldAlert, Check
 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
@@ -63,9 +63,9 @@ export default function DocumentsDashboard() {
 
   const { PartnerDocumentUploadData } = useSelector((state: RootState) => state.partner);
 
- const rawData: DocumentRecord[] = Array.isArray(PartnerDocumentUploadData)
-  ? (PartnerDocumentUploadData as unknown as DocumentRecord[])
-  : [];
+  const rawData: DocumentRecord[] = Array.isArray(PartnerDocumentUploadData)
+    ? (PartnerDocumentUploadData as unknown as DocumentRecord[])
+    : [];
 
   const [activeTab, setActiveTab] = useState('All Documents');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +143,6 @@ export default function DocumentsDashboard() {
     setIsModalOpen(true);
   };
 
-  // Fixed File Upload API Handler to match Multer & Backend Controller Expectations
   const handleFileUpload = async (docKey: DocStateKey, file: File) => {
     if (!selectedVehicle) return;
     setUploadingField(docKey);
@@ -155,7 +154,6 @@ export default function DocumentsDashboard() {
       formData.append('vehicleId', selectedVehicle.vehicleId);
       formData.append('documentType', config.enumValue);
       formData.append('required', 'true');
-      // Append file using the exact name expected by multer.fields()[cite: 9]
       formData.append(config.multerField, file);
 
       const result = await api.post("/api/vehicle/register/partner/documents/upload", formData, {
@@ -177,7 +175,6 @@ export default function DocumentsDashboard() {
     }
   };
 
-  // Fixed Batch Submit API Handler pointing to correct /submit endpoint
   const handleSubmitAllDocuments = async () => {
     if (!selectedVehicle) return;
     setIsSubmitting(true);
@@ -315,7 +312,11 @@ export default function DocumentsDashboard() {
                   const variant = item.vehicleDetails?.variant || 'Standard';
                   const fuelType = item.vehicleDetails?.fuelType || 'N/A';
                   const updatedDate = item.updatedAt ? new Date(item.updatedAt) : new Date();
-                  const badge = getStatusBadge(item.documents?.submissionStatus);
+                  const submissionStatus = item.documents?.submissionStatus || 'NOT_SUBMITTED';
+                  const badge = getStatusBadge(submissionStatus);
+
+                  const isUploaded = submissionStatus === 'PENDING_VERIFICATION' || submissionStatus === 'SUBMITTED';
+                  const isVerified = submissionStatus === 'VERIFIED';
 
                   return (
                     <tr key={item.vehicleId} className="hover:bg-gray-50/40 transition-colors">
@@ -351,12 +352,29 @@ export default function DocumentsDashboard() {
 
                       <td className="py-4 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => handleOpenUploadModal(item)}
-                            className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-3 py-1.5 rounded-xl shadow-3xs transition-all flex items-center gap-1 h-8 cursor-pointer"
-                          >
-                            <UploadCloud size={12} /> <span>Upload Documents</span>
-                          </button>
+                          {isVerified ? (
+                            <button
+                              disabled
+                              className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-black px-3 py-1.5 rounded-xl text-[10px] flex items-center gap-1.5 cursor-not-allowed"
+                            >
+                              <Check size={12} />
+                              <span>Verified</span>
+                            </button>
+                          ) : isUploaded ? (
+                            <button
+                              // onClick={() => handleOpenUploadModal(item)}
+                              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-black px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 h-8 cursor-pointer"
+                            >
+                              Uploaded
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenUploadModal(item)}
+                              className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-3 py-1.5 rounded-xl shadow-3xs transition-all flex items-center gap-1 h-8 cursor-pointer"
+                            >
+                              <UploadCloud size={12} /> <span>Upload Documents</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -382,13 +400,17 @@ export default function DocumentsDashboard() {
         </div>
       </div>
 
-      {/* 5. UPLOAD DOCUMENTS MODAL */}
+      {/* 5. UPLOAD / VIEW DOCUMENTS MODAL */}
       {isModalOpen && selectedVehicle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 border border-gray-100 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
-                <h4 className="font-black text-gray-900 text-sm">Upload Vehicle Documents</h4>
+                <h4 className="font-black text-gray-900 text-sm">
+                  {selectedVehicle.documents?.submissionStatus === 'SUBMITTED' || selectedVehicle.documents?.submissionStatus === 'PENDING_VERIFICATION'
+                    ? 'Vehicle Documents'
+                    : 'Upload Vehicle Documents'}
+                </h4>
                 <p className="text-[10px] text-gray-400 font-bold">Vehicle ID: {selectedVehicle.vehicleId}</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400">
@@ -426,7 +448,7 @@ export default function DocumentsDashboard() {
                 onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl font-black text-gray-600 text-[11px]"
               >
-                Cancel
+                Close
               </button>
 
               <button
@@ -442,7 +464,7 @@ export default function DocumentsDashboard() {
                 ) : (
                   <>
                     <FileCheck size={13} />
-                    <span>Submit All Documents</span>
+                    <span>Submit Documents</span>
                   </>
                 )}
               </button>

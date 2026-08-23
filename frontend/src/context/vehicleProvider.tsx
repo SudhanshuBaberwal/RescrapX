@@ -287,3 +287,163 @@ export interface CustomerBookingResponse {
     completedAt: Date | null;
   }[];
 }
+
+// src/types/partnerDashboard.ts
+
+// ======================================================
+// VEHICLE STATUS
+// ======================================================
+
+export type AuctionType =
+  | "LIVE"
+  | "INSTANT";
+
+// ======================================================
+// PARTNER DOCUMENT TYPE
+// ======================================================
+export interface PartnerDashboardSummary {
+  ordersWonToday: number;
+
+  ordersWonTodayValue: number;
+
+  vehiclesAwaitingArrival: number;
+
+  vehiclesInProcessing: number;
+
+  pendingDocuments: number;
+
+  monthlyRevenue: number;
+}
+
+// ======================================================
+// LIVE BIDDING OPPORTUNITY
+// ======================================================
+
+export interface LiveBiddingOpportunity {
+  auctionId: string;
+
+  vehicleId: string;
+
+  minimumBid: number | null;
+
+  currentHighestBid: number;
+
+  totalBids: number;
+
+  startTime: string;
+
+  endTime: string;
+
+  /**
+   * Remaining auction time in milliseconds
+   */
+  timeLeft: number;
+
+  type: AuctionType;
+}
+
+// ======================================================
+// INCOMING VEHICLE
+// ======================================================
+
+export interface IncomingVehicle {
+  vehicleId: string;
+
+  vehicleName: string;
+
+  registrationNumber: string | null;
+
+  status: VehicleStatus;
+
+  driver: string | null;
+
+  scheduledAt: string | null;
+
+  pickupAddress: string | null;
+}
+
+// ======================================================
+// PROCESSING YARD OVERVIEW
+// ======================================================
+
+export interface ProcessingOverview {
+  waitingForArrival: number;
+
+  vehicleReceived: number;
+
+  inspectionCompleted: number;
+
+  dismantling: number;
+
+  recycling: number;
+
+  certificatePending: number;
+
+  completed: number;
+}
+
+// ======================================================
+// REQUIRED DOCUMENT
+// ======================================================
+
+export interface PartnerRequiredDocument {
+  vehicleId: string;
+
+  vehicleName: string;
+
+  registrationNumber: string | null;
+
+  documentId: string | undefined;
+
+  type: PartnerDocumentType;
+
+  required: boolean;
+
+  status: PartnerDocumentStatus;
+
+  rejectionReason: string | null;
+}
+
+// ======================================================
+// EARNINGS
+// ======================================================
+
+export interface PartnerDashboardEarnings {
+  totalRevenue: number;
+
+  /**
+   * Currently unavailable because
+   * settlement service/model is not implemented.
+   */
+  netSettlement: number | null;
+
+  pendingSettlements: number | null;
+
+  completedSettlements: number | null;
+}
+
+// ======================================================
+// DASHBOARD DATA
+// ======================================================
+
+export interface PartnerDashboardData {
+  summary: PartnerDashboardSummary;
+
+  liveBiddingOpportunities: LiveBiddingOpportunity[];
+
+  incomingVehicles: IncomingVehicle[];
+
+  processingOverview: ProcessingOverview;
+
+  documentsRequired: PartnerRequiredDocument[];
+
+  earnings: PartnerDashboardEarnings;
+}
+
+// ======================================================
+// COMPLETE API RESPONSE
+// ======================================================
+
+export interface PartnerDashboardResponse {
+  data: PartnerDashboardData;
+}

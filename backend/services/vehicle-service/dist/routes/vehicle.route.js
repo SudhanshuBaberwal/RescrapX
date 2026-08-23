@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { allVehiclesDataForAdmin, ApplyForBiddingVehicleController, approveVehicleForPickup, assignDriver, createVehicleDraft, FindALlVehicleForUserController, findScheduledVehicles, findVehicle, getAllVehicles, getAllVehiclesWithStatus, getPartnerDocumentVehicles, getPartnerIncomingVehicles, getPartnerProcessingStats, getPartnerProcessingVehicles, getPartnerVehicleDocuments, getPickupMap, getReadyForBiddingVehicles, getVehicleDashboardStats, getVehicleStatusById, majorComponents, markVehicleArrived, registerBasicVehicleDetails, reviewVehicle, schedulePickup, scheduleVehiclePickup, setPickupVehicleController, submitPartnerDocuments, underVerification, updateAuctionVehicleStatus, updateVehicleStatus, uploadPartnerDocument, uploadVehicleDocumentController, uploadVehiclePhotosController, vehicleCondition, vehiclePickupLocation, viewDocument, } from "../controllers/vehicle.controller.js";
+import { allVehiclesDataForAdmin, ApplyForBiddingVehicleController, approveAllPartnerDocuments, approveVehicleForPickup, assignDriver, createVehicleDraft, FindALlVehicleForUserController, findScheduledVehicles, findVehicle, getAllVehicles, getAllVehiclesWithStatus, getCustomerBookingById, getCustomerBookings, getPartnerDashboard, getPartnerDocumentVehicles, getPartnerDocumentVehiclesForAdmin, getPartnerIncomingVehicles, getPartnerProcessingStats, getPartnerProcessingVehicles, getPartnerVehicleDocuments, getPickupMap, getReadyForBiddingVehicles, getVehicleDashboardStats, getVehicleStatusById, majorComponents, markVehicleArrived, registerBasicVehicleDetails, reviewPartnerDocument, reviewVehicle, schedulePickup, scheduleVehiclePickup, setPickupVehicleController, submitPartnerDocuments, underVerification, updateAuctionVehicleStatus, updatePartnerProcessingStage, updateVehicleStatus, uploadPartnerDocument, uploadVehicleDocumentController, uploadVehiclePhotosController, vehicleCondition, vehiclePickupLocation, viewDocument, } from "../controllers/vehicle.controller.js";
 import { pickupSchema, vehicleBasicSchema, vehicleConditionSchema, vehicleMajorComponentsSchema, } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
@@ -45,4 +45,11 @@ router.get("/partner/documents/vehicles", getPartnerDocumentVehicles);
 router.get("/partner/documents/vehicles/check", getPartnerVehicleDocuments);
 router.post("/partner/documents/upload", uploadVehicleDocumentByPartner, uploadPartnerDocument);
 router.post("/partner/documents/submit", submitPartnerDocuments);
+router.get("/customer/bookings", getCustomerBookings);
+router.get("/customer/bookings", getCustomerBookingById);
+router.get("/partner/dashboard", getPartnerDashboard);
+router.patch("/partner/processing-stage", updatePartnerProcessingStage);
+router.get("/admin/partner-documents/vehicles", adminOnly, getPartnerDocumentVehiclesForAdmin);
+router.patch("/admin/partner-documents/vehicles/review", adminOnly, reviewPartnerDocument);
+router.patch("/admin/partner-documents/vehicles/approve", adminOnly, approveAllPartnerDocuments);
 export default router;

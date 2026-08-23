@@ -10,6 +10,7 @@ interface AdminState {
   auctionData: IAuction | null;
   pickupDetails: IVehicle | null;
   allVehicles: IVehicle[] | null;
+  PartnerDocuments: IVehicle | null;
 }
 
 const initialState: AdminState = {
@@ -18,6 +19,7 @@ const initialState: AdminState = {
   auctionData: null,
   pickupDetails: null,
   allVehicles: [],
+  PartnerDocuments: null,
 };
 const adminSlice = createSlice({
   name: "admin",
@@ -38,6 +40,9 @@ const adminSlice = createSlice({
     setAllVehicles: (state, action) => {
       state.allVehicles = action.payload;
     },
+    setPartnerDocuments: (state, action) => {
+      state.PartnerDocuments = action.payload;
+    },
   },
 });
 
@@ -47,5 +52,6 @@ export const {
   setAuctionData,
   setPickupDetails,
   setAllVehicles,
+  setPartnerDocuments,
 } = adminSlice.actions;
 export default adminSlice.reducer;

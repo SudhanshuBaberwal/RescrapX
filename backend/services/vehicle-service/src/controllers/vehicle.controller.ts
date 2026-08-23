@@ -5,6 +5,7 @@ import asyncHandler from "../lib/asyncHandler.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import ApiError from "../lib/ApiError.js";
 import Vehicle, {
+  PartnerDocumentStatus,
   PartnerDocumentType,
   VehicleDocumentType,
 } from "../models/vehicle.model.js";
@@ -780,4 +781,136 @@ export const getCustomerBookingById = asyncHandler(async (req, res) => {
     "Booking details fetched successfully",
     booking,
   );
+});
+
+export const getPartnerDashboard = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const dashboard = await vehicleService.getPartnerDashboard(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Partner dashboard fetched successfully",
+    dashboard,
+  );
+});
+
+export const updatePartnerProcessingStage = asyncHandler(async (req, res) => {
+  const { vehicleId, processingStage } = req.body;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "vehicleId is required");
+  }
+
+  if (!processingStage) {
+    throw new ApiError(400, "processingStage is required");
+  }
+
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    throw new ApiError(401, "Partner authentication required");
+  }
+
+  const vehicle = await vehicleService.updatePartnerProcessingStage(
+    vehicleId,
+    partnerId,
+    processingStage,
+  );
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Processing stage updated successfully",
+    vehicle,
+  );
+});
+
+export const getPartnerDocumentVehiclesForAdmin = asyncHandler(
+  async (req, res) => {
+    const vehicles =
+      await vehicleService.getVehiclesWithPartnerDocumentsForAdmin();
+
+    return res.status(200).json({
+      success: true,
+
+      message: "Partner vehicles documents fetched successfully",
+
+      data: vehicles,
+    });
+  },
+);
+
+export const reviewPartnerDocument = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+  const { documentId, status, rejectionReason } = req.body;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  if (!documentId) {
+    throw new ApiError(400, "Document ID is required");
+  }
+
+  if (!status) {
+    throw new ApiError(400, "Document status is required");
+  }
+
+  const adminId = req.headers["x-user-id"] as string;
+
+  if (!adminId) {
+    throw new ApiError(401, "Admin authentication required");
+  }
+
+  const vehicle = await vehicleService.reviewPartnerDocument(
+    vehicleId,
+    documentId,
+    status,
+    adminId,
+    rejectionReason,
+  );
+
+  return res.status(200).json({
+    success: true,
+
+    message:
+      status === PartnerDocumentStatus.APPROVED
+        ? "Document approved successfully"
+        : "Document rejected successfully",
+
+    data: vehicle,
+  });
+});
+
+export const approveAllPartnerDocuments = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  const adminId = req.headers["x-user-id"] as string;
+
+  if (!adminId) {
+    throw new ApiError(401, "Admin authentication required");
+  }
+
+  const vehicle = await vehicleService.approveAllPartnerDocuments(
+    vehicleId,
+    adminId,
+  );
+
+  return res.status(200).json({
+    success: true,
+
+    message: "All partner documents approved successfully",
+
+    data: vehicle,
+  });
 });

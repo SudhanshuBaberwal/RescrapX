@@ -1,23 +1,83 @@
 'use client';
 
 import React from 'react';
-import { 
-  Gavel, Award, Truck, Warehouse, FileText, Wallet, ArrowUpRight, 
-  MapPin, Clock, Upload, ArrowRight, Calendar, AlertCircle
+import {
+  Gavel, Award, Truck, Warehouse, FileText, Wallet, ArrowUpRight,
+  MapPin, Clock, Upload, AlertCircle
 } from 'lucide-react';
+import { getPartnerDashboardData } from '@/hooks/getPartnerDashboardData';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export default function PartnerDashboard() {
+
+  getPartnerDashboardData();
+
+  const { PartnerDashboardData } = useSelector((state: RootState) => state.partner);
+  
+  // Cast to any to safely extract fields and prevent TypeScript type errors
+  const rawData = PartnerDashboardData as any;
+  const dashboard = rawData?.data || rawData;
+  
+  const summary = dashboard?.summary;
+  const earnings = dashboard?.earnings;
+  const processing = dashboard?.processingOverview;
+  const documentsRequired = dashboard?.documentsRequired || [];
+  const liveBidding = dashboard?.liveBiddingOpportunities || [];
+  const incomingVehicles = dashboard?.incomingVehicles || [];
+
+  // Helper formatter for Currency
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) return '₹0';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Dynamic Top Stats Grid setup
   const stats = [
-    { title: 'Live Bidding Opportunities', count: '14', meta: 'Join active sessions', icon: Gavel, color: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-    { title: 'Orders Won Today', count: '3', meta: 'Total value ₹1,24,300', icon: Award, color: 'text-amber-700 bg-amber-50 border-amber-100' },
-    { title: 'Vehicles Awaiting Arrival', count: '5', meta: 'Picked up by RescrapX', icon: Truck, color: 'text-blue-700 bg-blue-50 border-blue-100' },
-    { title: 'Vehicles in Processing', count: '8', meta: 'At your facility', icon: Warehouse, color: 'text-purple-700 bg-purple-50 border-purple-100' },
-    { title: 'Pending Documents', count: '6', meta: 'Action required', icon: FileText, color: 'text-red-700 bg-red-50 border-red-100' },
+    {
+      title: 'Live Bidding Opportunities',
+      count: liveBidding.length.toString(),
+      meta: 'Join active sessions',
+      icon: Gavel,
+      color: 'text-emerald-700 bg-emerald-50 border-emerald-100'
+    },
+    {
+      title: 'Orders Won Today',
+      count: (summary?.ordersWonToday ?? 0).toString(),
+      meta: `Total value ${formatCurrency(summary?.ordersWonTodayValue)}`,
+      icon: Award,
+      color: 'text-amber-700 bg-amber-50 border-amber-100'
+    },
+    {
+      title: 'Vehicles Awaiting Arrival',
+      count: (summary?.vehiclesAwaitingArrival ?? 0).toString(),
+      meta: 'Picked up by RescrapX',
+      icon: Truck,
+      color: 'text-blue-700 bg-blue-50 border-blue-100'
+    },
+    {
+      title: 'Vehicles in Processing',
+      count: (summary?.vehiclesInProcessing ?? 0).toString(),
+      meta: 'At your facility',
+      icon: Warehouse,
+      color: 'text-purple-700 bg-purple-50 border-purple-100'
+    },
+    {
+      title: 'Pending Documents',
+      count: (summary?.pendingDocuments ?? documentsRequired.length ?? 0).toString(),
+      meta: 'Action required',
+      icon: FileText,
+      color: 'text-red-700 bg-red-50 border-red-100'
+    },
   ];
 
   return (
     <div className="space-y-6 w-full">
-      
+
       {/* SECTION 1: TOP STATS ROWS CARDS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {stats.map((stat, idx) => {
@@ -35,7 +95,7 @@ export default function PartnerDashboard() {
             </div>
           );
         })}
-        
+
         {/* REVENUE CARD COMPONENT */}
         <div className="bg-white border border-emerald-100 rounded-2xl p-4 shadow-3xs flex flex-col justify-between space-y-2 bg-gradient-to-br from-emerald-50/10 to-white col-span-1 sm:col-span-2 md:col-span-1">
           <div className="flex justify-between items-start">
@@ -43,9 +103,11 @@ export default function PartnerDashboard() {
             <div className="p-1.5 rounded-lg bg-emerald-50 border border-emerald-100 text-[#0B5B32]"><Wallet size={14} /></div>
           </div>
           <div>
-            <span className="text-xl font-black text-gray-900 block tracking-tight">₹12,45,000</span>
+            <span className="text-xl font-black text-gray-900 block tracking-tight">
+              {formatCurrency(summary?.monthlyRevenue)}
+            </span>
             <span className="text-[9px] text-emerald-600 font-black flex items-center gap-0.5 mt-0.5">
-              <ArrowUpRight size={10} /> +18% vs last month
+              <ArrowUpRight size={10} /> Live total
             </span>
           </div>
         </div>
@@ -53,7 +115,7 @@ export default function PartnerDashboard() {
 
       {/* SECTION 2: LIVE GRID + TRACKING COLUMN SPLITS */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        
+
         {/* LIVE TABLES BIDDING DATA CONTAINER */}
         <div className="xl:col-span-7 bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-3xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 pb-3">
@@ -65,39 +127,42 @@ export default function PartnerDashboard() {
           </div>
 
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            <table className="w-full text-left border-collapse min-w-[540px]">
-              <thead>
-                <tr className="border-b border-gray-100 text-gray-400 font-bold text-[10px]">
-                  <th className="pb-2 font-black">Vehicle Details</th>
-                  <th className="pb-2 font-black">Location</th>
-                  <th className="pb-2 font-black text-center">Time Left</th>
-                  <th className="pb-2 font-black text-right">Highest Bid</th>
-                  <th className="pb-2 font-black text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 text-[11px]">
-                {[
-                  { name: 'Maruti Swift Dzire 2014', sub: 'DL8CAX1122 • Petrol', loc: 'Gurugram, Haryana', dist: '12 km away', time: '00:17:32', bid: '₹28,500' },
-                  { name: 'Hyundai i20 2016', sub: 'HR26AZ7789 • Petrol', loc: 'Gurugram, Haryana', dist: '15 km away', time: '00:22:45', bid: '₹32,000' }
-                ].map((row, idx) => (
-                  <tr key={idx} className="group hover:bg-gray-50/50">
-                    <td className="py-3 pr-2">
-                      <p className="font-black text-gray-800 group-hover:text-[#0B5B32] transition-colors">{row.name}</p>
-                      <p className="text-[10px] text-gray-400 font-bold">{row.sub}</p>
-                    </td>
-                    <td className="py-3 pr-2 text-gray-600 font-medium">
-                      <div className="flex items-center gap-1"><MapPin size={11} className="text-gray-400" /> <span>{row.loc}</span></div>
-                      <span className="text-[9px] text-gray-400 font-bold pl-4">{row.dist}</span>
-                    </td>
-                    <td className="py-3 px-1.5"><span className="font-mono font-bold text-red-600 bg-red-50 text-[10px] px-2 py-1 rounded-md block text-center">{row.time}</span></td>
-                    <td className="py-3 text-right font-black text-gray-900">{row.bid}</td>
-                    <td className="py-3 text-center pl-3">
-                      <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-2.5 py-1.5 rounded-lg transition-all shadow-3xs cursor-pointer">Place Bid</button>
-                    </td>
+            {liveBidding.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-400 font-medium">
+                No active bidding opportunities available right now.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse min-w-[540px]">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-400 font-bold text-[10px]">
+                    <th className="pb-2 font-black">Vehicle Details</th>
+                    <th className="pb-2 font-black">Location</th>
+                    <th className="pb-2 font-black text-center">Time Left</th>
+                    <th className="pb-2 font-black text-right">Highest Bid</th>
+                    <th className="pb-2 font-black text-center">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50 text-[11px]">
+                  {liveBidding.map((row: any, idx: number) => (
+                    <tr key={idx} className="group hover:bg-gray-50/50">
+                      <td className="py-3 pr-2">
+                        <p className="font-black text-gray-800 group-hover:text-[#0B5B32] transition-colors">{row.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold">{row.sub}</p>
+                      </td>
+                      <td className="py-3 pr-2 text-gray-600 font-medium">
+                        <div className="flex items-center gap-1"><MapPin size={11} className="text-gray-400" /> <span>{row.loc}</span></div>
+                        <span className="text-[9px] text-gray-400 font-bold pl-4">{row.dist}</span>
+                      </td>
+                      <td className="py-3 px-1.5"><span className="font-mono font-bold text-red-600 bg-red-50 text-[10px] px-2 py-1 rounded-md block text-center">{row.time}</span></td>
+                      <td className="py-3 text-right font-black text-gray-900">{formatCurrency(row.bid)}</td>
+                      <td className="py-3 text-center pl-3">
+                        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-2.5 py-1.5 rounded-lg transition-all shadow-3xs cursor-pointer">Place Bid</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -109,24 +174,27 @@ export default function PartnerDashboard() {
           </div>
 
           <div className="space-y-3.5">
-            {[
-              { model: 'Maruti Alto 800 2013', id: 'DL8CAM3456', status: 'On The Way', color: 'bg-blue-50 border-blue-200 text-blue-700', driver: 'Ravi Kumar', eta: '35 min' },
-              { model: 'Toyota Etios Liva 2015', id: 'HR55AD9101', status: 'Picked Up', color: 'bg-emerald-50 border-emerald-200 text-[#0B5B32]', driver: 'Mohit Singh', eta: '1 hr 45 min' }
-            ].map((item, idx) => (
-              <div key={idx} className="border border-gray-100 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:border-gray-200 transition-all">
-                <div className="space-y-1 min-w-0">
-                  <h4 className="font-black text-gray-800 truncate">{item.model}</h4>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400 font-bold">
-                    <span>ID: {item.id}</span>
-                    <span>Driver: <strong className="text-gray-600 font-black">{item.driver}</strong></span>
+            {incomingVehicles.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-400 font-medium">
+                No incoming vehicles currently scheduled.
+              </div>
+            ) : (
+              incomingVehicles.map((item: any, idx: number) => (
+                <div key={idx} className="border border-gray-100 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white hover:border-gray-200 transition-all">
+                  <div className="space-y-1 min-w-0">
+                    <h4 className="font-black text-gray-800 truncate">{item.model}</h4>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-400 font-bold">
+                      <span>ID: {item.id}</span>
+                      <span>Driver: <strong className="text-gray-600 font-black">{item.driver}</strong></span>
+                    </div>
+                  </div>
+                  <div className="flex sm:flex-col justify-between sm:items-end gap-2 shrink-0">
+                    <span className="px-2 py-0.5 font-black text-[9px] border rounded-md uppercase tracking-wider text-center bg-blue-50 border-blue-200 text-blue-700">{item.status}</span>
+                    <p className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Clock size={10} /> {item.eta}</p>
                   </div>
                 </div>
-                <div className="flex sm:flex-col justify-between sm:items-end gap-2 shrink-0">
-                  <span className={`px-2 py-0.5 font-black text-[9px] border rounded-md uppercase tracking-wider text-center ${item.color}`}>{item.status}</span>
-                  <p className="text-[10px] text-gray-500 font-bold flex items-center gap-1"><Clock size={10} /> {item.eta}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -134,17 +202,19 @@ export default function PartnerDashboard() {
 
       {/* SECTION 3: BOTTOM GRID OPERATIONAL PILLARS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
+
         {/* YARD TRACKING MODULE */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-3xs space-y-3">
           <h4 className="font-black text-gray-900 text-xs border-b border-gray-50 pb-2">Processing Yard Overview</h4>
           <div className="space-y-2 text-[11px]">
             {[
-              { label: 'Waiting for Arrival', count: 5 },
-              { label: 'Vehicle Received', count: 4 },
-              { label: 'Inspection Completed', count: 3 },
-              { label: 'ELV Dismantling', count: 8 },
-              { label: 'Completed (This Month)', count: 145, highlight: true }
+              { label: 'Waiting for Arrival', count: processing?.waitingForArrival ?? 0 },
+              { label: 'Vehicle Received', count: processing?.vehicleReceived ?? 0 },
+              { label: 'Inspection Completed', count: processing?.inspectionCompleted ?? 0 },
+              { label: 'Dismantling', count: processing?.dismantling ?? 0 },
+              { label: 'Recycling', count: processing?.recycling ?? 0 },
+              { label: 'Certificate Pending', count: processing?.certificatePending ?? 0 },
+              { label: 'Completed', count: processing?.completed ?? 0, highlight: true }
             ].map((yard, idx) => (
               <div key={idx} className="flex justify-between items-center py-0.5 font-bold border-b border-gray-50/40 last:border-0">
                 <span className={yard.highlight ? 'text-emerald-900 font-black' : 'text-gray-500'}>{yard.label}</span>
@@ -160,37 +230,57 @@ export default function PartnerDashboard() {
           <div className="grid grid-cols-2 gap-2.5">
             <div className="bg-gray-50/60 p-2.5 rounded-xl space-y-0.5">
               <span className="text-gray-400 font-bold block text-[9px]">Total Revenue</span>
-              <span className="font-black text-gray-900 text-[13px] tracking-tight">₹12,45,000</span>
+              <span className="font-black text-gray-900 text-[13px] tracking-tight">
+                {formatCurrency(earnings?.totalRevenue)}
+              </span>
             </div>
             <div className="bg-emerald-50/40 border border-emerald-100/60 p-2.5 rounded-xl space-y-0.5">
               <span className="text-emerald-700 font-bold block text-[9px]">Net Settlement</span>
-              <span className="font-black text-[#0B5B32] text-[13px] tracking-tight">₹9,63,000</span>
+              <span className="font-black text-[#0B5B32] text-[13px] tracking-tight">
+                {formatCurrency(earnings?.netSettlement)}
+              </span>
             </div>
           </div>
           <div className="space-y-1.5 pt-1 text-[10px] border-t border-gray-50">
-            <div className="flex justify-between text-gray-400 font-bold"><span>Pending Settlements</span> <span className="text-amber-700 font-black">₹2,15,000</span></div>
-            <div className="flex justify-between text-gray-400 font-bold"><span>Completed Settlements</span> <span className="text-gray-800 font-black">₹7,48,000</span></div>
+            <div className="flex justify-between text-gray-400 font-bold">
+              <span>Pending Settlements</span>
+              <span className="text-amber-700 font-black">{formatCurrency(earnings?.pendingSettlements)}</span>
+            </div>
+            <div className="flex justify-between text-gray-400 font-bold">
+              <span>Completed Settlements</span>
+              <span className="text-gray-800 font-black">{formatCurrency(earnings?.completedSettlements)}</span>
+            </div>
           </div>
         </div>
 
         {/* ATTENTION REQUIRED DOCUMENTS */}
         <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 shadow-3xs space-y-3">
-          <h4 className="font-black text-gray-900 text-xs border-b border-gray-50 pb-2 flex items-center gap-1.5"><AlertCircle size={13} className="text-red-500" /> <span>Documents Required</span></h4>
-          <div className="space-y-2">
-            {[
-              { doc: 'Certificate of Deposit (CoD)', car: 'Maruti Dzire • DL8C' },
-              { doc: 'Chassis Cut Photo', car: 'Toyota Liva • HR55' }
-            ].map((d, i) => (
-              <div key={i} className="border border-red-100 bg-red-50/10 p-2.5 rounded-xl flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-black text-gray-800 truncate leading-tight">{d.doc}</p>
-                  <p className="text-[9px] text-gray-400 font-bold truncate">{d.car}</p>
-                </div>
-                <button className="bg-white border border-red-200 hover:bg-red-50 text-red-600 font-black px-2 py-1 rounded-lg text-[9px] transition-all flex items-center gap-1 shrink-0 shadow-3xs cursor-pointer">
-                  <Upload size={10} /> <span>Upload</span>
-                </button>
+          <h4 className="font-black text-gray-900 text-xs border-b border-gray-50 pb-2 flex items-center gap-1.5">
+            <AlertCircle size={13} className="text-red-500" />
+            <span>Documents Required</span>
+          </h4>
+          <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+            {documentsRequired.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-400 font-medium">
+                No documents pending upload.
               </div>
-            ))}
+            ) : (
+              documentsRequired.map((d: any, i: number) => (
+                <div key={d.documentId || i} className="border border-red-100 bg-red-50/10 p-2.5 rounded-xl flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-black text-gray-800 truncate leading-tight text-[11px]">
+                      {d.type?.replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-[9px] text-gray-400 font-bold truncate">
+                      {d.vehicleName} • {d.registrationNumber}
+                    </p>
+                  </div>
+                  <button className="bg-white border border-red-200 hover:bg-red-50 text-red-600 font-black px-2 py-1 rounded-lg text-[9px] transition-all flex items-center gap-1 shrink-0 shadow-3xs cursor-pointer">
+                    <Upload size={10} /> <span>Upload</span>
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

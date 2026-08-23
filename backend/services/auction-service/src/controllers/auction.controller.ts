@@ -334,3 +334,24 @@ export const getPartnerWonVehicles = asyncHandler(async (req, res) => {
     data,
   );
 });
+
+export const getPartnerLiveBidding = asyncHandler(async (req, res) => {
+  const partnerId = req.headers["x-user-id"] as string;
+
+  if (!partnerId) {
+    throw new ApiError(401, "Unauthorized");
+  }
+
+  const opportunities =
+    await auctionService.getPartnerLiveBiddingOpportunities(partnerId);
+
+  return ApiResponse.success(
+    res,
+    200,
+    "Live bidding opportunities fetched successfully",
+    {
+      opportunities,
+      total: opportunities.length,
+    },
+  );
+});

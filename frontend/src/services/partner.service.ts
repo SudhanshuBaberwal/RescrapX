@@ -36,3 +36,22 @@ export const setPartner = async () => {
     console.log(error)
   }
 }
+
+export const partnerDashboardData = async () => {
+  try {
+    const response1 = await api.get("/api/vehicle/register/partner/dashboard")
+    // const response2 = await api.get("/api/auction/partner/live-opportunities")
+    return response1.data ;
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export const liveBiddingPartnerDashboardData = async () => {
+  try {
+    const response = await api.get("/api/auction/partner/live-opportunities")
+    return response.data;
+  } catch (error) {
+    console.log(error)
+  }
+}

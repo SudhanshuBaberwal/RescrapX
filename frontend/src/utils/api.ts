@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
- 
+// process.env.NEXT_PUBLIC_API_URL
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
@@ -8,6 +8,20 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+let isRedirecting = false;
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !isRedirecting) {
+      isRedirecting = true;
+      localStorage.removeItem("token");
+      window.location.href = "/login"; // Hard redirect clears loop memory
+    }
+    return Promise.reject(error);
+  },
+);
 
 // let isRefreshing = false;
 

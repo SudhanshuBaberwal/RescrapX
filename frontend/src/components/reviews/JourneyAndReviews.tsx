@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState } from 'react';
-import {  useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Star, PlusCircle, Loader } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store/store';
@@ -10,72 +11,77 @@ import { createDraftVehicle } from '@/services/vehicle.service';
 
 export default function JourneyAndReviews() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false)
-  const dispatch = useDispatch<AppDispatch>()
+  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
 
-  const { vehicleData } = useSelector((state: RootState) => state.vehicle)
+  const { vehicleData } = useSelector((state: RootState) => state.vehicle);
+
   const handleRegister = async () => {
-    if (vehicleData != null){
-      router.push(`/register-vehicle/${vehicleData.currentStep}`)
+    if (vehicleData != null) {
+      router.push(`/register-vehicle/${vehicleData.currentStep}`);
       return;
     }
-    setLoading(true)
+    setLoading(true);
     try {
-      await createDraftVehicle()
-      router.push("/user/my-vehicles")
+      await createDraftVehicle();
+      router.push("/user/my-vehicles");
     } catch (error) {
-      console.log(error)
+      console.log(error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <section className="w-full py-4 space-y-14 bg-white">
 
-      {/* ========================================== */}
-      {/* WORKFLOW STEP COMPONENT TIMELINE           */}
-      {/* ========================================== */}
+      {/* WORKFLOW STEP COMPONENT TIMELINE */}
       <div className="text-center space-y-8">
         <div>
           <h2 className="text-2xl font-black text-[#1F2937] tracking-tight">
             Your Vehicle's Journey With <span className="text-[#0B5B32]">RescrapX</span>
           </h2>
-          <div className="w-14 h-[3px] bg-[#10B981] mx-auto mt-2.5 rounded-full"></div>
+          <div className="w-14 h-0.75 bg-[#10B981] mx-auto mt-2.5 rounded-full"></div>
         </div>
 
         {/* Scrollable Timeline Track */}
         <div className="relative overflow-x-auto pb-4 scrollbar-none">
-          <div className="min-w-[950px] flex justify-between items-start px-2 relative">
+          <div className="min-w-237.5 flex justify-between items-start px-2 relative">
 
             {/* Dashed Progress Connector Line */}
-            <div className="absolute top-7 left-14 right-14 h-[2px] border-t-2 border-dashed border-gray-200 z-0"></div>
+            <div className="absolute top-7 left-14 right-14 h-0.5 border-t-2 border-dashed border-gray-200 z-0"></div>
 
-            {/* Render Steps */}
+            {/* Render Steps with Local SVG Assets */}
             {[
-              { id: 1, label: "Valuation Completed", icon: "📋", done: true },
-              { id: 2, label: "Offer Accepted", icon: "🤝", done: true },
-              { id: 3, label: "Pickup Scheduled", icon: "🛻", current: true },
-              { id: 4, label: "Vehicle Picked", icon: "🚛" },
-              { id: 5, label: "Verification Completed", icon: "🔍" },
-              { id: 6, label: "Payment Initiated", icon: "💰" },
-              { id: 7, label: "Certificate Issued", icon: "📜" },
-              { id: 8, label: "RC Deregistration", icon: "🏛️" }
+              { id: 1, label: "Valuation Completed", icon: "/01_valuation_completed.svg", done: true },
+              { id: 2, label: "Offer Accepted", icon: "/02_offer_accepted.svg", done: true },
+              { id: 3, label: "Pickup Scheduled", icon: "/03_pickup_scheduled.svg", current: true },
+              { id: 4, label: "Vehicle Picked", icon: "/04_vehicle_picked.svg" },
+              { id: 5, label: "Verification Completed", icon: "/05_verification_completed.svg" },
+              { id: 6, label: "Payment Initiated", icon: "/06_payment_initiated.svg" },
+              { id: 7, label: "Certificate Issued", icon: "/07_certificate_issued.svg" },
+              { id: 8, label: "RC Deregistration", icon: "/08_rc_deregistration.svg" }
             ].map((step) => (
               <div key={step.id} className="flex flex-col items-center space-y-2.5 z-10 w-24">
 
-                {/* Main Step Icon Badge Wrapper */}
+                {/* Main Step SVG Icon Badge Wrapper */}
                 <div className="relative">
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl border transition-all ${step.current
-                    ? 'bg-[#0B5B32] border-[#0B5B32] text-white shadow-md'
-                    : step.done
-                      ? 'bg-white border-[#10B981] text-[#0B5B32]'
-                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center p-1 border transition-all ${step.current
+                      ? 'bg-white border-[#0B5B32] shadow-md ring-2 ring-[#0B5B32]/20'
+                      : step.done
+                        ? 'bg-white border-[#10B981]'
+                        : 'bg-gray-50 border-gray-200 opacity-60'
                     }`}>
-                    <span>{step.icon}</span>
+                    <Image
+                      src={step.icon}
+                      alt={step.label}
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-contain"
+                    />
                   </div>
 
-                  {/* Step Completed Tiny Green Indicator Ring */}
+                  {/* Step Completed Indicator Ring */}
                   {step.done && (
                     <div className="absolute -bottom-0.5 -right-0.5 bg-[#10B981] rounded-full p-0.5 border border-white">
                       <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth="4" viewBox="0 0 24 24">
@@ -87,15 +93,15 @@ export default function JourneyAndReviews() {
 
                 {/* Step ID Counter Label */}
                 <div className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center border transition-all ${step.current
-                  ? 'bg-[#10B981] text-white border-[#10B981]'
-                  : step.done
-                    ? 'bg-[#E6F4EA] text-[#0B5B32] border-[#A7F3D0]'
-                    : 'bg-gray-100 text-gray-400 border-gray-200'
+                    ? 'bg-[#10B981] text-white border-[#10B981]'
+                    : step.done
+                      ? 'bg-[#E6F4EA] text-[#0B5B32] border-[#A7F3D0]'
+                      : 'bg-gray-100 text-gray-400 border-gray-200'
                   }`}>
                   {step.id}
                 </div>
 
-                {/* Dynamic Step Copywriting */}
+                {/* Step Copywriting */}
                 <p className={`text-[11px] leading-tight font-bold tracking-tight text-center ${step.current ? 'text-[#0B5B32] font-extrabold' : 'text-gray-500'
                   }`}>
                   {step.label}
@@ -105,22 +111,20 @@ export default function JourneyAndReviews() {
           </div>
         </div>
 
-        {/* NEW: Interactive Dynamic Form Core Redirection Link CTA */}
+        {/* Dynamic Form Redirection CTA */}
         <div className="pt-2">
           <button
             onClick={handleRegister}
             className="inline-flex items-center gap-2 bg-[#E6F4EA] hover:bg-[#d8f0dd] text-[#0B5B32] font-black text-xs px-6 py-3 rounded-full transition-all duration-200 shadow-3xs hover:shadow-2xs active:scale-[0.99]"
           >
             <PlusCircle size={15} className="stroke-[2.5]" />
-            <span>{loading ? <Loader /> : "Register a New Vehicle for Scrapping"}</span>
+            <span>{loading ? <Loader className="animate-spin" size={15} /> : "Register a New Vehicle for Scrapping"}</span>
             <ArrowRight size={14} className="stroke-[2.5] ml-0.5" />
           </button>
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* AUXILIARY FLEET EXPANSION BANNER COMPONENT */}
-      {/* ========================================== */}
+      {/* AUXILIARY FLEET EXPANSION BANNER */}
       <div className="bg-[#F3F4F6] border border-gray-200 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 overflow-hidden relative shadow-2xs">
         <div className="space-y-2 text-center md:text-left z-10 md:max-w-lg">
           <h3 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Have another vehicle <br className="sm:hidden" /> to scrap?</h3>
@@ -129,7 +133,6 @@ export default function JourneyAndReviews() {
           </p>
         </div>
 
-        {/* Interactive CTA & Graphics Frame Right Anchor */}
         <div className="flex items-center gap-6 z-10 w-full md:w-auto justify-between md:justify-end flex-wrap sm:flex-nowrap">
           <button
             onClick={() => router.push('?tab=register-vehicle')}
@@ -145,11 +148,8 @@ export default function JourneyAndReviews() {
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* BRAND REVIEW STATISTICS TRUST INLINE BAR   */}
-      {/* ========================================== */}
+      {/* BRAND REVIEW STATISTICS BAR */}
       <div className="bg-white border border-gray-100 rounded-xl px-2 py-4 shadow-2xs grid grid-cols-2 md:grid-cols-5 gap-4 text-center items-center">
-
         <div className="space-y-1">
           <div className="flex items-center justify-center gap-1.5 text-gray-900">
             <span className="text-base font-black tracking-tight">10,000+</span>
@@ -185,7 +185,6 @@ export default function JourneyAndReviews() {
           </div>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Compliant Platform</p>
         </div>
-
       </div>
 
     </section>

@@ -720,6 +720,45 @@ class AuctionService {
       vehicles,
     };
   }
+
+  async getPartnerLiveBiddingOpportunities(partnerId: string) {
+    const auctions = await auctionRepository.getPartnerLiveAuctions(partnerId);
+
+    const opportunities: any[] = [];
+
+    for (const auction of auctions) {
+      for (const vehicle of auction.vehicles) {
+        if (vehicle.assignedPartnerId) {
+          continue;
+        }
+
+        opportunities.push({
+          auctionId: auction.auctionId,
+
+          vehicleId: vehicle.vehicleId,
+
+          minimumBid: vehicle.minimumBid,
+
+          currentHighestBid: vehicle.currentHighestBid,
+
+          totalBids: vehicle.totalBids,
+
+          startTime: auction.startTime,
+
+          endTime: auction.endTime,
+
+          timeLeft: Math.max(
+            0,
+            new Date(auction.endTime).getTime() - Date.now(),
+          ),
+
+          type: auction.type,
+        });
+      }
+    }
+
+    return opportunities;
+  }
 }
 
 export default new AuctionService();

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -17,11 +17,18 @@ export default function Footer() {
   const router = useRouter();
   const { showToast } = useToast();
   const { userData } = useSelector((state: RootState) => state.user);
-  const isroleSelected = userData?.roleSelected;
 
-  // Local UI States
+  // Client-side Mount state to prevent hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Check roleSelected safely after client hydration
+  const isroleSelected = isMounted ? userData?.roleSelected : false;
 
   const handlePartnerSignup = async () => {
     if (loading || isSuccess) return;

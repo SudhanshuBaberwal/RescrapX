@@ -1,234 +1,699 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Search, FileText, CheckCircle2, AlertOctagon,
+  Eye, X, ExternalLink, Check, Ban, Loader2
+} from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import { getAdminToPartnerDocuments } from '@/hooks/getAdminToPartnerDocuments';
+import axios from 'axios';
+import { approvePartnerDocuments, revirePartnerUploadedDocumentByAdmin } from '@/services/vehicle.service';
+import { useToast } from '@/lib/ui/toast/ToastContext';
 
-export const DocumentsCompliance: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('CVS');
-  const [selectedRequest, setSelectedRequest] = useState<string>('RQ250600125');
+interface PartnerDocItem {
+  _id?: string;
+  id?: string;
+  type: string;
+  required?: boolean;
+  path?: string;
+  url?: string;
+  fullPath?: string;
+  key?: string;
+  status?: 'APPROVED' | 'REJECTED' | 'PENDING';
+  rejectionReason?: string;
+}
 
-  const complianceKPIs = [
-    { title: 'Total Documents', value: '1,248', sub: 'All CVS & COD', color: 'text-slate-500 bg-slate-50' },
-    { title: 'Uploaded (This Month)', value: '346', sub: '▲ 18% vs last month', color: 'text-emerald-600 bg-emerald-50' },
-    { title: 'Approved', value: '912', sub: '73.1% of total', color: 'text-emerald-600 bg-emerald-50' },
-    { title: 'Pending Review', value: '214', sub: '17.1% of total', color: 'text-amber-600 bg-amber-50' },
-    { title: 'Rejected', value: '122', sub: '9.8% of total', color: 'text-rose-600 bg-rose-50' },
-  ];
+interface RealPartnerDocumentRecord {
+  _id?: string;
+  vehicleDetails?: {
+    registrationNumber?: string;
+    model?: string;
+    variant?: string;
+    carName?: string;
+  };
+  owner?: string;
+  partnerDocumentStatus?: string; // 'SUBMITTED', 'APPROVED', 'REJECTED', 'PENDING'
+  partnerDocuments?: PartnerDocItem[];
+  rejectionReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  pickup?: {
+    houseNumber?: string;
+    street?: string;
+    area?: string;
+    pickupCharges?: number;
+  };
+  processingStage?: string;
+  status?: string;
+}
 
-  const documentLedger = [
-    { id: 'RQ250600125', date: '02 Jun 2025', time: '10:23 AM', vehicle: 'Maruti Swift 2016', reg: 'DL8CAK1234', partner: 'Green Auto RVSF', code: 'RVSF0012', cvsNo: 'CVS/25-26/GA/1256', status: 'Pending Review', sColor: 'text-amber-700 bg-amber-50 border-amber-100' },
-    { id: 'RQ250600124', date: '02 Jun 2025', time: '09:15 AM', vehicle: 'Hyundai i20 2015', reg: 'HR26BB5678', partner: 'MetalPro RVSF', code: 'RVSF0008', cvsNo: 'CVS/25-26/MP/1198', status: 'Approved', sColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-    { id: 'RQ250600123', date: '01 Jun 2025', time: '04:45 PM', vehicle: 'Honda City 2014', reg: 'UP16CD7890', partner: 'EcoScrap Pvt. Ltd.', code: 'RVSF0015', cvsNo: 'CVS/25-26/ES/1156', status: 'Approved', sColor: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-    { id: 'RQ250600122', date: '01 Jun 2025', time: '03:20 PM', vehicle: 'Tata Indica Vista 2012', reg: 'HR51AS2345', partner: 'Prime Recycling', code: 'RVSF0009', cvsNo: 'CVS/25-26/PR/1123', status: 'Rejected', sColor: 'text-rose-700 bg-rose-50 border-rose-100' },
-    { id: 'RQ250600121', date: '31 May 2025', time: '11:30 AM', vehicle: 'Toyota Innova 2015', reg: 'RJ14UA3456', partner: 'RecycleR India', code: 'RVSF0011', cvsNo: 'CVS/25-26/RI/1102', status: 'Pending Review', sColor: 'text-amber-700 bg-amber-50 border-amber-100' },
-  ];
+// Custom Hook to Fetch Signed URL for Private Supabase Partner Vehicle Documents
+function useSignedUrl(pathObj: any) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<boolean>(false);
+
+  const rawPath = typeof pathObj === 'object'
+    ? pathObj?.path || pathObj?.url || pathObj?.fullPath || pathObj?.key
+    : pathObj;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!rawPath) {
+      setSignedUrl(null);
+      return;
+    }
+
+    if (typeof rawPath === 'string' && (rawPath.startsWith('http://') || rawPath.startsWith('https://'))) {
+      setSignedUrl(rawPath);
+      return;
+    }
+
+    const fetchSignedUrl = async () => {
+      try {
+        setLoading(true);
+        setError(false);
+
+        const response = await axios.post(
+          `http://localhost:8000/api/vehicle/register/view-document`,
+          { path: rawPath },
+          { withCredentials: true }
+        );
+
+        const url =
+          response.data?.data?.url ||
+          response.data?.url ||
+          response.data?.data ||
+          response.data?.message ||
+          (typeof response.data === 'string' ? response.data : null);
+
+        if (isMounted) {
+          if (url && typeof url === 'string') {
+            setSignedUrl(url);
+          } else {
+            setError(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching signed URL for partner document:", err);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchSignedUrl();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rawPath]);
+
+  return { signedUrl, loading, error, rawPath };
+}
+
+// Document Viewer Card Sub-component
+const PartnerDocumentPreviewCard: React.FC<{ docItem: PartnerDocItem }> = ({ docItem }) => {
+  const { signedUrl, loading, error, rawPath } = useSignedUrl(docItem);
+  const handleOpenDoc = () => {
+    if (signedUrl) {
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   return (
-    <div className="bg-slate-50 text-slate-800 antialiased w-full overflow-x-hidden">
+    <div className="border border-slate-200 rounded-lg p-4 bg-slate-50/50 flex flex-col items-center justify-center min-h-[130px] space-y-3">
+      <FileText size={32} className="text-emerald-700" />
+      <div className="text-center">
+        <span className="text-xs font-mono font-bold text-slate-800 block">
+          {docItem.type}
+        </span>
+        <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[220px]">
+          {rawPath || 'document_file.pdf'}
+        </span>
+      </div>
 
-      {/* Main Structural View Framework Offset */}
-      <div className="flex flex-col min-h-screen transition-all duration-300 w-full">
-        
+      <div className="flex gap-2 w-full pt-1">
+        <button
+          type="button"
+          onClick={handleOpenDoc}
+          disabled={loading || !signedUrl || error}
+          className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] py-2 rounded-lg hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all shadow-3xs cursor-pointer"
+        >
+          {loading ? (
+            <span>Loading Document...</span>
+          ) : error || !signedUrl ? (
+            <span className="text-rose-500">Failed to load</span>
+          ) : (
+            <>
+              <Eye size={13} /> View Full Size <ExternalLink size={11} />
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
 
-        {/* Modular Dynamic Workspace Grid Layout */}
-        <main className="flex-1 p-4 md:p-6 space-y-6 w-full mx-auto">
-          
-          {/* Main Title Feature Action Control Ribbon */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Documents & Compliance</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Review and manage CVS (Certificate of Deposit) and COD (Certificate of Destruction) documents.</p>
-            </div>
-            <button className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-bold text-xs px-4 py-2 rounded-lg transition-colors shadow-sm self-start sm:self-auto shrink-0 flex items-center gap-1.5">
-              📤 Export Report
-            </button>
+export const DocumentsCompliance: React.FC = () => {
+  getAdminToPartnerDocuments();
+  const { showToast } = useToast();
+
+  const { PartnerDocuments } = useSelector((state: RootState) => state.admin);
+
+  const realList: RealPartnerDocumentRecord[] = Array.isArray(PartnerDocuments)
+    ? (PartnerDocuments as unknown as RealPartnerDocumentRecord[])
+    : [];
+
+  const [activeTab, setActiveTab] = useState<'CVS' | 'COD'>('CVS');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
+
+  // Sidebar & Selected Item State
+  const [selectedVehicle, setSelectedVehicle] = useState<RealPartnerDocumentRecord | null>(null);
+  const [selectedDocIndex, setSelectedDocIndex] = useState<number>(0);
+  const [rejectReasonInput, setRejectReasonInput] = useState<string>('');
+  const [showRejectInput, setShowRejectInput] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Track individual document status overrides: vehicleId -> docIndex -> { status, reason }
+  const [docStatuses, setDocStatuses] = useState<Record<string, Record<number, { status: 'APPROVED' | 'REJECTED'; reason?: string }>>>({});
+  // Overall Vehicle Verification State
+  const [statusOverrideMap, setStatusOverrideMap] = useState<Record<string, { status: string; reason?: string }>>({});
+
+  // Dynamic Metrics Aggregation
+  const totalDocs = realList.length;
+  const approvedCount = realList.filter(d => (statusOverrideMap[d._id || '']?.status || d.partnerDocumentStatus) === 'APPROVED').length;
+  const pendingCount = realList.filter(d => (statusOverrideMap[d._id || '']?.status || d.partnerDocumentStatus || 'SUBMITTED') === 'SUBMITTED').length;
+  const rejectedCount = realList.filter(d => (statusOverrideMap[d._id || '']?.status || d.partnerDocumentStatus) === 'REJECTED').length;
+
+  const complianceKPIs = [
+    { title: 'Total Documents', value: totalDocs.toString(), sub: 'All Submitted Records', color: 'text-slate-500 bg-slate-50' },
+    { title: 'Approved', value: approvedCount.toString(), sub: `${totalDocs ? Math.round((approvedCount / totalDocs) * 100) : 0}% of total`, color: 'text-emerald-600 bg-emerald-50' },
+    { title: 'Pending Review', value: pendingCount.toString(), sub: `${totalDocs ? Math.round((pendingCount / totalDocs) * 100) : 0}% of total`, color: 'text-amber-600 bg-amber-50' },
+    { title: 'Rejected', value: rejectedCount.toString(), sub: `${totalDocs ? Math.round((rejectedCount / totalDocs) * 100) : 0}% of total`, color: 'text-rose-600 bg-rose-50' },
+  ];
+
+  const filteredList = realList.filter((item) => {
+    const vId = item._id || '';
+    const carName = item.vehicleDetails?.model || item.vehicleDetails?.carName || '';
+    const regNo = item.vehicleDetails?.registrationNumber || '';
+    const currentStatus = statusOverrideMap[vId]?.status || item.partnerDocumentStatus || 'SUBMITTED';
+
+    const matchesSearch = vId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      carName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      regNo.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (selectedStatus !== 'ALL' && currentStatus !== selectedStatus) return false;
+
+    return true;
+  });
+
+  const handleRowClick = (item: RealPartnerDocumentRecord) => {
+    setSelectedVehicle(item);
+    setSelectedDocIndex(0);
+    setShowRejectInput(false);
+    setRejectReasonInput('');
+  };
+
+  // Individual Document Actions (One by One)
+  const handleApproveSingleDoc = async () => {
+    if (!selectedVehicle?._id) return;
+    const vId = selectedVehicle._id;
+    const currentDoc = selectedVehicle.partnerDocuments?.[selectedDocIndex];
+    const docId = currentDoc?._id || currentDoc?.id || '';
+
+    try {
+      setIsSubmitting(true);
+      await revirePartnerUploadedDocumentByAdmin(vId, {
+        documentId: docId,
+        status: 'APPROVED',
+        rejectionReason: '',
+      });
+
+      setDocStatuses(prev => ({
+        ...prev,
+        [vId]: {
+          ...(prev[vId] || {}),
+          [selectedDocIndex]: { status: 'APPROVED' }
+        }
+      }));
+      showToast("Document Approved", 'success');
+      setShowRejectInput(false);
+    } catch (error) {
+      alert('Failed to approve document. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectSingleDoc = async () => {
+    if (!selectedVehicle?._id) return;
+    if (!rejectReasonInput.trim()) {
+      alert('Please provide a rejection reason for this document.');
+      return;
+    }
+    const vId = selectedVehicle._id;
+    const currentDoc = selectedVehicle.partnerDocuments?.[selectedDocIndex];
+    const docId = currentDoc?._id || currentDoc?.id || '';
+
+    try {
+      setIsSubmitting(true);
+      await revirePartnerUploadedDocumentByAdmin(vId, {
+        documentId: docId,
+        status: 'REJECTED',
+        rejectionReason: rejectReasonInput,
+      });
+      showToast("Document Rejected", 'warning');
+      setDocStatuses(prev => ({
+        ...prev,
+        [vId]: {
+          ...(prev[vId] || {}),
+          [selectedDocIndex]: { status: 'REJECTED', reason: rejectReasonInput }
+        }
+      }));
+      setShowRejectInput(false);
+      setRejectReasonInput('');
+    } catch (error) {
+      alert('Failed to reject document. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Final Overall Submission: Approve all documents in one action
+  const handleApproveAll = async () => {
+    if (!selectedVehicle?._id) return;
+    const vId = selectedVehicle._id;
+    try {
+      setIsSubmitting(true);
+      await approvePartnerDocuments(vId);
+
+      // Update local state to show overall approved & mark all individual documents as approved
+      setStatusOverrideMap((prev) => ({
+        ...prev,
+        [vId]: { status: 'APPROVED' }
+      }));
+
+      if (selectedVehicle.partnerDocuments) {
+        const allApprovedDocs: Record<number, { status: 'APPROVED' }> = {};
+        selectedVehicle.partnerDocuments.forEach((_, idx) => {
+          allApprovedDocs[idx] = { status: 'APPROVED' };
+        });
+        setDocStatuses(prev => ({
+          ...prev,
+          [vId]: allApprovedDocs
+        }));
+      }
+
+      showToast("All Documents Approved Successfully", 'success');
+    } catch (error) {
+      alert('Failed to complete vehicle document approval. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectOverall = () => {
+    if (!selectedVehicle?._id) return;
+    setStatusOverrideMap((prev) => ({
+      ...prev,
+      [selectedVehicle._id!]: { status: 'REJECTED', reason: 'One or more required documents failed compliance check.' }
+    }));
+  };
+
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'APPROVED':
+        return { label: 'Approved', style: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      case 'REJECTED':
+        return { label: 'Rejected', style: 'bg-rose-50 text-rose-700 border-rose-200' };
+      default:
+        return { label: 'Pending Review', style: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+  };
+
+  // Helpers to inspect status of selected vehicle's docs
+  const totalDocCount = selectedVehicle?.partnerDocuments?.length || 0;
+  const currentVehicleDocMap = selectedVehicle?._id ? (docStatuses[selectedVehicle._id] || {}) : {};
+
+  // Calculate status considering initial doc status OR current session overrides
+  const getDocStatus = (doc: PartnerDocItem, idx: number) => {
+    return currentVehicleDocMap[idx]?.status || doc.status;
+  };
+
+  const approvedDocsCount = selectedVehicle?.partnerDocuments?.filter(
+    (doc, idx) => getDocStatus(doc, idx) === 'APPROVED'
+  ).length || 0;
+
+  const rejectedDocsCount = selectedVehicle?.partnerDocuments?.filter(
+    (doc, idx) => getDocStatus(doc, idx) === 'REJECTED'
+  ).length || 0;
+
+  const currentDoc = selectedVehicle?.partnerDocuments?.[selectedDocIndex];
+  const currentDocEffectiveStatus = currentDoc ? getDocStatus(currentDoc, selectedDocIndex) : undefined;
+
+  return (
+    <div className="bg-slate-50 text-slate-800 antialiased w-full overflow-x-hidden min-h-screen text-xs">
+      <main className="p-4 md:p-6 space-y-6 w-full mx-auto">
+
+        {/* Header Ribbon */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-3xs">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Documents & Compliance</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Review and manage partner uploaded verification documents.</p>
           </div>
+        </div>
 
-          {/* Core Analytics Counters Summary Panels */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-            {complianceKPIs.map((kpi, idx) => (
-              <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-                <span className="text-[11px] font-bold tracking-wide text-slate-400 uppercase truncate">{kpi.title}</span>
-                <div className="mt-2">
-                  <div className="text-xl font-black text-slate-900 tracking-tight">{kpi.value}</div>
-                  <div className={`text-[10px] inline-block mt-1 px-1.5 py-0.5 rounded font-bold ${kpi.color}`}>
-                    {kpi.sub}
-                  </div>
+        {/* Analytics Counters */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {complianceKPIs.map((kpi, idx) => (
+            <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl shadow-3xs flex flex-col justify-between hover:shadow-md transition-shadow">
+              <span className="text-[11px] font-bold tracking-wide text-slate-400 uppercase truncate">{kpi.title}</span>
+              <div className="mt-2">
+                <div className="text-xl font-black text-slate-900 tracking-tight">{kpi.value}</div>
+                <div className={`text-[10px] inline-block mt-1 px-1.5 py-0.5 rounded font-bold ${kpi.color}`}>
+                  {kpi.sub}
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Filtering Context Row Tabs Ribbon Controls */}
-          <div className="border-b border-slate-200 overflow-x-auto whitespace-nowrap flex gap-6 scrollbar-none">
-            <button 
-              onClick={() => setActiveTab('CVS')} 
-              className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'CVS' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              CVS (Certificate of Deposit)
-            </button>
-            <button 
-              onClick={() => setActiveTab('COD')} 
-              className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'COD' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              COD (Certificate of Destruction)
-            </button>
-          </div>
-
-          {/* Search Inputs Filter Matrix Row Wrap Strip */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              <div className="relative lg:col-span-2">
-                <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
-                <input 
-                  type="text" 
-                  placeholder="Search by Request ID, Vehicle, Partner, Document No..." 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-slate-300"
-                />
-              </div>
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none text-slate-600"><option>All Partners</option></select>
-              <select className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none text-slate-600"><option>All Status</option></select>
-              <button className="bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold text-xs rounded-lg py-2 transition-colors">Reset</button>
             </div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <div className="border-b border-slate-200 overflow-x-auto whitespace-nowrap flex gap-6 scrollbar-none">
+          <button
+            onClick={() => setActiveTab('CVS')}
+            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'CVS' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            CVS (Certificate of Deposit)
+          </button>
+          <button
+            onClick={() => setActiveTab('COD')}
+            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'COD' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          >
+            COD (Certificate of Destruction)
+          </button>
+        </div>
+
+        {/* Search & Filter Row */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="relative sm:col-span-2">
+              <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by Vehicle ID, Reg Number, or Model..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-hidden focus:border-slate-300"
+              />
+            </div>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden text-slate-600"
+            >
+              <option value="ALL">All Status</option>
+              <option value="SUBMITTED">Pending Review</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
           </div>
+        </div>
 
-          {/* Master Detail Split Workspace Screen Layout */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-            
-            {/* Left Ledger Master Query Table Wrapper Frame */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm xl:col-span-8 space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">CVS Documents <span className="text-slate-400 font-normal">(842)</span></h3>
-              </div>
+        {/* Master Detail Split Workspace */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-              {/* Data Table Horizontal Scroll Shield Container */}
-              <div className="overflow-x-auto w-full border border-slate-100 rounded-lg">
-                <table className="w-full text-left text-xs text-slate-600 min-w-[900px]">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                      <th className="p-3">Request ID</th>
-                      <th className="p-3">Vehicle Details</th>
-                      <th className="p-3">Partner (RVSF)</th>
-                      <th className="p-3">CVS No.</th>
-                      <th className="p-3">Upload Date</th>
-                      <th className="p-3 text-center">Status</th>
+          {/* Table View Container */}
+          <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-3xs transition-all ${selectedVehicle ? 'xl:col-span-7' : 'xl:col-span-12'}`}>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-3">
+              <h3 className="text-sm font-bold text-slate-900">Partner Uploaded Documents <span className="text-slate-400 font-normal">({filteredList.length})</span></h3>
+            </div>
+
+            <div className="overflow-x-auto w-full border border-slate-100 rounded-lg">
+              <table className="w-full text-left text-xs text-slate-600 min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="p-3">Vehicle ID</th>
+                    <th className="p-3">Vehicle Details</th>
+                    <th className="p-3">Uploaded Docs</th>
+                    <th className="p-3">Last Updated</th>
+                    <th className="p-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredList.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400 font-bold">
+                        No documents found in store data.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {documentLedger.map((row, idx) => (
-                      <tr 
-                        key={idx} 
-                        onClick={() => setSelectedRequest(row.id)}
-                        className={`hover:bg-slate-50/50 transition-colors cursor-pointer ${selectedRequest === row.id ? 'bg-emerald-50/30' : ''}`}
-                      >
-                        <td className="p-3">
-                          <div className="font-mono font-bold text-slate-900">{row.id}</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">{row.date}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-800">{row.vehicle}</div>
-                          <span className="font-mono text-[10px] text-slate-400 uppercase">{row.reg}</span>
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-700">{row.partner}</div>
-                          <span className="text-[10px] text-slate-400 font-mono">{row.code}</span>
-                        </td>
-                        <td className="p-3 font-mono text-[11px] font-semibold text-slate-600">{row.cvsNo}</td>
-                        <td className="p-3">
-                          <div className="text-slate-700 font-medium">{row.date}</div>
-                          <div className="text-[10px] text-slate-400">{row.time}</div>
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${row.sColor}`}>
-                            {row.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  ) : (
+                    filteredList.map((row) => {
+                      const currentStatus = statusOverrideMap[row._id || '']?.status || row.partnerDocumentStatus || 'SUBMITTED';
+                      const badge = getStatusBadge(currentStatus);
+                      const isSelected = selectedVehicle?._id === row._id;
+                      const updatedDate = row.updatedAt ? new Date(row.updatedAt) : new Date();
 
-            {/* Right Interactive Sidebar Context Context Detail View Card */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm xl:col-span-4 space-y-5">
+                      return (
+                        <tr
+                          key={row._id}
+                          onClick={() => handleRowClick(row)}
+                          className={`hover:bg-slate-50/70 transition-colors cursor-pointer ${isSelected ? 'bg-emerald-50/40' : ''}`}
+                        >
+                          <td className="p-3 font-mono font-bold text-slate-900">{row._id?.slice(-8) || 'N/A'}</td>
+                          <td className="p-3">
+                            <div className="font-bold text-slate-800">{row.vehicleDetails?.model || row.vehicleDetails?.carName || 'Vehicle'}</div>
+                            <span className="font-mono text-[10px] text-slate-400 uppercase">Reg: {row.vehicleDetails?.registrationNumber || 'N/A'}</span>
+                          </td>
+                          <td className="p-3">
+                            <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-mono font-bold text-[10px]">
+                              {row.partnerDocuments?.length || 0} Documents
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-500">
+                            <div>{updatedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badge.style}`}>
+                              {badge.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Dynamic Interactive Right Sidebar */}
+          {selectedVehicle && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-3xs xl:col-span-5 space-y-5 sticky top-4">
+
               <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">CVS Document Details</h3>
-                    <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Pending Review</span>
+                    <h3 className="text-sm font-bold text-slate-900">Partner Documents Review</h3>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getStatusBadge(statusOverrideMap[selectedVehicle._id || '']?.status || selectedVehicle.partnerDocumentStatus || 'SUBMITTED').style}`}>
+                      {getStatusBadge(statusOverrideMap[selectedVehicle._id || '']?.status || selectedVehicle.partnerDocumentStatus || 'SUBMITTED').label}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400 block mt-0.5">Request ID: {selectedRequest}</span>
+                  <span className="text-[10px] font-mono text-slate-400 block mt-0.5">ID: {selectedVehicle._id}</span>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600 font-bold text-sm">✕</button>
+                <button onClick={() => setSelectedVehicle(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-50">
+                  <X size={16} />
+                </button>
               </div>
 
-              {/* Grid System Document Spec Details Panel */}
-              <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+              {/* Vehicle Meta Summary Panel */}
+              <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
                 <div>
-                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Vehicle</span>
-                  <span className="font-bold text-slate-800">Maruti Swift 2016</span>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Model / Name</span>
+                  <span className="font-bold text-slate-800">{selectedVehicle.vehicleDetails?.model || selectedVehicle.vehicleDetails?.carName || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Partner (RVSF)</span>
-                  <span className="font-bold text-slate-800">Green Auto RVSF</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 text-[10px] block uppercase font-medium">CVS Number</span>
-                  <span className="font-mono font-bold text-slate-900">CVS/25-26/GA/1256</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Valid Till</span>
-                  <span className="font-bold text-slate-800">31 May 2026</span>
+                  <span className="text-slate-400 text-[10px] block uppercase font-medium">Registration No</span>
+                  <span className="font-mono font-bold text-slate-800">{selectedVehicle.vehicleDetails?.registrationNumber || 'N/A'}</span>
                 </div>
               </div>
 
-              {/* Graphic Wireframe Mock Document Container Component */}
+              {/* Individual Document Select Tabs */}
               <div className="space-y-2">
-                <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Document Preview</span>
-                <div className="border border-slate-200 rounded-lg p-3 bg-slate-100/50 flex flex-col items-center justify-center min-h-[120px] relative group">
-                  <div className="text-center space-y-2">
-                    <span className="text-2xl block">📄</span>
-                    <span className="text-[11px] font-mono text-slate-500 block">certificate_of_deposit.pdf</span>
-                  </div>
-                  <div className="mt-3 flex gap-2 w-full">
-                    <button className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] py-1.5 rounded hover:bg-slate-50">View Full Size</button>
-                    <button className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] py-1.5 rounded hover:bg-slate-50">Download</button>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Uploaded Documents ({totalDocCount})</span>
+                  <span className="text-[10px] text-slate-500 font-medium">{approvedDocsCount}/{totalDocCount} Approved</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  {(selectedVehicle.partnerDocuments || []).map((doc, idx) => {
+                    const singleStatus = getDocStatus(doc, idx);
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedDocIndex(idx);
+                          setShowRejectInput(false);
+                          setRejectReasonInput(currentVehicleDocMap[idx]?.reason || doc.rejectionReason || '');
+                        }}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${selectedDocIndex === idx
+                          ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText size={14} className={selectedDocIndex === idx ? 'text-emerald-700' : 'text-slate-400'} />
+                          <span className="text-[11px] font-mono">{doc.type}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {singleStatus === 'APPROVED' && (
+                            <span className="flex items-center gap-1 text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
+                              <Check size={10} /> Approved
+                            </span>
+                          )}
+                          {singleStatus === 'REJECTED' && (
+                            <span className="flex items-center gap-1 text-[9px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">
+                              <Ban size={10} /> Rejected
+                            </span>
+                          )}
+                          {!singleStatus && (
+                            <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded font-bold">
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Admin Feedback Commentary Area Box Layout */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Admin Review Notes</label>
-                <textarea 
-                  placeholder="Add evaluation remarks or revision feedback notes..." 
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs outline-none focus:border-slate-300 min-h-[70px] resize-none"
-                />
+              {/* Selected Document Preview Container */}
+              {selectedVehicle.partnerDocuments?.[selectedDocIndex] && (
+                <div className="space-y-3 border-t border-slate-100 pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block">Document File Preview</span>
+                    {currentDocEffectiveStatus === 'APPROVED' && (
+                      <span className="text-emerald-600 font-bold text-[10px]">✓ Document Approved</span>
+                    )}
+                    {currentDocEffectiveStatus === 'REJECTED' && (
+                      <span className="text-rose-600 font-bold text-[10px]">✕ Document Rejected</span>
+                    )}
+                  </div>
+
+                  <PartnerDocumentPreviewCard docItem={selectedVehicle.partnerDocuments[selectedDocIndex]} />
+
+                  {/* Individual Document Verification Controls (One by One) */}
+                  {currentDocEffectiveStatus === 'APPROVED' ? (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-bold text-xs flex items-center justify-center gap-2">
+                      <CheckCircle2 size={16} className="text-emerald-600" />
+                      <span>Document Approved</span>
+                    </div>
+                  ) : showRejectInput ? (
+                    <div className="space-y-2 p-3 bg-rose-50/50 border border-rose-100 rounded-xl">
+                      <label className="text-rose-800 text-[10px] uppercase font-black block">
+                        Rejection Reason for {selectedVehicle.partnerDocuments[selectedDocIndex].type} *
+                      </label>
+                      <textarea
+                        value={rejectReasonInput}
+                        onChange={(e) => setRejectReasonInput(e.target.value)}
+                        placeholder="State why this specific document is unaccepted..."
+                        className="w-full bg-white border border-rose-200 rounded-lg p-2 text-xs outline-hidden focus:ring-1 focus:ring-rose-500 min-h-[50px]"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          disabled={isSubmitting}
+                          onClick={() => setShowRejectInput(false)}
+                          className="px-3 py-1 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg text-[10px] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          disabled={isSubmitting}
+                          onClick={handleRejectSingleDoc}
+                          className="px-3 py-1 bg-rose-600 text-white font-bold rounded-lg text-[10px] disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {isSubmitting && <Loader2 size={10} className="animate-spin" />} Reject Document
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        disabled={isSubmitting}
+                        onClick={() => setShowRejectInput(true)}
+                        className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg border transition-all flex items-center justify-center gap-1 disabled:opacity-50 ${currentDocEffectiveStatus === 'REJECTED'
+                          ? 'bg-rose-100 text-rose-800 border-rose-300'
+                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-100'
+                          }`}
+                      >
+                        ✕ Reject Document
+                      </button>
+                      <button
+                        disabled={isSubmitting}
+                        onClick={handleApproveSingleDoc}
+                        className="flex-1 font-bold text-xs py-2 px-3 rounded-lg border transition-all flex items-center justify-center gap-1 disabled:opacity-50 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200 cursor-pointer"
+                      >
+                        {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : '✓ Approve Document'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Complete Set Actions */}
+              <div className="pt-4 border-t border-slate-200 space-y-2">
+                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Final Approval Action</div>
+
+                {statusOverrideMap[selectedVehicle._id || '']?.status === 'APPROVED' ? (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                    <span>Complete Verification Approved</span>
+                  </div>
+                ) : statusOverrideMap[selectedVehicle._id || '']?.status === 'REJECTED' ? (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5">
+                      <AlertOctagon size={15} /> Set Marked as Rejected
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleRejectOverall}
+                      disabled={isSubmitting}
+                      className="flex-1 bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 font-bold text-xs py-2 px-3 rounded-lg border border-slate-200 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      Reject Set
+                    </button>
+                    <button
+                      onClick={handleApproveAll}
+                      disabled={isSubmitting}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs py-2.5 px-3 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        `✓ Approve All Documents (${approvedDocsCount}/${totalDocCount})`
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Interactive Module Context Footer Drawer Panel inside Detail Section Container card */}
-              <div className="pt-3 border-t border-slate-100 flex flex-wrap gap-2">
-                <button className="flex-1 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs py-2 px-3 rounded-lg border border-red-100 transition-colors">
-                  ✕ Reject
-                </button>
-                <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2 px-3 rounded-lg transition-all shadow-sm">
-                  ✓ Approve Document
-                </button>
-              </div>
             </div>
+          )}
 
-          </div>
+        </div>
 
-        </main>
-
-        {/* Global Core System Infrastructure Status Footer Bar */}
-        <footer className="mt-auto border-t border-slate-200 bg-white px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-400">
-          <p>© 2026 RescrapX. All rights reserved.</p>
-          <p className="text-[11px]">Core Node Status: <span className="text-emerald-600 font-bold">Operational</span></p>
-        </footer>
-
-      </div>
+      </main>
     </div>
   );
 };

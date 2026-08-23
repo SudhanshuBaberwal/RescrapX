@@ -15,6 +15,7 @@ import {
   getAdminDashboardAuctionData,
   getAuctionData,
   getAuctionDataForPartner,
+  getPartnerLiveBidding,
   getPartnerWonVehicles,
   getPendingApprovalAuctions,
   getPendingStartApproval,
@@ -55,5 +56,7 @@ router.get("/partner/my-bids", partnerOnly, MyBids);
 router.get("/admin/dashboard", adminOnly, getAdminDashboardAuctionData);
 
 router.get("/partner/won-vehicles", partnerOnly, getPartnerWonVehicles);
+
+router.get("/partner/live-opportunities", partnerOnly, getPartnerLiveBidding);
 
 export default router;

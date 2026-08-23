@@ -11,6 +11,15 @@ import Vehicle, {
   VehicleStatus,
 } from "../models/vehicle.model.js";
 
+export const PROCESSING_STAGE_ORDER: ProcessingStage[] = [
+  ProcessingStage.VEHICLE_RECEIVED,
+  ProcessingStage.INSPECTION_COMPLETED,
+  ProcessingStage.DISMANTLING,
+  ProcessingStage.RECYCLING,
+  ProcessingStage.CERTIFICATE_PENDING,
+  ProcessingStage.COMPLETED,
+];
+
 class VehicleRepository {
   BUCKET_NAME = "partner-documents";
   async findDraftByUserId(userId: string): Promise<IVehicle | null> {
@@ -528,8 +537,7 @@ class VehicleRepository {
       "auctionResult.partnerId": partnerId,
 
       status: VehicleStatus.ARRIVED,
-
-      processingStage: ProcessingStage.VEHICLE_RECEIVED,
+      processingStage: ProcessingStage.CERTIFICATE_PENDING,
     })
       .sort({
         updatedAt: -1,
@@ -680,6 +688,333 @@ class VehicleRepository {
         $ne: null,
       },
     }).lean();
+  }
+
+  async getPartnerDashboardVehicles(partnerId: string) {
+    return Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async getPartnerProcessingStats(partnerId: string) {
+    const result = await Vehicle.aggregate([
+      {
+        $match: {
+          "auctionResult.partnerId": partnerId,
+        },
+      },
+
+      {
+        $group: {
+          _id: "$processingStage",
+          count: {
+            $sum: 1,
+          },
+        },
+      },
+    ]);
+
+    return result;
+  }
+
+  async getPartnerOrdersWonToday(partnerId: string) {
+    const now = new Date();
+
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const result = await Vehicle.aggregate([
+      {
+        $match: {
+          "auctionResult.partnerId": partnerId,
+
+          "auctionResult.wonAt": {
+            $gte: startOfDay,
+            $lte: endOfDay,
+          },
+        },
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          count: {
+            $sum: 1,
+          },
+
+          totalValue: {
+            $sum: {
+              $ifNull: ["$auctionResult.winningBid", 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    return (
+      result[0] ?? {
+        count: 0,
+        totalValue: 0,
+      }
+    );
+  }
+
+  async getPartnerMonthlyRevenue(partnerId: string) {
+    const now = new Date();
+
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+      0,
+      0,
+      0,
+      0,
+    );
+
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
+    const result = await Vehicle.aggregate([
+      {
+        $match: {
+          "auctionResult.partnerId": partnerId,
+
+          "auctionResult.wonAt": {
+            $gte: startOfMonth,
+            $lte: endOfMonth,
+          },
+        },
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          revenue: {
+            $sum: {
+              $ifNull: ["$auctionResult.winningBid", 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    return result[0]?.revenue ?? 0;
+  }
+
+  async getPartnerPendingDocuments(partnerId: string) {
+    const vehicles = await Vehicle.find({
+      "auctionResult.partnerId": partnerId,
+
+      partnerDocuments: {
+        $elemMatch: {
+          status: {
+            $in: [
+              PartnerDocumentStatus.PENDING,
+              PartnerDocumentStatus.REJECTED,
+            ],
+          },
+        },
+      },
+    })
+      .select({
+        vehicleDetails: 1,
+        partnerDocuments: 1,
+        auctionResult: 1,
+      })
+      .lean();
+    const documents: any[] = [];
+    for (const vehicle of vehicles) {
+      for (const document of vehicle.partnerDocuments ?? []) {
+        if (
+          document.status === PartnerDocumentStatus.PENDING ||
+          document.status === PartnerDocumentStatus.REJECTED
+        ) {
+          documents.push({
+            vehicleId: vehicle._id.toString(),
+            registrationNumber:
+              vehicle.vehicleDetails?.registrationNumber ?? null,
+            vehicleName:
+              vehicle.vehicleDetails?.carName ??
+              vehicle.vehicleDetails?.model ??
+              "Vehicle",
+            documentId: document._id?.toString(),
+            type: document.type,
+            required: document.required,
+            status: document.status,
+            rejectionReason: document.rejectionReason ?? null,
+          });
+        }
+      }
+    }
+
+    return documents;
+  }
+
+  async updateProcessingStage(
+    vehicleId: string,
+    partnerId: string,
+    currentStage: ProcessingStage,
+    nextStage: ProcessingStage,
+  ) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        "auctionResult.partnerId": partnerId,
+
+        processingStage: currentStage,
+
+        status: VehicleStatus.ARRIVED,
+      },
+
+      {
+        $set: {
+          processingStage: nextStage,
+        },
+
+        $push: {
+          timeline: {
+            status: VehicleStatus.ARRIVED,
+
+            title: nextStage,
+
+            message: `Processing stage changed to ${nextStage}`,
+
+            completed: true,
+
+            completedAt: new Date(),
+
+            createdAt: new Date(),
+          },
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
+  }
+
+  async getVehiclesWithPartnerDocumentsForAdmin() {
+    return Vehicle.find({
+      partnerDocumentStatus: {
+        $in: [
+          PartnerDocumentSubmissionStatus.SUBMITTED,
+          PartnerDocumentSubmissionStatus.IN_PROGRESS,
+          PartnerDocumentSubmissionStatus.REJECTED,
+          PartnerDocumentSubmissionStatus.APPROVED,
+        ],
+      },
+
+      partnerDocuments: {
+        $exists: true,
+        $ne: [],
+      },
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async getPartnerDocumentsForAdmin(vehicleId: string) {
+    return Vehicle.findById(vehicleId)
+      .select({
+        vehicleDetails: 1,
+        owner: 1,
+        auctionResult: 1,
+        processingStage: 1,
+        status: 1,
+        partnerDocumentStatus: 1,
+        partnerDocuments: 1,
+        updatedAt: 1,
+      })
+      .lean();
+  }
+
+  async reviewPartnerDocument(
+    vehicleId: string,
+    documentId: string,
+    status: PartnerDocumentStatus,
+    reviewedBy: string,
+    rejectionReason: string | null,
+  ) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        "partnerDocuments._id": documentId,
+      },
+
+      {
+        $set: {
+          "partnerDocuments.$.status": status,
+
+          "partnerDocuments.$.reviewedAt": new Date(),
+
+          "partnerDocuments.$.reviewedBy": reviewedBy,
+
+          "partnerDocuments.$.rejectionReason":
+            status === PartnerDocumentStatus.REJECTED ? rejectionReason : null,
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
+  }
+
+  async approveAllPartnerDocuments(vehicleId: string, reviewedBy: string) {
+    return Vehicle.findOneAndUpdate(
+      {
+        _id: vehicleId,
+
+        "partnerDocuments.0": {
+          $exists: true,
+        },
+
+        partnerDocumentStatus: PartnerDocumentSubmissionStatus.SUBMITTED,
+      },
+
+      {
+        $set: {
+          "partnerDocuments.$[].status": PartnerDocumentStatus.APPROVED,
+
+          "partnerDocuments.$[].reviewedAt": new Date(),
+
+          "partnerDocuments.$[].reviewedBy": reviewedBy,
+
+          "partnerDocuments.$[].rejectionReason": null,
+
+          partnerDocumentStatus: PartnerDocumentSubmissionStatus.APPROVED,
+        },
+      },
+
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean();
   }
 }
 

@@ -3,7 +3,7 @@ import {
   MyBidStatus,
   WonVehicleDetails,
 } from "@/context/auctionProvider";
-import { IVehicle } from "@/context/vehicleProvider";
+import { IVehicle, PartnerDashboardResponse } from "@/context/vehicleProvider";
 import { createSlice } from "@reduxjs/toolkit";
 
 interface PartnerState {
@@ -12,7 +12,8 @@ interface PartnerState {
   PartnerWonVehiclesdata: WonVehicleDetails | null;
   PartnerIncomingVehicleData: IVehicle[] | null;
   PartnerProcessingYardVehiclesData: IVehicle[] | null;
-  PartnerDocumentUploadData :IVehicle[] | null 
+  PartnerDocumentUploadData: IVehicle[] | null;
+  PartnerDashboardData: PartnerDashboardResponse | null;
 }
 
 const initialState: PartnerState = {
@@ -21,7 +22,8 @@ const initialState: PartnerState = {
   PartnerWonVehiclesdata: null,
   PartnerIncomingVehicleData: [],
   PartnerProcessingYardVehiclesData: [],
-  PartnerDocumentUploadData:[]
+  PartnerDocumentUploadData: [],
+  PartnerDashboardData: null,
 };
 const partnerSlice = createSlice({
   name: "admin",
@@ -42,9 +44,12 @@ const partnerSlice = createSlice({
     setPartnerProcessingYardData: (state, action) => {
       state.PartnerProcessingYardVehiclesData = action.payload;
     },
-    setPartnerDocumentUploadData : (state,action) => {
+    setPartnerDocumentUploadData: (state, action) => {
       state.PartnerDocumentUploadData = action.payload;
-    }
+    },
+    setPartnerDashboardData: (state, action) => {
+      state.PartnerDashboardData = action.payload;
+    },
   },
 });
 
@@ -54,6 +59,7 @@ export const {
   setPartnerWonVehiclesData,
   setPartnerIncomingVehicleData,
   setPartnerProcessingYardData,
-  setPartnerDocumentUploadData
+  setPartnerDocumentUploadData,
+  setPartnerDashboardData,
 } = partnerSlice.actions;
 export default partnerSlice.reducer;
