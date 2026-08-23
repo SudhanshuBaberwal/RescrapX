@@ -186,7 +186,7 @@ function MyVehiclesContent() {
   return (
     <div className="w-full min-h-screen bg-[#F9FAFB] text-[#374151] flex flex-col justify-between antialiased">
       <div>
-        <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 space-y-6">
+        <div className="w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 space-y-6">
           <UserNavbar />
 
           {/* PAGE HEADER */}

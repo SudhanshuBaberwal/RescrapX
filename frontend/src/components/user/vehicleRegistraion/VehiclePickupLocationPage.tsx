@@ -282,8 +282,8 @@ export default function VehiclePickupLocationPage({
                 >
                   <option value="">Select state</option>
                   <option value="Delhi">Delhi</option>
-                  <option value="Maharashtra">Maharashtra</option>
-                  <option value="Karnataka">Karnataka</option>
+                  {/* <option value="Maharashtra">Maharashtra</option>
+                  <option value="Karnataka">Karnataka</option> */}
                 </select>
               </div>
             </div>

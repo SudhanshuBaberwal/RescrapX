@@ -9,6 +9,180 @@ import { useDispatch } from 'react-redux';
 import { setVehicleData } from '@/store/vehicleSlice';
 import { basicDetails } from '@/services/vehicle.service';
 
+// Dependent Data Mapping
+export const CAR_DATA: Record<string, Record<string, string[]>> = {
+  'Audi': {
+    'A4': ['Premium', 'Premium Plus', 'Technology'],
+    'A6': ['Premium Plus', 'Technology'],
+    'Q3': ['Premium', 'Premium Plus', 'Technology'],
+    'Q5': ['Premium Plus', 'Technology'],
+    'Q7': ['Premium Plus', 'Technology'],
+    'e-tron': ['50', '55']
+  },
+  'BMW': {
+    '2 Series': ['220i M Sport', '220d M Sport'],
+    '3 Series': ['320ld M Sport', 'M340i xDrive'],
+    '5 Series': ['520d Luxury Line', '530i M Sport', '530d M Sport'],
+    'X1': ['sDrive18i xLine', 'sDrive18d M Sport'],
+    'X3': ['xDrive20d Luxury Edition', 'xDrive30i SportX Plus'],
+    'X5': ['xDrive40i M Sport', 'xDrive30d xLine']
+  },
+  'BYD': {
+    'Atto 3': ['Dynamic', 'Premium', 'Superior'],
+    'e6': ['GL', 'VX'],
+    'Seal': ['Dynamic', 'Premium', 'Performance']
+  },
+  'Citroen': {
+    'C3': ['Live', 'Feel', 'Shine'],
+    'C3 Aircross': ['You', 'Plus', 'Max'],
+    'eC3': ['Live', 'Feel', 'Shine'],
+    'C5 Aircross': ['Shine']
+  },
+  'Datsun': {
+    'GO': ['D', 'A', 'T', 'T(O)'],
+    'GO+': ['D', 'A', 'T', 'T(O)'],
+    'redi-GO': ['D', 'A', 'T', 'T(O)']
+  },
+  'Force': {
+    'Gurkha': ['3 Door', '5 Door'],
+    'Trax Cruiser': ['9 Seater', '13 Seater']
+  },
+  'Honda': {
+    'City': ['SV', 'V', 'VX', 'ZX'],
+    'City e:HEV': ['V', 'ZX'],
+    'Amaze': ['E', 'S', 'VX'],
+    'Elevate': ['SV', 'V', 'VX', 'ZX']
+  },
+  'Hyundai': {
+    'i20': ['Era', 'Magna', 'Sportz', 'Asta', 'Asta (O)'],
+    'Creta': ['E', 'EX', 'S', 'S(O)', 'SX', 'SX Tech', 'SX (O)'],
+    'Verna': ['EX', 'S', 'SX', 'SX (O)'],
+    'Venua': ['E', 'S', 'S+', 'S(O)', 'SX', 'SX (O)'],
+    'Exter': ['EX', 'S', 'SX', 'SX (O)'],
+    'Alcazar': ['Prestige', 'Platinum', 'Signature'],
+    'Tucson': ['Platinum', 'Signature'],
+    'Ioniq 5': ['Standard']
+  },
+  'Jaguar': {
+    'F-PACE': ['R-Dynamic S'],
+    'I-PACE': ['HSE'],
+    'F-TYPE': ['2.0 Coupe', '5.0 V8 Coupe']
+  },
+  'Jeep': {
+    'Compass': ['Sport', 'Longitudinal', 'Limited', 'Model S'],
+    'Meridian': ['Limited', 'Limited Plus', 'Overland'],
+    'Wrangler': ['Unlimited', 'Rubicon'],
+    'Grand Cherokee': ['Limited Option']
+  },
+  'Kia': {
+    'Seltos': ['HTE', 'HTK', 'HTK+', 'HTX', 'HTX+', 'GTX+', 'X-Line'],
+    'Sonet': ['HTE', 'HTK', 'HTK+', 'HTX', 'HTX+', 'GTX+', 'X-Line'],
+    'Carens': ['Premium', 'Prestige', 'Prestige Plus', 'Luxury', 'Luxury Plus'],
+    'EV6': ['GT Line', 'GT Line AWD']
+  },
+  'Land Rover': {
+    'Defender': ['90 SE', '110 SE', '110 HSE', '130 SE'],
+    'Range Rover Evoque': ['SE'],
+    'Range Rover Velar': ['HSE Dynamic'],
+    'Range Rover Sport': ['Dynamic SE', 'Dynamic HSE', 'Autobiography'],
+    'Discovery Sport': ['Dynamic SE']
+  },
+  'Lexus': {
+    'ES': ['300h Exquisite', '300h Luxury'],
+    'NX': ['350h Exquisite', '350h Luxury', '350h F-Sport'],
+    'RX': ['350h Luxury', '500h F-Sport'],
+    'LX': ['500d']
+  },
+  'Mahindra': {
+    'Thar': ['AX (O)', 'LX', 'Earth Edition'],
+    'Scorpio Classic': ['S', 'S11'],
+    'Scorpio N': ['Z2', 'Z4', 'Z6', 'Z8', 'Z8L'],
+    'XUV700': ['MX', 'AX3', 'AX5', 'AX7', 'AX7L'],
+    'XUV3XO': ['MX1', 'MX2', 'MX3', 'AX5', 'AX7'],
+    'Bolero': ['B4', 'B6', 'B6(O)'],
+    'Bolero Neo': ['N4', 'N8', 'N10', 'N10(O)'],
+    'XUV400 EV': ['EC Pro', 'EL Pro']
+  },
+  'Maruti Suzuki': {
+    'Swift': ['LXI', 'VXI', 'ZXI', 'ZXI+'],
+    'Dzire': ['LXI', 'VXI', 'ZXI', 'ZXI+'],
+    'Baleno': ['Sigma', 'Delta', 'Zeta', 'Alpha'],
+    'Brezza': ['LXI', 'VXI', 'ZXI', 'ZXI+'],
+    'Fronx': ['Sigma', 'Delta', 'Delta+', 'Zeta', 'Alpha'],
+    'Ertiga': ['LXI', 'VXI', 'ZXI', 'ZXI+'],
+    'Alto K10': ['Std', 'LXI', 'VXI', 'VXI+'],
+    'Wagon R': ['LXI', 'VXI', 'ZXI', 'ZXI+'],
+    'Grand Vitara': ['Sigma', 'Delta', 'Zeta', 'Alpha', 'Zeta+', 'Alpha+'],
+    'Jimny': ['Zeta', 'Alpha']
+  },
+  'Mercedes-Benz': {
+    'A-Class Limousine': ['200', '200d'],
+    'C-Class': ['C 200', 'C 220d', 'C 300d'],
+    'E-Class': ['E 200', 'E 220d', 'E 350d'],
+    'S-Class': ['S 350d', 'S 450'],
+    'GLA': ['200', '220d', '220d 4MATIC'],
+    'GLC': ['300 4MATIC', '220d 4MATIC'],
+    'GLE': ['300d 4MATIC', '450 4MATIC']
+  },
+  'MG': {
+    'Hector': ['Style', 'Shine Pro', 'Select Pro', 'Smart Pro', 'Sharp Pro'],
+    'Astor': ['Sprint', 'Shine', 'Select', 'Smart Pro', 'Savvy Pro'],
+    'ZS EV': ['Executive', 'Excite Pro', 'Exclusive Plus', 'Essence Pro'],
+    'Comet EV': ['Executive', 'Excite', 'Exclusive'],
+    'Gloster': ['Sharp', 'Savvy']
+  },
+  'Nissan': {
+    'Magnite': ['XE', 'XL', 'XV', 'XV Premium'],
+    'X-Trail': ['Standard']
+  },
+  'Renault': {
+    'Kwid': ['RXE', 'RXL', 'RXT', 'Climber'],
+    'Triber': ['RXE', 'RXL', 'RXT', 'RXZ'],
+    'Kiger': ['RXE', 'RXL', 'RXT', 'RXZ']
+  },
+  'Skoda': {
+    'Slavia': ['Classic', 'Signature', 'Prestige'],
+    'Kushaq': ['Classic', 'Signature', 'Prestige'],
+    'Kodiaq': ['Style', 'Sportline', 'L&K']
+  },
+  'Tata': {
+    'Nexon': ['Smart', 'Smart+', 'Pure', 'Creative', 'Creative+', 'Fearless'],
+    'Punch': ['Pure', 'Adventure', 'Accomplished', 'Creative'],
+    'Harrier': ['Smart', 'Pure', 'Adventure', 'Fearless'],
+    'Safari': ['Smart', 'Pure', 'Adventure', 'Accomplished', 'AKNOWLEDGEMENT'],
+    'Tiago': ['XE', 'XM', 'XT', 'XZ', 'XZ+'],
+    'Tigor': ['XE', 'XM', 'XZ', 'XZ+'],
+    'Altroz': ['XE', 'XM', 'XT', 'XZ', 'XZ+'],
+    'Nexon.ev': ['Creative', 'Fearless', 'Empowered'],
+    'Punch.ev': ['Smart', 'Adventure', 'Empowered']
+  },
+  'Toyota': {
+    'Glanza': ['E', 'S', 'G', 'V'],
+    'Urban Cruiser Taisor': ['E', 'S', 'S+', 'G', 'V'],
+    'Rumion': ['S', 'G', 'V'],
+    'Innova Crysta': ['GX', 'VX', 'ZX'],
+    'Innova Hycross': ['GX', 'VX', 'VX (O)', 'ZX', 'ZX (O)'],
+    'Fortuner': ['4x2 MT', '4x2 AT', '4x4 MT', '4x4 AT', 'Legender'],
+    'Camry': ['2.5 Hybrid'],
+    'Vellfire': ['Hi', 'VIP Grade']
+  },
+  'VinFast': {
+    'VF e34': ['Standard'],
+    'VF 8': ['Eco', 'Plus']
+  },
+  'Volkswagen': {
+    'Virtus': ['Comfortline', 'Highline', 'Topline', 'GT', 'GT Plus'],
+    'Taigun': ['Comfortline', 'Highline', 'Topline', 'GT', 'GT Plus'],
+    'Tiguan': ['2.0 TSI Elegance']
+  },
+  'Volvo': {
+    'XC40 Recharge': ['Plus', 'Ultimate'],
+    'XC60': ['B5 Ultimate'],
+    'XC90': ['B6 Ultimate'],
+    'C40 Recharge': ['Ultimate']
+  }
+};
+
 interface StepComponentProps {
   vehicleId: string;
   onContinue: () => void;
@@ -42,6 +216,28 @@ export default function VehicleDetailsPage({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Cascading Selection Handlers
+  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedBrand = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      carName: selectedBrand,
+      model: '',   // Reset model when brand changes
+      variant: ''  // Reset variant when brand changes
+    }));
+    if (errors.carName) setErrors(prev => ({ ...prev, carName: '' }));
+  };
+
+  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedModel = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      model: selectedModel,
+      variant: ''  // Reset variant when model changes
+    }));
+    if (errors.model) setErrors(prev => ({ ...prev, model: '' }));
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -54,12 +250,9 @@ export default function VehicleDetailsPage({
     setErrors({});
     const newErrors: Record<string, string> = {};
 
-    // 1. Validations
-    if (!formData.carName.trim() || formData.carName.trim().length < 2) {
-      newErrors.carName = 'Car Name / Brand must be at least 2 characters';
-    }
-    if (!formData.model.trim()) newErrors.model = 'Car Model is required';
-    if (!formData.variant.trim()) newErrors.variant = 'Variant is required';
+    if (!formData.carName.trim()) newErrors.carName = 'Please select a car brand';
+    if (!formData.model.trim()) newErrors.model = 'Please select a car model';
+    if (!formData.variant.trim()) newErrors.variant = 'Please select a variant';
     if (!formData.fuelType) newErrors.fuelType = 'Please select a fuel type';
     if (!formData.transmission) newErrors.transmission = 'Please select a transmission type';
 
@@ -85,7 +278,6 @@ export default function VehicleDetailsPage({
     try {
       setIsSubmitting(true);
 
-      // Backend Zod Payload Exact Alignment
       const payload = {
         carName: formData.carName.trim(),
         model: formData.model.trim(),
@@ -98,19 +290,14 @@ export default function VehicleDetailsPage({
         ownership: Number(formData.ownership),
       };
 
-      // 2. Call API
       const response = await basicDetails(vehicleId, payload);
 
-      // 3. STRICT CHECK: Sirf success hone par hi Redux store update aur Next Page navigate hoga
       if (response && (response.success || response.data)) {
         if (response.data) {
           dispatch(setVehicleData(response.data));
         }
-        
-        // SUCCESS: Next Page Render hoga
         onContinue();
       } else {
-        // Agar response success na ho
         setErrors({ apiError: response?.message || 'Failed to update vehicle details.' });
       }
 
@@ -118,10 +305,16 @@ export default function VehicleDetailsPage({
       console.error('Submission failed:', error);
       const apiErrMsg = error?.response?.data?.message || 'Failed to save vehicle details. Please try again.';
       setErrors({ apiError: apiErrMsg });
-    } finally {
+    }  finally {
       setIsSubmitting(false);
     }
   };
+
+  // Helper arrays based on current selections
+  const availableModels = formData.carName ? Object.keys(CAR_DATA[formData.carName] || {}) : [];
+  const availableVariants = (formData.carName && formData.model)
+    ? CAR_DATA[formData.carName]?.[formData.model] || []
+    : [];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
@@ -153,29 +346,42 @@ export default function VehicleDetailsPage({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
 
-            {/* Field: carName */}
-            <div className="space-y-1.5">
+            {/* Field: Car Brand (Dropdown) */}
+            <div className="space-y-1.5 relative">
               <label className="font-extrabold text-gray-700">Car Name / Brand *</label>
-              <input
-                type="text"
-                placeholder="e.g., Maruti Suzuki"
-                value={formData.carName}
-                onChange={(e) => handleInputChange('carName', e.target.value)}
-                className={`w-full bg-white border ${errors.carName ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs`}
-              />
+              <div className="relative">
+                <select
+                  value={formData.carName}
+                  onChange={handleBrandChange}
+                  className={`w-full bg-white border ${errors.carName ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 pr-10 font-bold text-gray-700 appearance-none focus:outline-none focus:border-[#0B5B32] shadow-3xs cursor-pointer`}
+                >
+                  <option value="">Select Brand</option>
+                  {Object.keys(CAR_DATA).map((brand) => (
+                    <option key={brand} value={brand}>{brand}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
               {errors.carName && <p className="text-red-500 text-[10px] font-bold">{errors.carName}</p>}
             </div>
 
-            {/* Field: Model */}
-            <div className="space-y-1.5">
+            {/* Field: Model (Dropdown) */}
+            <div className="space-y-1.5 relative">
               <label className="font-extrabold text-gray-700">Model *</label>
-              <input
-                type="text"
-                placeholder="e.g., Swift"
-                value={formData.model}
-                onChange={(e) => handleInputChange('model', e.target.value)}
-                className={`w-full bg-white border ${errors.model ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs`}
-              />
+              <div className="relative">
+                <select
+                  value={formData.model}
+                  onChange={handleModelChange}
+                  disabled={!formData.carName}
+                  className={`w-full bg-white border ${errors.model ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 pr-10 font-bold text-gray-700 appearance-none focus:outline-none focus:border-[#0B5B32] shadow-3xs disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer`}
+                >
+                  <option value="">{formData.carName ? 'Select Model' : 'Select Brand First'}</option>
+                  {availableModels.map((model) => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
               {errors.model && <p className="text-red-500 text-[10px] font-bold">{errors.model}</p>}
             </div>
 
@@ -204,16 +410,23 @@ export default function VehicleDetailsPage({
               {errors.manufacturingYear && <p className="text-red-500 text-[10px] font-bold">{errors.manufacturingYear}</p>}
             </div>
 
-            {/* Field: Variant */}
-            <div className="space-y-1.5">
+            {/* Field: Variant (Dropdown) */}
+            <div className="space-y-1.5 relative">
               <label className="font-extrabold text-gray-700">Variant *</label>
-              <input
-                type="text"
-                placeholder="e.g., VXI"
-                value={formData.variant}
-                onChange={(e) => handleInputChange('variant', e.target.value)}
-                className={`w-full bg-white border ${errors.variant ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 font-semibold focus:outline-none focus:border-[#0B5B32] shadow-3xs`}
-              />
+              <div className="relative">
+                <select
+                  value={formData.variant}
+                  onChange={(e) => handleInputChange('variant', e.target.value)}
+                  disabled={!formData.model}
+                  className={`w-full bg-white border ${errors.variant ? 'border-red-500' : 'border-gray-200'} rounded-xl p-3 pr-10 font-bold text-gray-700 appearance-none focus:outline-none focus:border-[#0B5B32] shadow-3xs disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed cursor-pointer`}
+                >
+                  <option value="">{formData.model ? 'Select Variant' : 'Select Model First'}</option>
+                  {availableVariants.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
               {errors.variant && <p className="text-red-500 text-[10px] font-bold">{errors.variant}</p>}
             </div>
 
@@ -259,7 +472,7 @@ export default function VehicleDetailsPage({
               {errors.transmission && <p className="text-red-500 text-[10px] font-bold">{errors.transmission}</p>}
             </div>
 
-            {/* Field: odometerReading */}
+            {/* Field: Odometer Reading */}
             <div className="space-y-1.5">
               <label className="font-extrabold text-gray-700">Odometer Reading (KM) *</label>
               <input

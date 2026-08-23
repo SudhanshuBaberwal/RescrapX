@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { ChevronDown, Bell, LogIn, LogOut, User, Menu, X, Calendar, Shield, FileText } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { logout } from '@/services/auth.service';
@@ -13,34 +13,36 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Navbar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [resourcesHovered, setResourcesHovered] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
   const { userData } = useSelector((state: RootState) => state.user);
 
-  // Get active navigation item from query parameter (defaults to "home")
-  const currentNav = searchParams.get('nav') || 'home';
+  const currentNav = searchParams.get('nav');
 
   const navbarItems = [
-    { title: "Home", slug: "home", hasDropdown: false },
-    { title: "How It Works", slug: "how-it-works", hasDropdown: false },
-    { title: "Services", slug: "services", hasDropdown: false },
+    { title: "Home", slug: "home" },
+    { title: "How It Works", slug: "how-it-works" },
+    { title: "Services", slug: "services" },
     { title: "Resources", slug: "resources", hasDropdown: true },
-    { title: "About Us", slug: "about-us", hasDropdown: false },
-    { title: "Contact Us", slug: "contact-us", hasDropdown: false },
-    { title: "FAQs", slug: "faqs", hasDropdown: false }
+    { title: "About Us", slug: "about-us" },
+    { title: "Contact Us", slug: "contact-us" },
+    { title: "FAQs", slug: "faqs" }
   ];
 
-  // Helper to handle search parameter navigation
   const handleNavClick = (slug: string) => {
     setMobileMenuOpen(false);
     setResourcesHovered(false);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('nav', slug);
-    router.push(`/?${params.toString()}`);
+    
+    if (slug === 'home') {
+      router.push('/');
+    } else {
+      router.push(`/?nav=${slug}`);
+    }
   };
 
-  // Extract user full name or first initial if available
   const fullName = userData?.fullName || 'User';
   const firstInitial = fullName.charAt(0).toUpperCase();
 
@@ -55,32 +57,32 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-xs relative">
-      <div className="max-w-full mx-auto px-3 sm:px-6 lg:px-10 h-20 lg:h-24 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-2xs w-full">
+      <div className="w-full px-4 sm:px-8 lg:px-12 h-20 flex items-center justify-between gap-4">
 
         {/* 1. Logo */}
         <div
           onClick={() => handleNavClick('home')}
-          className="flex items-center cursor-pointer select-none py-1 h-full shrink-0"
+          className="flex items-center cursor-pointer select-none shrink-0"
         >
-          <div className="relative w-52 sm:w-64 lg:w-92 h-16 sm:h-20 lg:h-22 flex items-center justify-center">
+          <div className="relative w-44 sm:w-52 h-14 flex items-center justify-start">
             <Image
               src="/logo2.png"
               alt="RescrapX Logo"
-              width={200}
-              height={50}
+              width={210}
+              height={55}
               className="object-contain object-left"
+              priority
             />
           </div>
         </div>
 
-        {/* Center: Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-8 xl:gap-12 text-base xl:text-lg font-bold text-gray-600">
+        {/* 2. Desktop Navigation Links */}
+        <nav className="hidden lg:flex items-center gap-6 xl:gap-10 text-sm xl:text-base font-extrabold text-[#2C3A4B]">
           {navbarItems.map((item) => {
-            const isActive = currentNav === item.slug ||
-              (item.slug === 'resources' && (currentNav === 'privacy-policy' || currentNav === 'terms-and-conditions'));
+            const isHomePage = pathname === '/';
+            const isActive = (isHomePage && !currentNav && item.slug === 'home') || currentNav === item.slug;
 
-            // Handle "Resources" Dropdown Navigation
             if (item.slug === "resources") {
               return (
                 <div
@@ -91,35 +93,36 @@ export default function Navbar() {
                 >
                   <button
                     onClick={() => handleNavClick(item.slug)}
-                    className={`flex items-center gap-1 transition duration-150 cursor-pointer ${isActive
-                        ? "text-[#0B5B32] border-b-2 border-[#0B5B32] pb-1 font-extrabold"
-                        : "hover:text-gray-900"
-                      }`}
+                    className={`relative flex items-center gap-1.5 transition duration-150 cursor-pointer py-1 ${
+                      isActive ? "text-[#0B5B32] font-black" : "hover:text-black"
+                    }`}
                   >
                     <span>{item.title}</span>
                     <ChevronDown size={14} className={`opacity-70 transition-transform duration-200 ${resourcesHovered ? 'rotate-180' : ''}`} />
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 w-full h-[3px] bg-[#0B5B32] rounded-full"></span>
+                    )}
                   </button>
 
-                  {/* Dropdown Menu using URL Params */}
                   <AnimatePresence>
                     {resourcesHovered && (
                       <motion.div
-                        initial={{ opacity: 0, y: 8 }}
+                        initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
+                        exit={{ opacity: 0, y: 6 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute top-full left-0 w-60 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50"
+                        className="absolute top-full left-0 w-56 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50"
                       >
                         <button
                           onClick={() => handleNavClick('privacy-policy')}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-[#F2F7F3] hover:text-[#0B5B32] transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-[#F2F7F3] hover:text-[#0B5B32] transition-colors text-left"
                         >
                           <Shield size={16} className="text-[#0B5B32]" />
                           <span>Privacy Policy</span>
                         </button>
                         <button
                           onClick={() => handleNavClick('terms-and-conditions')}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-gray-700 hover:bg-[#F2F7F3] hover:text-[#0B5B32] transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-[#F2F7F3] hover:text-[#0B5B32] transition-colors text-left"
                         >
                           <FileText size={16} className="text-[#0B5B32]" />
                           <span>Terms and Conditions</span>
@@ -131,53 +134,54 @@ export default function Navbar() {
               );
             }
 
-            // Standard Navigation Items
             return (
               <button
                 key={item.slug}
                 onClick={() => handleNavClick(item.slug)}
-                className={`flex items-center gap-0.5 transition duration-150 cursor-pointer ${isActive
-                    ? "text-[#0B5B32] border-b-2 border-[#0B5B32] pb-1 font-extrabold"
-                    : "hover:text-gray-900"
-                  }`}
+                className={`relative flex items-center transition duration-150 cursor-pointer py-1 ${
+                  isActive ? "text-[#0B5B32] font-black" : "hover:text-black"
+                }`}
               >
                 <span>{item.title}</span>
-                {item.hasDropdown && <ChevronDown size={12} className="opacity-70" />}
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 w-full h-[3px] bg-[#0B5B32] rounded-full"></span>
+                )}
               </button>
             );
           })}
         </nav>
 
-        {/* Right Side: Actions & Mobile Toggle Hub */}
-        <div className="flex items-center gap-2.5 sm:gap-6 shrink-0">
-
-          <button className="relative p-2 text-gray-500 hover:text-gray-800 bg-gray-50 hover:bg-gray-100 rounded-lg transition duration-150">
-            <Bell size={27} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-600 rounded-full ring-2 ring-white"></span>
+        {/* 3. Right Action Bar */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <button className="relative p-2 text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-xl transition duration-150">
+            <Bell size={20} />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-600 rounded-full ring-2 ring-white"></span>
           </button>
 
-          {userData && <button
-            onClick={() => router.push('/?tab=bookings')}
-            className="hidden sm:flex items-center gap-2 border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 px-3.5 py-1.5 rounded-lg text-sm font-bold text-[#0B5B32] transition duration-150"
-          >
-            <span className="text-xs">📋</span>
-            <div className="text-left">
-              <p className="leading-tight font-black text-[11px]">My Bookings</p>
-              <p className="text-[9px] text-[#10B981] font-medium tracking-wide">Track Status</p>
-            </div>
-          </button>}
+          {userData && (
+            <button
+              onClick={() => router.push('/?tab=bookings')}
+              className="hidden sm:flex items-center gap-2 border border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-[#0B5B32] transition duration-150"
+            >
+              <span className="text-sm">📋</span>
+              <div className="text-left">
+                <p className="leading-tight font-black text-[11px]">My Bookings</p>
+                <p className="text-[9px] text-[#10B981] font-bold tracking-wide">Track Status</p>
+              </div>
+            </button>
+          )}
 
           {userData ? (
             <>
               <div
                 onClick={() => router.push('/?tab=overview')}
-                className="hidden lg:flex items-center gap-2 pl-2 border-l border-gray-100 cursor-pointer group"
+                className="hidden lg:flex items-center gap-2.5 pl-3 border-l border-gray-200 cursor-pointer group"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-100/80 flex items-center justify-center text-xs font-extrabold text-[#0B5B32] group-hover:bg-emerald-100 transition duration-150">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-xs font-black text-[#0B5B32] group-hover:bg-emerald-200 transition duration-150">
                   {firstInitial || <User size={16} />}
                 </div>
                 <div className="text-left">
-                  <p className="text-xs font-bold text-gray-800 group-hover:text-gray-900 transition duration-150">
+                  <p className="text-xs font-bold text-gray-800 group-hover:text-black transition duration-150">
                     {fullName}
                   </p>
                 </div>
@@ -195,11 +199,11 @@ export default function Navbar() {
           ) : (
             <button
               onClick={() => router.push('/login')}
-              className="flex items-center justify-center bg-[#0B5B32] hover:bg-[#094d2a] text-white p-2.5 sm:px-4 sm:py-2 rounded-xl text-xs font-black transition-all duration-150 shadow-xs active:scale-[0.98]"
+              className="flex items-center justify-center bg-[#0B5B32] hover:bg-[#094d2a] text-white px-4 py-2 rounded-xl text-xs font-black transition-all duration-150 shadow-xs active:scale-[0.98]"
               title="Login"
             >
-              <LogIn size={18} className="sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline ml-1.5">Login</span>
+              <LogIn size={16} />
+              <span className="ml-1.5">Login</span>
             </button>
           )}
 
@@ -210,23 +214,22 @@ export default function Navbar() {
           >
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
-
         </div>
-
       </div>
 
-      {/* Floating Overlay Mobile Menu */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22, ease: 'easeOut' }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="lg:hidden absolute top-full left-0 right-0 w-full bg-white border-b border-gray-200 px-5 py-5 space-y-2.5 shadow-2xl z-50"
           >
             {navbarItems.map((item) => {
-              const isActive = currentNav === item.slug;
+              const isHomePage = pathname === '/';
+              const isActive = (isHomePage && !currentNav && item.slug === 'home') || currentNav === item.slug;
 
               if (item.slug === "resources") {
                 return (
@@ -265,13 +268,13 @@ export default function Navbar() {
                 <button
                   key={item.slug}
                   onClick={() => handleNavClick(item.slug)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition ${isActive
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition ${
+                    isActive
                       ? "font-extrabold text-[#0B5B32] bg-[#E6F4EA]"
                       : "font-bold text-gray-700 hover:bg-gray-50"
-                    }`}
+                  }`}
                 >
                   <span>{item.title}</span>
-                  {item.hasDropdown && <ChevronDown size={16} className="text-gray-400" />}
                 </button>
               );
             })}

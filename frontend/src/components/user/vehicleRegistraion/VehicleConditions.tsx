@@ -294,7 +294,7 @@ export default function VehicleConditionPage({
 
           <div className="pt-4 border-t border-gray-50 flex flex-col items-center text-center">
             <div className="relative w-full max-w-[160px] aspect-square flex items-center justify-center">
-              <span className="text-5xl animate-pulse">🚗</span>
+              <span className="text-5xl animate-pulse"></span>
               <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1 shadow-xs">
                 <ShieldCheck size={16} />
               </div>

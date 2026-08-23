@@ -28,6 +28,7 @@ import getEditableVehicle, {
 import supabaseService from "./supabase.service.js";
 import mongoose from "mongoose";
 import { generatePickupOtp, hashPickupOtp } from "../helper/otp.js";
+import pricingService from "./pricing.service.js";
 
 const createPhoto = (upload: any, file: Express.Multer.File) => ({
   path: upload.path,
@@ -128,6 +129,7 @@ class VehicleService {
       glass: data.glass,
       lights: data.lights,
       interior: data.interior,
+      battery:data.bettery
     };
     vehicle.currentStep = Math.max(vehicle.currentStep, 3);
     await vehicleRepository.saveVehicle(vehicle);
@@ -1696,6 +1698,37 @@ class VehicleService {
     }
 
     return updatedVehicle;
+  }
+
+  async calculateVehicleEstimatedPrice(vehicleId: string) {
+    if (!vehicleId) {
+      throw new Error("Vehicle ID is required");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      throw new Error("Invalid vehicle ID");
+    }
+
+    const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
+
+    if (!vehicle) {
+      throw new Error("Vehicle not found");
+    }
+
+    // Make sure all required registration information exists
+    if (!vehicle.vehicleDetails) {
+      throw new Error("Vehicle details are incomplete");
+    }
+
+    if (!vehicle.vehicleCondition) {
+      throw new Error("Vehicle condition is incomplete");
+    }
+
+    if (!vehicle.majorComponents) {
+      throw new Error("Major components information is incomplete");
+    }
+
+    return pricingService.calculateValuation(vehicle);
   }
 }
 

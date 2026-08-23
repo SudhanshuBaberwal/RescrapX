@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { 
+import {
   FileText, UploadCloud, Trash2, ShieldCheck, HelpCircle,
-  ArrowRight, ArrowLeft, FileSpreadsheet, Lock, ExternalLink, Loader2 
+  ArrowRight, ArrowLeft, FileSpreadsheet, Lock, ExternalLink, Loader2
 } from 'lucide-react';
 import { documents } from '@/services/vehicle.service'; // Adjust path according to project directory
 
@@ -24,7 +24,7 @@ export default function VehicleDocumentsPage({
   currentStepNumber,
   totalStepsCount
 }: StepComponentProps) {
-  
+
   // Real JavaScript File State Management
   const [rcFile, setRcFile] = useState<File | null>(null);
   const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
@@ -44,7 +44,7 @@ export default function VehicleDocumentsPage({
 
   // File validator and Size Formatter
   const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>, 
+    e: React.ChangeEvent<HTMLInputElement>,
     setFileState: (file: File | null) => void
   ) => {
     const file = e.target.files?.[0];
@@ -112,10 +112,10 @@ export default function VehicleDocumentsPage({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-      
+
       {/* MAIN DATA GRID FOR DOCUMENTS */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 shadow-3xs space-y-6">
-        
+
         {/* Header Block */}
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-[#0B5B32] text-white rounded-xl flex items-center justify-center text-xl shadow-xs shrink-0">
@@ -142,9 +142,9 @@ export default function VehicleDocumentsPage({
           {/* BLOCK 1: REQUIRED DOCUMENTS */}
           <div className="space-y-3">
             <h3 className="font-extrabold text-gray-800 text-sm">Required Documents</h3>
-            
+
             <div className="border border-gray-100 rounded-xl p-4 bg-white shadow-3xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              
+
               <div className="flex gap-3 items-start">
                 <div className="p-3 bg-emerald-50 rounded-xl text-[#0B5B32] shrink-0">
                   <FileText size={20} />
@@ -160,15 +160,15 @@ export default function VehicleDocumentsPage({
 
               {/* Upload Trigger Zone */}
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                <input 
-                  type="file" 
-                  ref={rcInputRef} 
+                <input
+                  type="file"
+                  ref={rcInputRef}
                   onChange={(e) => handleFileChange(e, setRcFile)}
-                  className="hidden" 
+                  className="hidden"
                   accept="image/png, image/jpeg, image/jpg, application/pdf"
                 />
 
-                <div 
+                <div
                   onClick={() => rcInputRef.current?.click()}
                   className="border-2 border-dashed border-gray-200 hover:border-[#0B5B32] rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-gray-50/30 w-full sm:w-[180px] h-[90px]"
                 >
@@ -187,8 +187,8 @@ export default function VehicleDocumentsPage({
                       <p className="font-extrabold text-[10px] text-gray-700 truncate">{rcFile.name}</p>
                       <p className="text-[9px] font-bold text-gray-400">{formatFileSize(rcFile.size)}</p>
                     </div>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => setRcFile(null)}
                       className="absolute bottom-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-gray-50 border border-gray-100 rounded-lg transition-all cursor-pointer"
                     >
@@ -203,23 +203,23 @@ export default function VehicleDocumentsPage({
 
           {/* BLOCK 2: OPTIONAL / ADDITIONAL DOCUMENTS */}
           <div className="space-y-3">
-            <h3 className="font-extrabold text-gray-800 text-sm">Optional Documents (If Available)</h3>
-            
+            <h3 className="font-extrabold text-gray-800 text-sm"> </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               {[
                 { id: 'insurance', title: 'Insurance Certificate', desc: 'Upload valid / expired', icon: ShieldCheck, ref: insuranceInputRef, state: insuranceFile, setState: setInsuranceFile },
                 { id: 'puc', title: 'PUC Certificate', desc: 'Pollution Under Control', icon: FileSpreadsheet, ref: pucInputRef, state: pucFile, setState: setPucFile },
                 { id: 'loan', title: 'Loan Closure Certificate', desc: 'If vehicle was under loan', icon: Lock, ref: loanInputRef, state: loanFile, setState: setLoanFile },
-                { id: 'other', title: 'Other Documents', desc: 'Any other relevant document', icon: FileText, ref: otherInputRef, state: otherFile, setState: setOtherFile },
+                { id: 'other', title: 'Other Documents', desc: 'required : DL', icon: FileText, ref: otherInputRef, state: otherFile, setState: setOtherFile },
               ].map((doc) => {
                 const DocIcon = doc.icon;
                 return (
                   <div key={doc.id} className="border border-gray-100 rounded-xl p-3.5 bg-white shadow-3xs flex flex-col justify-between gap-4 min-h-[165px]">
-                    <input 
-                      type="file" 
-                      ref={doc.ref} 
+                    <input
+                      type="file"
+                      ref={doc.ref}
                       onChange={(e) => handleFileChange(e, doc.setState)}
-                      className="hidden" 
+                      className="hidden"
                       accept="image/png, image/jpeg, image/jpg, application/pdf"
                     />
 
@@ -239,8 +239,8 @@ export default function VehicleDocumentsPage({
                           <p className="font-bold text-[9px] text-emerald-800 truncate">{doc.state.name}</p>
                           <p className="text-[8px] text-emerald-600/80 font-semibold">{formatFileSize(doc.state.size)}</p>
                         </div>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => doc.setState(null)}
                           className="text-gray-400 hover:text-red-500 p-1 cursor-pointer"
                         >
@@ -248,7 +248,7 @@ export default function VehicleDocumentsPage({
                         </button>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         onClick={() => doc.ref.current?.click()}
                         className="border border-dashed border-gray-200 hover:border-[#0B5B32] bg-gray-50/20 rounded-lg p-2.5 flex flex-col items-center justify-center text-center cursor-pointer transition-all"
                       >
@@ -273,7 +273,7 @@ export default function VehicleDocumentsPage({
 
           {/* ACTION BUTTONS */}
           <div className="flex flex-row justify-between items-center gap-4 pt-4 border-t border-gray-100">
-            <button 
+            <button
               type="button"
               onClick={onPrevious}
               disabled={isSubmitting}
@@ -282,8 +282,8 @@ export default function VehicleDocumentsPage({
               <ArrowLeft size={14} strokeWidth={2.5} />
               <span>Back</span>
             </button>
-            
-            <button 
+
+            <button
               type="submit"
               disabled={isSubmitting}
               className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black text-xs px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] disabled:opacity-70 cursor-pointer"

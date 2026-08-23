@@ -959,3 +959,21 @@ export const uploadPartnerPaymentProof = asyncHandler(async (req, res) => {
     data: vehicle,
   });
 });
+
+export const calculateVehicleEstimatedPrice = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  const price = await vehicleService.calculateVehicleEstimatedPrice(vehicleId);
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Vehicle estimated price calculated successfully",
+
+    data: price,
+  });
+});

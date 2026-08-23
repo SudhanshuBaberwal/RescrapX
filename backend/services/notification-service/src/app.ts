@@ -1,7 +1,6 @@
 import express, { Application } from "express";
 import cors from "cors";
 import compression from "compression";
-import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import errorHandler from "./middlewares/error.middleware.js";
 import notificationRouter from "./routes/notification.route.js";
@@ -10,7 +9,8 @@ const app: Application = express();
 // app.use(helmet());
 
 const allowedOrigins = [
-  process.env.GATEWAY_URL || "http://localhost:8000", "http://localhost:8001",
+  process.env.GATEWAY_URL || "http://localhost:8000",
+  "http://localhost:8001",
   "https://rescrap-x.vercel.app",
   "http://localhost:3000",
 ];

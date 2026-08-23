@@ -45,7 +45,7 @@ export default function UserDashBoard() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 pt-2">
-          <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl flex items-center gap-2 shadow-xs transition active:scale-95 cursor-pointer">
+          <button onClick={() => router.push("/user/my-vehicles")} className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-xl flex items-center gap-2 shadow-xs transition active:scale-95 cursor-pointer">
             <span>Get Instant Valuation</span>
             <ArrowRight size={16} />
           </button>
@@ -131,7 +131,7 @@ export default function UserDashBoard() {
           </div>
         </div>
 
-        <button className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shrink-0 transition shadow-xs cursor-pointer">
+        <button  onClick={() => router.push("/user/my-vehicles")} className="bg-[#0B5B32] hover:bg-[#094d2a] text-white font-bold text-xs px-5 py-3 rounded-xl flex items-center gap-2 shrink-0 transition shadow-xs cursor-pointer">
           <span>Get Instant Valuation</span>
           <ArrowRight size={14} />
         </button>

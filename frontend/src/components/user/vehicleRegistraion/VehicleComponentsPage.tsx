@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { 
   Cpu, Wrench, ArrowRight, ArrowLeft, Activity, Compass,
   ShieldCheck, Flame, Fuel, Disc, Eye,
-  Layers, Sun, Lightbulb, UserCheck, CheckCircle2, HelpCircle, Loader2 
+  Layers, Sun, Lightbulb, UserCheck, CheckCircle2, HelpCircle, Loader2,
+  BatteryCharging
 } from 'lucide-react';
-import { majorComponents } from '@/services/vehicle.service'; // Adjust path according to your folder structure
+import { majorComponents } from '@/services/vehicle.service';
 
 interface StepComponentProps {
   vehicleId: string;
@@ -37,6 +38,7 @@ export default function VehicleComponentsPage({
   // Structural layout options with EXACT keys expected by backend Zod Schema
   const componentsList: ComponentItem[] = [
     { id: 'engine', label: 'Engine', icon: Cpu },
+    { id: 'battery', label: 'Battery', icon: BatteryCharging },
     { id: 'radiator', label: 'Radiator / Cooling', icon: Activity },
     { id: 'fuelSystem', label: 'Fuel System', icon: Fuel },
     { id: 'gearbox', label: 'Gearbox / Transmission', icon: Layers },
@@ -55,13 +57,14 @@ export default function VehicleComponentsPage({
   // Component states initialized to UPPERCASE Enums (Matching Zod Schema)
   const [componentStates, setComponentStates] = useState<Record<string, ComponentStatus>>({
     engine: 'GOOD',
+    battery: 'GOOD',
     radiator: 'GOOD',
     fuelSystem: 'GOOD',
     gearbox: 'GOOD',
     suspension: 'GOOD',
     steering: 'GOOD',
     electrical: 'GOOD',
-    exhaust: 'NOT_WORKING', // Pre-selected as per design
+    exhaust: 'NOT_WORKING',
     tyres: 'GOOD',
     ac: 'GOOD',
     bodyPanels: 'GOOD',
@@ -87,6 +90,7 @@ export default function VehicleComponentsPage({
       // Payload strictly aligned with backend Zod schema keys & values
       const payload = {
         engine: componentStates.engine,
+        bettery: componentStates.battery,
         radiator: componentStates.radiator,
         fuelSystem: componentStates.fuelSystem,
         gearbox: componentStates.gearbox,
@@ -104,7 +108,6 @@ export default function VehicleComponentsPage({
 
       const response = await majorComponents(vehicleId, payload);
 
-      // STRICT CHECK: Sirf API Success hone par hi Agla page Step load hoga
       if (response && (response.success || response.data)) {
         onContinue();
       } else {
@@ -277,7 +280,6 @@ export default function VehicleComponentsPage({
             })}
           </div>
 
-          {/* Tips element info container */}
           <div className="pt-4 border-t border-gray-100 bg-[#F9FAFB] p-3 rounded-xl flex gap-2.5 text-[#0B5B32]">
             <HelpCircle size={16} className="shrink-0 mt-0.5" />
             <div className="text-[11px] leading-relaxed">

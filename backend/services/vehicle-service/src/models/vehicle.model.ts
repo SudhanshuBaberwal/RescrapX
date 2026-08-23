@@ -184,6 +184,7 @@ export interface IVehicle extends Document {
   vehicleDetails: {
     carName: string;
     registrationNumber: string;
+    kerbWeightKg?: number;
     model: string;
     variant: string;
     fuelType: string;
@@ -202,6 +203,7 @@ export interface IVehicle extends Document {
 
   majorComponents: {
     engine: ComponentCondition;
+    battery:ComponentCondition
     radiator: ComponentCondition;
     fuelSystem: ComponentCondition;
     gearbox: ComponentCondition;
@@ -284,6 +286,11 @@ const vehicleDetailsSchema = new Schema(
   {
     registrationNumber: { type: String, trim: true },
     manufacturer: String,
+    kerbWeightKg: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
     model: String,
     variant: String,
     fuelType: String,
@@ -384,6 +391,12 @@ const majorComponentsSchema = new Schema(
     },
 
     bodyPanels: {
+      type: String,
+      enum: Object.values(ComponentCondition),
+      default: null,
+    },
+
+    battery: {
       type: String,
       enum: Object.values(ComponentCondition),
       default: null,

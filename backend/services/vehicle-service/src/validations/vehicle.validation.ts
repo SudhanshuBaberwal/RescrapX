@@ -44,6 +44,7 @@ export const vehicleMajorComponentsSchema = z.object({
   glass: z.enum(component),
   lights: z.enum(component),
   interior: z.enum(component),
+  bettery: z.enum(component),
 });
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;

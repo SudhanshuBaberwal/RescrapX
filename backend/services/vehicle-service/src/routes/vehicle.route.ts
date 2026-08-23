@@ -5,6 +5,7 @@ import {
   approveAllPartnerDocuments,
   approveVehicleForPickup,
   assignDriver,
+  calculateVehicleEstimatedPrice,
   createVehicleDraft,
   FindALlVehicleForUserController,
   findScheduledVehicles,
@@ -200,4 +201,8 @@ router.post(
   uploadPartnerPaymentProof,
 );
 
+router.get(
+  "/register/vehicles/estimated-price",
+  calculateVehicleEstimatedPrice,
+);
 export default router;
