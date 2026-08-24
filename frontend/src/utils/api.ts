@@ -1,10 +1,7 @@
-import axios, {
-  AxiosError,
-  InternalAxiosRequestConfig,
-} from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 // process.env.NEXT_PUBLIC_API_URL
 const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
 
   timeout: 60000,
@@ -136,10 +133,7 @@ api.interceptors.response.use(
 
       return api(originalRequest);
     } catch (refreshError) {
-      console.error(
-        "Refresh token failed:",
-        refreshError,
-      );
+      console.error("Refresh token failed:", refreshError);
 
       // Tell all waiting requests that refresh failed
       processQueue(refreshError as AxiosError);
