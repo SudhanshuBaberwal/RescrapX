@@ -8,7 +8,7 @@ let io: Server | null = null;
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://rescrap-x.vercel.app"
+  "https://www.rescrapx.com"
 ];
 
 if (process.env.ALLOWED_ORIGINS) {

@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 app.use(cookieParser());
 
 const allowedOrigins = [
-  "https://rescrap-x.vercel.app",
+  "https://www.rescrapx.com",
   "http://localhost:3000",
 ];
 

@@ -10,7 +10,7 @@ const app: Application = express();
 app.use(helmet());
 const allowedOrigins = [
   process.env.GATEWAY_URL || "http://localhost:8000",
-  "https://rescrap-x.vercel.app",
+  "https://www.rescrapx.com",
   "http://localhost:3000"
 ];
 
