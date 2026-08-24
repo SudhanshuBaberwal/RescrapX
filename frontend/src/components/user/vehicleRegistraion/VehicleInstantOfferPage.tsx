@@ -1,278 +1,556 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  CheckCircle2, Gavel, Award, UserCheck, ShieldCheck, 
-  Calendar, Truck, ShieldAlert, DollarSign, FileText, ArrowLeft, 
-  Share2, ArrowRight, Star, Clock, Home
+import React, { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
+import axios from 'axios';
+import {
+  CheckCircle2, FileText, AlertCircle, PhoneCall,
+  Upload, ShieldCheck, ArrowLeft, Lock, Check, HelpCircle, Tag, Loader2
 } from 'lucide-react';
 
 interface StepComponentProps {
-  onContinue: () => void;
-  onPrevious: () => void;
-  isFirstStep: boolean;
-  isLastStep: boolean;
-  currentStepNumber: number;
-  totalStepsCount: number;
+  onContinue?: () => void;
+  onPrevious?: () => void;
+  isFirstStep?: boolean;
+  isLastStep?: boolean;
+  currentStepNumber?: number;
+  totalStepsCount?: number;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function VehicleInstantOfferPage({
   onContinue,
   onPrevious,
-  currentStepNumber,
-  totalStepsCount
 }: StepComponentProps) {
-
   const router = useRouter();
 
-  // Dynamic values parsed down from the global multi-step registration wizard
-  const offerDetails = {
-    amount: '₹ 78,500',
-    id: 'RSX-2026-07-11-7852',
-    date: '11 July 2026, 01:45 PM',
-    validTill: '18 July 2026, 11:59 PM',
-    recycler: {
-      name: 'Greenovaa Recyclers Pvt. Ltd.',
-      rating: 4.8,
-      reviews: 248,
-      badges: [
-        'Authorized & Certified Recycler',
-        '10,000+ Vehicles Scrapped',
-        'PAN India Services'
-      ]
+  const { userEstimatedPrice } = useSelector(
+    (state: RootState) => state.user
+  );
+
+  const estimatedData: any = userEstimatedPrice || {};
+
+  const vehicle =
+    estimatedData?.vehicle ||
+    estimatedData?.data?.vehicle ||
+    {};
+
+  const pricing =
+    estimatedData?.pricing ||
+    estimatedData?.data?.pricing ||
+    {};
+
+  const params = useParams<{
+    _id: string;
+    step: string;
+  }>();
+
+  const vehicleId = params._id;
+  const step = params.step;
+
+  // Dynamic Vehicle Name
+  const vehicleName = `${vehicle.manufacturer || ''} ${vehicle.model || 'Swift'} ${vehicle.variant || 'ZXI+'}`.trim();
+
+  // Actual Final Offer Value
+  const netAmount = pricing.lowerBound || pricing.netAmount || 26598;
+  const formattedValue = `₹ ${Number(netAmount).toLocaleString('en-IN')}`;
+
+  // Estimated Price Range
+  const lowerBound = pricing.lowerBound || 26598;
+  const upperBound = pricing.upperBound || 29458;
+  const formattedRange = `₹ ${Number(lowerBound).toLocaleString('en-IN')} – ₹ ${Number(upperBound).toLocaleString('en-IN')}`;
+
+  // Form State
+  const [isAccepted, setIsAccepted] = useState<boolean>(true);
+  const [aadhaarFile, setAadhaarFile] = useState<File | null>(null);
+  const [panFile, setPanFile] = useState<File | null>(null);
+  const [bankProofFile, setBankProofFile] = useState<File | null>(null);
+
+  // Preview URL States
+  const [aadhaarPreview, setAadhaarPreview] = useState<string | null>(null);
+  const [panPreview, setPanPreview] = useState<string | null>(null);
+  const [bankProofPreview, setBankProofPreview] = useState<string | null>(null);
+
+  // Request status state
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Handle preview creation & cleanup helper
+  const handleFileChange = (
+    file: File | null,
+    setFile: React.Dispatch<React.SetStateAction<File | null>>,
+    setPreview: React.Dispatch<React.SetStateAction<string | null>>,
+    currentPreview: string | null
+  ) => {
+    if (currentPreview) {
+      URL.revokeObjectURL(currentPreview);
+    }
+    if (file) {
+      setFile(file);
+      if (file.type.startsWith('image/')) {
+        setPreview(URL.createObjectURL(file));
+      } else {
+        setPreview(null);
+      }
+    } else {
+      setFile(null);
+      setPreview(null);
     }
   };
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'RescrapX Vehicle Offer',
-        text: `I just received a scrap offer of ${offerDetails.amount} for my vehicle!`,
-        url: window.location.href,
-      }).catch(console.error);
-    } else {
-      navigator.clipboard.writeText(`My RescrapX Offer: ${offerDetails.amount} (ID: ${offerDetails.id})`);
-      alert(`Offer details copied to clipboard!`);
+  // Cleanup object URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (aadhaarPreview) URL.revokeObjectURL(aadhaarPreview);
+      if (panPreview) URL.revokeObjectURL(panPreview);
+      if (bankProofPreview) URL.revokeObjectURL(bankProofPreview);
+    };
+  }, [aadhaarPreview, panPreview, bankProofPreview]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!vehicleId) {
+      setErrorMessage('Vehicle ID is missing. Please refresh or restart the flow.');
+      return;
+    }
+
+    if (!isAccepted) {
+      alert('Please accept the final offer before submitting.');
+      return;
+    }
+
+    if (!aadhaarFile || !panFile || !bankProofFile) {
+      alert('Please upload all mandatory documents (Aadhaar Card, PAN Card, Bank Proof).');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      const formData = new FormData();
+      formData.append('accepted', 'true');
+      formData.append('aadhaar', aadhaarFile);
+      formData.append('pan', panFile);
+      formData.append('bankProof', bankProofFile);
+
+      const response = await axios.post(
+        `${API_URL}/api/vehicle/register/owner/accept-offer?vehicleId=${vehicleId}`,
+        formData,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 201) {
+        if (onContinue) {
+          onContinue();
+        } else {
+          router.push('/');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error submitting offer acceptance:', error);
+      setErrorMessage(
+        error?.response?.data?.message || 'Failed to submit documents. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const documentFields = [
+    {
+      label: 'Aadhaar Card',
+      sub: 'Upload front side of Aadhaar card',
+      state: aadhaarFile,
+      preview: aadhaarPreview,
+      onChange: (file: File | null) =>
+        handleFileChange(file, setAadhaarFile, setAadhaarPreview, aadhaarPreview),
+    },
+    {
+      label: 'PAN Card',
+      sub: 'Upload PAN card',
+      state: panFile,
+      preview: panPreview,
+      onChange: (file: File | null) =>
+        handleFileChange(file, setPanFile, setPanPreview, panPreview),
+    },
+    {
+      label: 'Bank Proof',
+      sub: 'Upload cancelled cheque / passbook / bank statement',
+      state: bankProofFile,
+      preview: bankProofPreview,
+      onChange: (file: File | null) =>
+        handleFileChange(file, setBankProofFile, setBankProofPreview, bankProofPreview),
+    },
+  ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full text-xs">
-      
-      {/* MAIN LEFT HERO CONTENT BLOCK */}
-      <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xs space-y-6">
-        
-        {/* Banner Announcement Intro Row */}
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-emerald-50 text-[#0B5B32] rounded-xl flex items-center justify-center text-xl shadow-2xs shrink-0 border border-emerald-100">
-            <CheckCircle2 size={24} className="stroke-[2]" />
-          </div>
-          <div className="space-y-0.5">
-            <h1 className="text-xl font-black text-gray-900 tracking-tight">Great News! Your Final Offer is Ready</h1>
-            <p className="text-[11px] font-bold text-gray-400">Bidding is complete. We've found the best offer for your vehicle.</p>
-          </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full text-xs font-sans text-gray-800">
+
+      {/* MAIN LEFT SECTION */}
+      <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-6">
+
+        {/* HERO TITLE HEADER */}
+        <div className="space-y-1">
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">Accept Your Final Offer</h1>
+          <p className="text-xs font-medium text-gray-500">Your vehicle has been picked up successfully.</p>
         </div>
 
-        {/* LARGE INTERACTIVE HERO BANNER VALUE */}
-        <div className="border border-emerald-100 rounded-2xl bg-gradient-to-br from-emerald-50/20 to-white p-6 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="space-y-3 z-10">
-            <p className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Your Final Offer</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-black text-gray-900 tracking-tight">{offerDetails.amount}</span>
-              <span className="text-gray-400 cursor-help font-bold text-sm" title="Guaranteed price based on your verified parameters">ⓘ</span>
+        {/* HERO BANNER WITH FINAL OFFER & ESTIMATED PRICE RANGE */}
+        <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
+          <div className="space-y-3 z-10 max-w-sm">
+
+            {/* Final Offer Badge */}
+            <div className="inline-flex items-center gap-2 bg-emerald-100/80 px-3 py-1 rounded-full text-[#0B5B32]">
+              <CheckCircle2 size={16} className="fill-[#0B5B32] text-white" />
+              <span className="font-black text-xs">Your Final Offer: {formattedValue}</span>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <div className="flex items-center gap-1.5 text-[10px] text-emerald-800 bg-emerald-50 font-bold px-2.5 py-1 rounded-md">
-                <CheckCircle2 size={12} className="text-[#0B5B32]" />
-                <span>Highest competitive bid selected.</span>
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200/60 px-2 py-0.5 rounded-sm">
-                ⭐ Best Offer
-              </span>
+
+            {/* Estimated Price Range Card */}
+            <div className="flex items-center gap-2 bg-white/80 border border-emerald-100 px-3 py-1.5 rounded-xl text-gray-700 shadow-3xs">
+              <Tag size={15} className="text-[#0B5B32] shrink-0" />
+              <span className="text-[11px] font-bold text-gray-500">Expected Value Range:</span>
+              <span className="text-xs font-black text-[#0B5B32]">{formattedRange}</span>
+            </div>
+
+            <p className="text-[11px] font-medium text-gray-600 leading-relaxed pt-0.5">
+              Our team has inspected your vehicle. You can now accept the final offer and proceed to receive your payment.
+            </p>
+          </div>
+
+          {/* Tow Truck Image */}
+          <div className="w-56 h-32 relative flex items-center justify-center shrink-0">
+            <img
+              src="/Tow2.jpeg"
+              alt="Vehicle Picked Up Tow Truck"
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+        </div>
+
+        {/* SECTION 1: FINAL OFFER SUMMARY */}
+        <div className="space-y-3 pt-2">
+          <h2 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
+            <span>1.</span>
+            <span>Final Offer Summary</span>
+          </h2>
+
+          <div className="border border-emerald-100/80 bg-emerald-50/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Final Offer Amount</span>
+              <div className="text-3xl font-black text-gray-900 tracking-tight">{formattedValue}</div>
+            </div>
+
+            <div className="bg-white border border-emerald-100 px-4 py-2 rounded-xl space-y-0.5 text-center shadow-3xs">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Estimated Car Range</span>
+              <div className="text-sm font-black text-[#0B5B32]">{formattedRange}</div>
             </div>
           </div>
 
-          {/* Graphics Vehicle Side Illustration Mockup placeholder */}
-          <div className="w-44 h-24 bg-gray-50 border border-gray-100 rounded-xl relative overflow-hidden flex items-center justify-center text-3xl shrink-0 shadow-3xs select-none">
-            🚗
-            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#0B5B32] flex items-center justify-center text-white text-[10px] font-bold shadow-xs">
-              ₹
-            </div>
+          {/* Offer Validity Strip */}
+          <div className="bg-emerald-50/50 border border-emerald-100/80 p-3 rounded-xl flex items-center gap-2 text-[11px]">
+            <HelpCircle size={15} className="text-[#0B5B32] shrink-0" />
+            <p className="font-semibold text-gray-700">
+              <span className="font-black text-[#0B5B32]">Offer valid for today only.</span> Please accept to proceed.
+            </p>
           </div>
         </div>
 
-        {/* 4-COLUMN COMPETITIVE BIDDING METRICS RAIL */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { title: 'Competitive Bidding', desc: 'Multiple recyclers competed for your vehicle', icon: Gavel },
-            { title: 'Best Offer Selected', desc: 'The highest bid is isolated to maximize your return', icon: Award },
-            { title: 'Partner Assigned', desc: 'Your certified local partner is locked in', icon: UserCheck },
-            { title: 'Secure & Transparent', desc: '100% legal processing with instant payout', icon: ShieldCheck }
-          ].map((item, idx) => {
-            const Icon = item.icon;
-            return (
-              <div key={idx} className="border border-gray-100 rounded-xl p-3 bg-white text-center flex flex-col items-center justify-start space-y-2 shadow-3xs">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 text-[#0B5B32] flex items-center justify-center border border-emerald-100 shrink-0">
-                  <Icon size={14} />
-                </div>
-                <div className="space-y-0.5">
-                  <p className="font-black text-gray-800 text-[10px] leading-tight">{item.title}</p>
-                  <p className="text-[9px] text-gray-400 font-bold leading-normal">{item.desc}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* SECTION 2: ACCEPT FINAL OFFER */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <h2 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
+            <span>2.</span>
+            <span>Accept Final Offer</span>
+          </h2>
 
-        {/* SECTION: WHAT HAPPENS NEXT CHRONO TRACK */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-black text-gray-800 tracking-tight uppercase text-gray-400">What happens next?</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 relative">
-            {[
-              { num: '1', name: 'Schedule Pickup', desc: 'Pick a convenient date and time window', icon: Calendar },
-              { num: '2', name: 'Free Towing', desc: 'Our pickup agent handles the heavy lifting', icon: Truck },
-              { num: '3', name: 'Verification', desc: 'On-site structural evaluation check', icon: ShieldAlert },
-              { num: '4', name: 'Instant Payment', desc: 'Funds transferred before hookup', icon: DollarSign },
-              { num: '5', name: 'COD Documents', desc: 'Official certificate of destruction issued', icon: FileText }
-            ].map((step, idx) => {
-              const StepIcon = step.icon;
-              return (
-                <div key={idx} className="bg-white border border-gray-100 p-3 rounded-xl space-y-2 relative shadow-3xs flex flex-col justify-between">
-                  <div className="w-6 h-6 rounded-md bg-emerald-50 text-[#0B5B32] flex items-center justify-center border border-emerald-100 shrink-0">
-                    <StepIcon size={12} />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-gray-800 text-[10px]">{step.num}. {step.name}</h4>
-                    <p className="text-[9px] text-gray-400 font-bold leading-tight mt-0.5">{step.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* GUARANTEE NO DEDUCTIONS BANNER ROW BAR */}
-        <div className="border border-emerald-100 bg-emerald-50/10 p-4 rounded-xl flex items-center justify-between gap-4 shadow-3xs">
-          <div className="flex items-start gap-3">
-            <ShieldCheck size={18} className="text-[#0B5B32] shrink-0 mt-0.5" />
+          <label className="flex items-start gap-3 bg-white border border-gray-100 rounded-xl p-3.5 cursor-pointer hover:border-emerald-200 transition-colors">
+            <input
+              type="checkbox"
+              checked={isAccepted}
+              onChange={(e) => setIsAccepted(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#0B5B32] focus:ring-[#0B5B32]"
+            />
             <div className="space-y-0.5">
-              <h4 className="font-black text-emerald-950 text-[11px]">No hidden charges. No hidden deductions.</h4>
-              <p className="text-gray-400 font-bold text-[10px]">The valuation generated matches the digital offer, provided the physical criteria align with your submission.</p>
+              <span className="font-black text-gray-900 text-[11px]">
+                I have reviewed the final offer and accept the amount of {formattedValue} (Estimated Range: {formattedRange}).
+              </span>
+              <p className="text-[10px] text-gray-400 font-medium">
+                By accepting, I confirm that all the details provided are correct and I agree to proceed for payment.
+              </p>
             </div>
-          </div>
-          <span className="text-xl shrink-0 hidden sm:block select-none">💵</span>
+          </label>
         </div>
 
-        {/* BOTTOM UTILITY LOWER RAIL TRIGGERS */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-100">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button 
-              type="button" 
-              onClick={() => router.push('/')}
-              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-4 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
-            >
-              <Home size={14} strokeWidth={2.5} />
-              <span>Home</span>
-            </button>
+        {/* SECTION 3: UPLOAD DOCUMENTS TO RECEIVE PAYMENT */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <div className="space-y-0.5">
+            <h2 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
+              <span>3.</span>
+              <span>Upload Documents to Receive Payment</span>
+            </h2>
+            <p className="text-[10px] text-gray-400 font-medium pl-4">
+              To transfer the payment, please upload the following documents. All documents are mandatory.
+            </p>
+          </div>
 
-            <button 
-              type="button" 
-              onClick={onPrevious}
-              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-6 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {documentFields.map((doc, idx) => (
+              <div key={idx} className="border border-gray-100 rounded-xl p-3 bg-white space-y-2 text-center flex flex-col justify-between">
+                <div className="space-y-0.5">
+                  <h4 className="font-black text-gray-900 text-[11px]">{doc.label}</h4>
+                  <p className="text-[9px] text-gray-400 font-medium">{doc.sub}</p>
+                </div>
+
+                {doc.state ? (
+                  /* UPLOADED SUCCESS STATE */
+                  <div className="border border-emerald-200 bg-emerald-50/40 rounded-xl p-3 flex flex-col items-center justify-center space-y-1.5 min-h-[110px]">
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                      <CheckCircle2 size={16} className="text-[#0B5B32]" />
+                    </div>
+                    <span className="font-black text-[10px] text-[#0B5B32] uppercase tracking-wide">
+                      Document Uploaded
+                    </span>
+                    <span className="font-semibold text-[9px] text-gray-600 truncate max-w-[140px]" title={doc.state.name}>
+                      {doc.state.name}
+                    </span>
+                  </div>
+                ) : (
+                  /* DEFAULT UPLOAD BOX */
+                  <label className="border border-dashed border-gray-200 rounded-xl p-3 bg-gray-50/50 hover:bg-emerald-50/30 transition-colors cursor-pointer flex flex-col items-center justify-center space-y-1 min-h-[110px]">
+                    <Upload size={16} className="text-[#0B5B32]" />
+                    <span className="font-black text-[10px] text-gray-700">Click to upload</span>
+                    <span className="text-[8px] text-gray-400">or drag and drop</span>
+                    <span className="text-[8px] text-gray-400">JPG, PNG, PDF (Max 5MB)</span>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && doc.onChange(e.target.files[0])}
+                    />
+                  </label>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Secure & Encrypted Banner */}
+          <div className="bg-emerald-50/40 border border-emerald-100 p-3 rounded-xl flex items-center gap-2.5">
+            <Lock size={15} className="text-[#0B5B32] shrink-0" />
+            <div className="space-y-0.5">
+              <h4 className="font-black text-[#0B5B32] text-[10px]">Your documents are secure and encrypted.</h4>
+              <p className="text-[9px] text-gray-500 font-medium">We use them only for payment processing and verification.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 4: CONFIRM & SUBMIT */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <div className="space-y-0.5">
+            <h2 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
+              <span>4.</span>
+              <span>Confirm & Submit</span>
+            </h2>
+            <p className="text-[10px] text-gray-400 font-medium pl-4">
+              Once you accept the offer and upload documents, our team will verify and process your payment.
+            </p>
+          </div>
+
+          {/* Payment SLA Notice */}
+          <div className="bg-amber-50/60 border border-amber-200/80 p-3 rounded-xl flex items-center gap-2 text-amber-900">
+            <AlertCircle size={16} className="text-amber-600 shrink-0" />
+            <span className="font-bold text-[10px]">
+              Payment will be made within <span className="font-black">24–48 hours</span> after document verification.
+            </span>
+          </div>
+
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl text-[11px] font-semibold flex items-center gap-2">
+              <AlertCircle size={15} className="text-red-500 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* Main Action Submit Button */}
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto bg-[#0B5B32] hover:bg-[#094d2a] disabled:opacity-60 text-white font-black px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
             >
-              <ArrowLeft size={14} strokeWidth={2.5} />
-              <span>Modify Details</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Submitting Offer...</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={14} />
+                  <span>Accept Offer & Submit Documents</span>
+                </>
+              )}
             </button>
           </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <button 
-              type="button" onClick={handleShare}
-              className="w-full sm:w-auto bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-5 py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-3xs cursor-pointer"
-            >
-              <Share2 size={13} />
-              <span>Share Offer</span>
-            </button>
-            
-            <button 
-              type="button" onClick={onContinue}
-              className="w-full sm:w-auto bg-[#0B5B32] hover:bg-[#094d2a] text-white font-black px-8 py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer"
-            >
-              <span>Schedule Pickup Now</span>
-              <ArrowRight size={14} strokeWidth={2.5} />
-            </button>
+        </div>
+
+        {/* BACK & FOOTER SAFEGUARD */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-100 text-gray-400">
+          <button
+            type="button"
+            onClick={onPrevious}
+            className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-black px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all text-[11px] cursor-pointer"
+          >
+            <ArrowLeft size={13} />
+            <span>Back</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 text-[10px] font-medium">
+            <Lock size={12} className="text-emerald-700" />
+            <span>Your information is encrypted and safe with us. We never share your data with anyone.</span>
           </div>
         </div>
 
       </main>
 
-      {/* RIGHT VALUATION BREAKDOWN SIDEBAR */}
-      <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
-        
-        {/* PANEL CARD 1: OFFER SUMMARY */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 font-black text-gray-800 text-sm border-b border-gray-50 pb-2">
-            <FileText size={16} className="text-[#0B5B32]" />
-            <h3>Offer Summary</h3>
+      {/* RIGHT SIDEBAR */}
+      <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
+
+        {/* BOOKING SUMMARY */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3.5">
+          <div className="flex items-center gap-2 font-black text-gray-900 text-xs border-b border-gray-50 pb-2">
+            <FileText size={15} className="text-[#0B5B32]" />
+            <h3>Booking Summary</h3>
           </div>
 
-          <div className="space-y-2.5">
-            {[
-              { label: 'Offer Amount', value: offerDetails.amount, highlight: true },
-              { label: 'Offer ID', value: offerDetails.id },
-              { label: 'Generated Date', value: offerDetails.date },
-              { label: 'Expiration Window', value: offerDetails.validTill }
-            ].map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center gap-4 py-0.5">
-                <span className="text-gray-400 font-bold">{item.label}</span>
-                <span className={`font-black ${item.highlight ? 'text-base text-[#0B5B32]' : 'text-gray-800'}`}>
-                  {item.value}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-emerald-50/50 border border-emerald-100/60 p-3 rounded-xl flex items-start gap-2 text-[11px] leading-relaxed text-gray-600">
-            <Clock size={14} className="text-[#0B5B32] shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-gray-800">Lock-in price window valid until:</span>{' '}
-              <span className="font-black text-emerald-900 block">{offerDetails.validTill}</span>
-              <span className="text-gray-400 font-medium text-[10px] block mt-0.5">Secure the configuration to book transportation rates.</span>
+          <div className="space-y-2 text-[11px]">
+            <div className="flex justify-between items-center text-gray-500">
+              <span className="font-medium">Booking ID</span>
+              <span className="font-black text-gray-800">{vehicleId ? vehicleId.substring(0, 18) : 'N/A'}</span>
             </div>
+            <div className="flex justify-between items-center text-gray-500">
+              <span className="font-medium">Vehicle</span>
+              <span className="font-black text-gray-800">{vehicleName}</span>
+            </div>
+            <div className="flex justify-between items-center text-gray-500">
+              <span className="font-medium">Registration No</span>
+              <span className="font-black text-gray-800">DL01AB1234</span>
+            </div>
+
+            {/* Expected Range */}
+            <div className="flex justify-between items-center text-gray-500">
+              <span className="font-medium">Expected Range</span>
+              <span className="font-black text-[#0B5B32]">{formattedRange}</span>
+            </div>
+
+            {/* Final Offer Amount */}
+            <div className="flex justify-between items-center text-gray-500">
+              <span className="font-medium">Final Offer Amount</span>
+              <span className="font-black text-[#0B5B32]">{formattedValue}</span>
+            </div>
+
+            <div className="flex justify-between items-center text-gray-500 border-t border-gray-50 pt-1.5">
+              <span className="font-medium">Assigned Recycler</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-black text-gray-800">Greenovaa Recyclers Pvt. Ltd.</span>
+                <span className="text-[8px] font-black bg-emerald-50 text-[#0B5B32] border border-emerald-200 px-1.5 py-0.5 rounded">Top Partner</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-gray-500 pt-1">
+              <span className="font-medium">Status</span>
+              <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                Picked Up
+              </span>
+            </div>
+          </div>
+
+          {/* Status Check Banner */}
+          <div className="bg-emerald-50/50 border border-emerald-100 p-3 rounded-xl flex items-center gap-2.5">
+            <CheckCircle2 size={16} className="text-[#0B5B32] shrink-0" />
+            <p className="text-[10px] font-black text-[#0B5B32]">
+              Vehicle has been picked up. Inspection completed.
+            </p>
           </div>
         </div>
 
-        {/* PANEL CARD 2: ASSIGNED RECYCLER BADGE LOGO */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-5 md:p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between gap-4 border-b border-gray-50 pb-2">
-            <h4 className="font-black text-gray-800 text-xs">Assigned Scrapping Yard</h4>
-            <span className="text-[9px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-sm shrink-0">Top Partner</span>
-          </div>
+        {/* WHAT HAPPENS NEXT TIMELINE */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3">
+          <h4 className="font-black text-gray-900 text-xs">What happens next?</h4>
 
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center font-black text-[#0B5B32] shadow-3xs text-[9px] text-center p-1 shrink-0 select-none">
-              ♻️ LOGO
-            </div>
-            <div className="space-y-0.5">
-              <h4 className="font-black text-gray-900 leading-tight">{offerDetails.recycler.name}</h4>
-              <div className="flex items-center gap-1 font-bold text-gray-500 text-[10px]">
-                <div className="flex items-center text-amber-500"><Star size={11} className="fill-current" /></div>
-                <span className="text-gray-800 font-black">{offerDetails.recycler.rating}</span>
-                <span>({offerDetails.recycler.reviews} reviews)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-2 pt-1 border-t border-gray-50">
-            {offerDetails.recycler.badges.map((badge, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-gray-600 font-bold text-[10px]">
-                <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-                <span>{badge}</span>
+          <div className="space-y-4 relative border-l-2 border-emerald-100 ml-3.5 pl-4 py-1 text-[11px]">
+            {[
+              { num: 1, title: 'Offer Accepted', desc: 'You accept the final offer after pickup.', current: true },
+              { num: 2, title: 'Documents Verification', desc: 'We verify your documents.' },
+              { num: 3, title: 'Payment Initiated', desc: 'Payment will be processed within 24–48 hours.' },
+              { num: 4, title: 'Payment Received', desc: 'You will receive the amount directly in your bank account.' },
+            ].map((stepItem) => (
+              <div key={stepItem.num} className="relative flex items-start justify-between gap-2">
+                <div className={`absolute -left-[23px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${stepItem.current ? 'bg-[#0B5B32] text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                  {stepItem.num}
+                </div>
+                <div>
+                  <h5 className={`font-black ${stepItem.current ? 'text-[#0B5B32]' : 'text-gray-800'}`}>
+                    {stepItem.num}. {stepItem.title}
+                  </h5>
+                  <p className="text-[10px] text-gray-400 font-medium leading-tight">{stepItem.desc}</p>
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* NEED HELP BOX */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3 text-center">
+          <div className="space-y-1">
+            <h4 className="font-black text-gray-900 text-xs">Need Help?</h4>
+            <p className="text-[10px] text-gray-400 font-medium">Our support team is here to help you at every step.</p>
+          </div>
+          <a
+            href="tel:+919990856709"
+            className="inline-flex items-center justify-center gap-2 w-full bg-emerald-50 border border-emerald-200 text-[#0B5B32] font-black py-2.5 px-4 rounded-xl text-xs hover:bg-emerald-100/60 transition-colors"
+          >
+            <PhoneCall size={14} />
+            <span>Call +91 99908 56709</span>
+          </a>
+        </div>
+
+        {/* SECURE & TRANSPARENT FOOTER BADGES */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3">
+          <div className="flex items-center gap-2 font-black text-gray-900 text-xs">
+            <ShieldCheck size={16} className="text-[#0B5B32]" />
+            <h4>Secure & Transparent</h4>
+          </div>
+          <div className="space-y-1.5 text-[10px] text-gray-600 font-medium">
+            <div className="flex items-center gap-2">
+              <Check size={12} className="text-[#0B5B32]" />
+              <span>100% secure process</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check size={12} className="text-[#0B5B32]" />
+              <span>No hidden charges</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check size={12} className="text-[#0B5B32]" />
+              <span>Instant payment on verification</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check size={12} className="text-[#0B5B32]" />
+              <span>PAN India service</span>
+            </div>
           </div>
         </div>
 

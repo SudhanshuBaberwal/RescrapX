@@ -495,3 +495,59 @@ export const addPaymentProof = async (data: {
     throw error;
   }
 };
+
+export const getPendingPaymentsData = async () => {
+  try {
+    const response = await api.get(
+      "/api/vehicle/register/admin/payments/pending",
+    );
+    return response.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const approvePayment = async (vehicleId: string) => {
+  try {
+    const response = await api.patch(
+      `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
+      {
+        action: "APPROVE",
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Failed to approve payment:", error);
+    throw error;
+  }
+};
+
+export const rejectPayment = async (
+  vehicleId: string,
+  rejectionReason: string,
+) => {
+  try {
+    const response = await api.patch(
+      `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
+      {
+        action: "REJECT",
+        rejectionReason,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Failed to reject payment:", error);
+    throw error;
+  }
+};
+
+export const calculateVehicleEstimatedPrice = async (vehicleId:string) => {
+  try {
+    const response = await api.get(`/api/vehicle/register/vehicles/estimated-price?vehicleId=${vehicleId}`)
+    return response.data;
+  } catch (error) {
+    console.log(error)
+  }
+}

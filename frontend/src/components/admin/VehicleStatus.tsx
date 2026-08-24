@@ -274,9 +274,9 @@ export default function RequestStatusPage() {
   getAllVehicles();
 
   // Extract real backend data from Redux Store
-  const allVehicles: IVehicle[] = useSelector(
-    (state: RootState) => state.admin.allVehicles || []
-  );
+ const allVehicles: IVehicle[] = useSelector(
+  (state: RootState) => (state.admin.allVehicles as unknown as IVehicle[]) || []
+);
 
   const [selectedRequest, setSelectedRequest] = useState<IVehicle | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

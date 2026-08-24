@@ -32,6 +32,18 @@ export interface IUploadedPhoto {
   uploadedAt: Date;
 }
 
+export enum OwnerPaymentDocumentType {
+  AADHAAR = "AADHAAR",
+  PAN = "PAN",
+  BANK_PROOF = "BANK_PROOF",
+}
+
+export enum OwnerPaymentDocumentStatus {
+  PENDING = "PENDING",
+  VERIFIED = "VERIFIED",
+  REJECTED = "REJECTED",
+}
+
 export enum PaymentStatus {
   PENDING = "PENDING",
   PROOF_UPLOADED = "PROOF_UPLOADED",
@@ -143,6 +155,21 @@ export enum structuralDamage {
   MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
 
+export interface IOwnerPaymentDocument {
+    _id?:mongoose.Types.ObjectId;
+  type: OwnerPaymentDocumentType;
+  fileName: string;
+  fileUrl: string;
+  storagePath: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: Date;
+  status: OwnerPaymentDocumentStatus;
+  rejectionReason?: string | null;
+  verifiedAt?: Date | null;
+  verifiedBy?: mongoose.Types.ObjectId | null;
+}
+
 export interface IPaymentProof {
   _id?: mongoose.Types.ObjectId;
 
@@ -174,10 +201,24 @@ export interface IVehicle extends Document {
     winningBid: number | null;
     wonAt: Date | null;
   };
-
+  pricing?: {
+    initialBaseRate: number;
+    netBaseRate: number;
+    materialValue: number;
+    netFlatAdjustments: number;
+    bav: number;
+    lowerBound: number;
+    upperBound: number;
+  };
+  ownerPaymentDocuments?: IOwnerPaymentDocument[];
+  ownerOfferAccepted?: boolean;
+  ownerOfferAcceptedAt?: Date | null;
   status: VehicleStatus;
   paymentStatus: PaymentStatus;
   paymentProofs: IPaymentProof[];
+  paymentRejectionReason?: string;
+  paymentVerifiedAt?: Date;
+  paymentVerifiedBy?: mongoose.Types.ObjectId;
   processingStage?: ProcessingStage;
   isRegistered?: boolean;
   currentStep: RegistrationStep;
@@ -203,7 +244,7 @@ export interface IVehicle extends Document {
 
   majorComponents: {
     engine: ComponentCondition;
-    battery:ComponentCondition
+    battery: ComponentCondition;
     radiator: ComponentCondition;
     fuelSystem: ComponentCondition;
     gearbox: ComponentCondition;
@@ -285,6 +326,7 @@ export interface IVehicle extends Document {
 const vehicleDetailsSchema = new Schema(
   {
     registrationNumber: { type: String, trim: true },
+    carName: String,
     manufacturer: String,
     kerbWeightKg: {
       type: Number,
@@ -303,6 +345,70 @@ const vehicleDetailsSchema = new Schema(
     kmsDriven: Number,
   },
   { _id: false },
+);
+
+const ownerPaymentDocumentSchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: Object.values(OwnerPaymentDocumentType),
+      required: true,
+    },
+
+    fileName: {
+      type: String,
+      required: true,
+    },
+
+    fileUrl: {
+      type: String,
+      required: true,
+    },
+
+    storagePath: {
+      type: String,
+      required: true,
+    },
+
+    mimeType: {
+      type: String,
+      required: true,
+    },
+
+    size: {
+      type: Number,
+      required: true,
+    },
+
+    uploadedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    status: {
+      type: String,
+      enum: Object.values(OwnerPaymentDocumentStatus),
+      default: OwnerPaymentDocumentStatus.PENDING,
+    },
+
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
+
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    verifiedBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+    },
+  },
+  {
+    _id: true,
+  },
 );
 
 const vehicleConditionSchema = new Schema(
@@ -805,10 +911,50 @@ const vehicleSchema = new Schema<IVehicle>(
       type: [paymentProofSchema],
       default: [],
     },
+
+    paymentRejectionReason: {
+      type: String,
+      default: null,
+    },
+
+    paymentVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    paymentVerifiedBy: {
+      type: Schema.Types.ObjectId,
+      default: null,
+    },
     timeline: [timelineSchema],
     rejectionReason: {
       type: String,
       default: null,
+    },
+
+    pricing: {
+      initialBaseRate: Number,
+      netBaseRate: Number,
+      materialValue: Number,
+      netFlatAdjustments: Number,
+      bav: Number,
+      lowerBound: Number,
+      upperBound: Number,
+    },
+
+    ownerOfferAccepted: {
+      type: Boolean,
+      default: false,
+    },
+
+    ownerOfferAcceptedAt: {
+      type: Date,
+      default: null,
+    },
+
+    ownerPaymentDocuments: {
+      type: [ownerPaymentDocumentSchema],
+      default: [],
     },
 
     auctionResult: {

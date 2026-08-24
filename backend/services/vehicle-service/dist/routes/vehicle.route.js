@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { allVehiclesDataForAdmin, ApplyForBiddingVehicleController, approveAllPartnerDocuments, approveVehicleForPickup, assignDriver, createVehicleDraft, FindALlVehicleForUserController, findScheduledVehicles, findVehicle, getAllVehicles, getAllVehiclesWithStatus, getCustomerBookingById, getCustomerBookings, getPartnerDashboard, getPartnerDocumentVehicles, getPartnerDocumentVehiclesForAdmin, getPartnerIncomingVehicles, getPartnerPaymentVehicles, getPartnerProcessingStats, getPartnerProcessingVehicles, getPartnerVehicleDocuments, getPickupMap, getReadyForBiddingVehicles, getVehicleDashboardStats, getVehicleStatusById, majorComponents, markVehicleArrived, registerBasicVehicleDetails, reviewPartnerDocument, reviewVehicle, schedulePickup, scheduleVehiclePickup, setPickupVehicleController, submitPartnerDocuments, underVerification, updateAuctionVehicleStatus, updatePartnerProcessingStage, updateVehicleStatus, uploadPartnerDocument, uploadPartnerPaymentProof, uploadVehicleDocumentController, uploadVehiclePhotosController, vehicleCondition, vehiclePickupLocation, viewDocument, } from "../controllers/vehicle.controller.js";
+import { acceptOfferAndSubmitPaymentDocuments, allVehiclesDataForAdmin, ApplyForBiddingVehicleController, approveAllPartnerDocuments, approveVehicleForPickup, assignDriver, calculateVehicleEstimatedPrice, createVehicleDraft, FindALlVehicleForUserController, findScheduledVehicles, findVehicle, getAllVehicles, getAllVehiclesWithStatus, getCustomerBookingById, getCustomerBookings, getOwnerVerifiedPaymentVehicles, getPartnerDashboard, getPartnerDocumentVehicles, getPartnerDocumentVehiclesForAdmin, getPartnerIncomingVehicles, getPartnerPaymentVehicles, getPartnerProcessingStats, getPartnerProcessingVehicles, getPartnerVehicleDocuments, getPaymentProofsForAdmin, getPickupMap, getReadyForBiddingVehicles, getVehicleDashboardStats, getVehicleStatusById, majorComponents, markVehicleArrived, registerBasicVehicleDetails, reviewPartnerDocument, reviewPaymentProof, reviewVehicle, schedulePickup, scheduleVehiclePickup, setPickupVehicleController, submitPartnerDocuments, underVerification, updateAuctionVehicleStatus, updatePartnerProcessingStage, updateVehicleStatus, uploadPartnerDocument, uploadPartnerPaymentProof, uploadVehicleDocumentController, uploadVehiclePhotosController, vehicleCondition, vehiclePickupLocation, viewDocument, } from "../controllers/vehicle.controller.js";
 import { pickupSchema, vehicleBasicSchema, vehicleConditionSchema, vehicleMajorComponentsSchema, } from "../validations/vehicle.validation.js";
 import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
-import uploadVehicleDocument, { paymentProofUpload, uploadVehicleDocumentByPartner, uploadVehiclePhotos, } from "../middlewares/uploadVehicleDocument.js";
+import uploadVehicleDocument, { paymentProofUpload, uploadOwnerPaymentDocuments, uploadVehicleDocumentByPartner, uploadVehiclePhotos, } from "../middlewares/uploadVehicleDocument.js";
 import adminOnly from "../middlewares/adminOnly.js";
 import serviceAuth from "../middlewares/serviceAuth.js";
 const router = Router();
@@ -54,4 +54,9 @@ router.patch("/admin/partner-documents/vehicles/review", adminOnly, reviewPartne
 router.patch("/admin/partner-documents/vehicles/approve", adminOnly, approveAllPartnerDocuments);
 router.get("/partner/payments/vehicles", getPartnerPaymentVehicles);
 router.post("/partner/payments/proof", paymentProofUpload.single("paymentProof"), uploadPartnerPaymentProof);
+router.get("/vehicles/estimated-price", calculateVehicleEstimatedPrice);
+router.get("/admin/payments/pending", adminOnly, getPaymentProofsForAdmin);
+router.patch("/admin/payments/review", adminOnly, reviewPaymentProof);
+router.get("/owner/verified-payment", getOwnerVerifiedPaymentVehicles);
+router.post("/owner/accept-offer", uploadOwnerPaymentDocuments, acceptOfferAndSubmitPaymentDocuments);
 export default router;

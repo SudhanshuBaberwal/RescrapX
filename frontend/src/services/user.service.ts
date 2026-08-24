@@ -67,3 +67,13 @@ export const rejectKYC = async (
     throw error;
   }
 };
+
+export const getMyVerifiedPaymentVehicles = async () => {
+  try {
+    const response = await api.get("/api/vehicle/register/owner/verified-payment");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch verified payment vehicles:", error);
+    throw error;
+  }
+};

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  acceptOfferAndSubmitPaymentDocuments,
   allVehiclesDataForAdmin,
   ApplyForBiddingVehicleController,
   approveAllPartnerDocuments,
@@ -14,6 +15,7 @@ import {
   getAllVehiclesWithStatus,
   getCustomerBookingById,
   getCustomerBookings,
+  getOwnerVerifiedPaymentVehicles,
   getPartnerDashboard,
   getPartnerDocumentVehicles,
   getPartnerDocumentVehiclesForAdmin,
@@ -22,6 +24,7 @@ import {
   getPartnerProcessingStats,
   getPartnerProcessingVehicles,
   getPartnerVehicleDocuments,
+  getPaymentProofsForAdmin,
   getPickupMap,
   getReadyForBiddingVehicles,
   getVehicleDashboardStats,
@@ -31,6 +34,7 @@ import {
   registerBasicVehicleDetails,
   requestPickupOtp,
   reviewPartnerDocument,
+  reviewPaymentProof,
   reviewVehicle,
   schedulePickup,
   scheduleVehiclePickup,
@@ -59,6 +63,7 @@ import { attachUser } from "../middlewares/attachUser.js";
 import validate from "../middlewares/validate.middleware.js";
 import uploadVehicleDocument, {
   paymentProofUpload,
+  uploadOwnerPaymentDocuments,
   uploadVehicleDocumentByPartner,
   uploadVehiclePhotos,
 } from "../middlewares/uploadVehicleDocument.js";
@@ -201,8 +206,18 @@ router.post(
   uploadPartnerPaymentProof,
 );
 
-router.get(
-  "/register/vehicles/estimated-price",
-  calculateVehicleEstimatedPrice,
+router.get("/vehicles/estimated-price", calculateVehicleEstimatedPrice);
+
+router.get("/admin/payments/pending", adminOnly, getPaymentProofsForAdmin);
+
+router.patch("/admin/payments/review", adminOnly, reviewPaymentProof);
+
+router.get("/owner/verified-payment", getOwnerVerifiedPaymentVehicles);
+
+router.post(
+  "/owner/accept-offer",
+  uploadOwnerPaymentDocuments,
+  acceptOfferAndSubmitPaymentDocuments,
 );
+
 export default router;

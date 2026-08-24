@@ -1,4 +1,16 @@
 import mongoose, { Schema } from "mongoose";
+export var OwnerPaymentDocumentType;
+(function (OwnerPaymentDocumentType) {
+    OwnerPaymentDocumentType["AADHAAR"] = "AADHAAR";
+    OwnerPaymentDocumentType["PAN"] = "PAN";
+    OwnerPaymentDocumentType["BANK_PROOF"] = "BANK_PROOF";
+})(OwnerPaymentDocumentType || (OwnerPaymentDocumentType = {}));
+export var OwnerPaymentDocumentStatus;
+(function (OwnerPaymentDocumentStatus) {
+    OwnerPaymentDocumentStatus["PENDING"] = "PENDING";
+    OwnerPaymentDocumentStatus["VERIFIED"] = "VERIFIED";
+    OwnerPaymentDocumentStatus["REJECTED"] = "REJECTED";
+})(OwnerPaymentDocumentStatus || (OwnerPaymentDocumentStatus = {}));
 export var PaymentStatus;
 (function (PaymentStatus) {
     PaymentStatus["PENDING"] = "PENDING";
@@ -112,7 +124,13 @@ export var structuralDamage;
 })(structuralDamage || (structuralDamage = {}));
 const vehicleDetailsSchema = new Schema({
     registrationNumber: { type: String, trim: true },
+    carName: String,
     manufacturer: String,
+    kerbWeightKg: {
+        type: Number,
+        min: 0,
+        default: null,
+    },
     model: String,
     variant: String,
     fuelType: String,
@@ -124,6 +142,56 @@ const vehicleDetailsSchema = new Schema({
     ownership: Number,
     kmsDriven: Number,
 }, { _id: false });
+const ownerPaymentDocumentSchema = new Schema({
+    type: {
+        type: String,
+        enum: Object.values(OwnerPaymentDocumentType),
+        required: true,
+    },
+    fileName: {
+        type: String,
+        required: true,
+    },
+    fileUrl: {
+        type: String,
+        required: true,
+    },
+    storagePath: {
+        type: String,
+        required: true,
+    },
+    mimeType: {
+        type: String,
+        required: true,
+    },
+    size: {
+        type: Number,
+        required: true,
+    },
+    uploadedAt: {
+        type: Date,
+        default: Date.now,
+    },
+    status: {
+        type: String,
+        enum: Object.values(OwnerPaymentDocumentStatus),
+        default: OwnerPaymentDocumentStatus.PENDING,
+    },
+    rejectionReason: {
+        type: String,
+        default: null,
+    },
+    verifiedAt: {
+        type: Date,
+        default: null,
+    },
+    verifiedBy: {
+        type: Schema.Types.ObjectId,
+        default: null,
+    },
+}, {
+    _id: true,
+});
 const vehicleConditionSchema = new Schema({
     accidentType: {
         type: String,
@@ -194,6 +262,11 @@ const majorComponentsSchema = new Schema({
         default: null,
     },
     bodyPanels: {
+        type: String,
+        enum: Object.values(ComponentCondition),
+        default: null,
+    },
+    battery: {
         type: String,
         enum: Object.values(ComponentCondition),
         default: null,
@@ -521,10 +594,43 @@ const vehicleSchema = new Schema({
         type: [paymentProofSchema],
         default: [],
     },
+    paymentRejectionReason: {
+        type: String,
+        default: null,
+    },
+    paymentVerifiedAt: {
+        type: Date,
+        default: null,
+    },
+    paymentVerifiedBy: {
+        type: Schema.Types.ObjectId,
+        default: null,
+    },
     timeline: [timelineSchema],
     rejectionReason: {
         type: String,
         default: null,
+    },
+    pricing: {
+        initialBaseRate: Number,
+        netBaseRate: Number,
+        materialValue: Number,
+        netFlatAdjustments: Number,
+        bav: Number,
+        lowerBound: Number,
+        upperBound: Number,
+    },
+    ownerOfferAccepted: {
+        type: Boolean,
+        default: false,
+    },
+    ownerOfferAcceptedAt: {
+        type: Date,
+        default: null,
+    },
+    ownerPaymentDocuments: {
+        type: [ownerPaymentDocumentSchema],
+        default: [],
     },
     auctionResult: {
         auctionId: {

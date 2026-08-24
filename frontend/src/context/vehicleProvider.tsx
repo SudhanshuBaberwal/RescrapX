@@ -30,6 +30,13 @@ export interface IUploadedPhoto {
     uploadedAt: Date;
 }
 
+export enum PaymentStatus {
+    PENDING = "PENDING",
+    PROOF_UPLOADED = "PROOF_UPLOADED",
+    VERIFIED = "VERIFIED",
+    REJECTED = "REJECTED",
+}
+
 export enum PartnerDocumentSubmissionStatus {
     NOT_STARTED = "NOT_STARTED",
     IN_PROGRESS = "IN_PROGRESS",
@@ -133,8 +140,24 @@ export enum structuralDamage {
     MINOR_DAMAGE = "MINOR_DAMAGE",
     MAJOR_DAMAGE = "MAJOR_DAMAGE",
 }
+
+export interface IPaymentProof {
+    _id?: string;
+    type: "OWNER_PAYMENT_PROOF" | "PARTNER_PAYMENT_PROOF";
+    fileName: string;
+    fileUrl: string;
+    storagePath?: string | null;
+    uploadedBy?: string | null;
+    uploadedAt: Date;
+
+    verified: boolean;
+
+    verifiedAt?: Date | null;
+
+    rejectionReason?: string | null;
+}
 export interface IVehicle {
-    _id: string
+    _id?:string | undefined
     owner: string;
     pickupCharges?: number;
     documentCharges?: number;
@@ -144,14 +167,28 @@ export interface IVehicle {
         winningBid: number | null;
         wonAt: Date | null;
     };
-
+    pricing?: {
+        initialBaseRate: number;
+        netBaseRate: number;
+        materialValue: number;
+        netFlatAdjustments: number;
+        bav: number;
+        lowerBound: number;
+        upperBound: number;
+    };
     status: VehicleStatus;
+    paymentStatus: PaymentStatus;
+    paymentProofs: IPaymentProof[];
+    paymentRejectionReason?: string;
+    paymentVerifiedAt?: Date;
+    paymentVerifiedBy?: string;
     processingStage?: ProcessingStage;
     isRegistered?: boolean;
     currentStep: RegistrationStep;
     vehicleDetails: {
         carName: string;
         registrationNumber: string;
+        kerbWeightKg?: number;
         model: string;
         variant: string;
         fuelType: string;
@@ -170,6 +207,7 @@ export interface IVehicle {
 
     majorComponents: {
         engine: ComponentCondition;
+        battery: ComponentCondition;
         radiator: ComponentCondition;
         fuelSystem: ComponentCondition;
         gearbox: ComponentCondition;
@@ -247,8 +285,6 @@ export interface IVehicle {
     createdAt: Date;
     updatedAt: Date;
 }
-
-
 
 
 export interface CustomerBookingResponse {

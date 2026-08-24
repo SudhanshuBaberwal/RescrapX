@@ -8,7 +8,10 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-import { getVehicle, reviewAndSubmit } from '@/services/vehicle.service';
+import { calculateVehicleEstimatedPrice, getVehicle, reviewAndSubmit } from '@/services/vehicle.service';
+import { setUserEstimatedPrice } from '@/store/userSlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
 
 interface StepComponentProps {
   vehicleId: string;
@@ -77,9 +80,8 @@ export default function VehicleReviewConfirmPage({
   // State for image inspection modal (Lightbox)
   const [previewImage, setPreviewImage] = useState<{ url: string; label: string } | null>(null);
 
-  // ==========================================
-  // 1. FETCH VEHICLE DATA ON MOUNT
-  // ==========================================
+  const dispatch = useDispatch<AppDispatch>()
+
   useEffect(() => {
     const fetchVehicleDetails = async () => {
       if (!vehicleId) {
@@ -168,10 +170,13 @@ export default function VehicleReviewConfirmPage({
       alert(`Redirecting to edit Step ${stepNum}...`);
     }
   };
+  // Update props interface to accept data in onContinue callback
+  interface StepComponentProps {
+    vehicleId: string;
+    onContinue: (priceData?: any) => void; // Updated callback signature
+    // ... rest of props remain unchanged
+  }
 
-  // ==========================================
-  // 2. FINAL SUBMISSION API HANDLER
-  // ==========================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isConfirmed) {
@@ -182,9 +187,15 @@ export default function VehicleReviewConfirmPage({
     setRegistrationStatus('submitting');
 
     try {
+      // 1. Submit review
       const response = await reviewAndSubmit(vehicleId);
+
       if (response && (response.data?.success || response.data?.status === 200 || response.data)) {
+        // 2. Fetch estimated price range immediately after submission
+        const priceData = await calculateVehicleEstimatedPrice(vehicleId);
         setRegistrationStatus('success');
+        dispatch(setUserEstimatedPrice(priceData.data))
+        onContinue();
       } else {
         setRegistrationStatus('failed');
       }
@@ -193,7 +204,6 @@ export default function VehicleReviewConfirmPage({
       setRegistrationStatus('failed');
     }
   };
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-white border border-gray-100 rounded-2xl p-8 text-center space-y-4 shadow-3xs">

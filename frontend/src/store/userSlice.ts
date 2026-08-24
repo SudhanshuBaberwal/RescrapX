@@ -1,12 +1,15 @@
 import { User } from "@/context/AuthProvider";
+import { VehiclePriceEstimationResponse } from "@/context/pricing";
 import { IUserDocuments } from "@/context/userDocumentProvider";
-import { CustomerBookingResponse } from "@/context/vehicleProvider";
+import { CustomerBookingResponse, IVehicle } from "@/context/vehicleProvider";
 import { createSlice } from "@reduxjs/toolkit";
 
 interface UserState {
   userData: User | null;
   userProfileData: IUserDocuments | null;
   userBookingData: CustomerBookingResponse[] | [];
+  userPaymentsData: IVehicle[] | [];
+  userEstimatedPrice: VehiclePriceEstimationResponse | null;
   loading: boolean;
 }
 
@@ -14,6 +17,8 @@ const initialState: UserState = {
   userData: null,
   userProfileData: null,
   userBookingData: [],
+  userPaymentsData: [],
+  userEstimatedPrice: null,
   loading: true,
 };
 const userSlice = createSlice({
@@ -42,6 +47,12 @@ const userSlice = createSlice({
       state.userData = null;
       state.loading = false;
     },
+    setUserPaymentsData: (state, action) => {
+      state.userPaymentsData = action.payload;
+    },
+    setUserEstimatedPrice: (state, action) => {
+      state.userEstimatedPrice = action.payload;
+    },
   },
 });
 
@@ -51,5 +62,7 @@ export const {
   clearUser,
   setUserProfileData,
   setUserBookingData,
+  setUserEstimatedPrice,
+  setUserPaymentsData,
 } = userSlice.actions;
 export default userSlice.reducer;

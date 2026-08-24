@@ -116,6 +116,62 @@ class SupabaseService {
       storagePath: fileName,
     };
   };
+
+  async uploadOwnerPaymentDocument(
+    file: Express.Multer.File,
+    vehicleId: string,
+    documentType: "AADHAAR" | "PAN" | "BANK_PROOF",
+  ) {
+    const bucket = "partner-documents";
+
+    const fileExtension = file.originalname.split(".").pop();
+
+    const fileName = `${documentType.toLowerCase()}-${Date.now()}.${fileExtension}`;
+
+    const storagePath = `vehicles/${vehicleId}/payment-documents/${fileName}`;
+
+    console.log("========== SUPABASE UPLOAD DEBUG ==========");
+    console.log("Bucket:", bucket);
+    console.log("Document:", documentType);
+    console.log("Vehicle:", vehicleId);
+    console.log("File:", file.originalname);
+    console.log("Storage Path:", storagePath);
+    console.log("============================================");
+
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("SUPABASE STORAGE ERROR:", error);
+
+      throw new ApiError(
+        500,
+        `Failed to upload ${documentType}: ${error.message}`,
+      );
+    }
+
+    if (!data) {
+      throw new ApiError(
+        500,
+        `Failed to upload ${documentType}: No upload data returned`,
+      );
+    }
+
+    // If bucket is PUBLIC
+    const { data: publicUrlData } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+
+    return {
+      fileUrl: publicUrlData.publicUrl,
+      storagePath: data.path,
+      bucket: bucket,
+    };
+  }
 }
 
 export default new SupabaseService();

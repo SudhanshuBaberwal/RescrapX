@@ -109,4 +109,40 @@ export const paymentProofUpload = multer({
   },
 });
 
+export const uploadOwnerPaymentDocuments = multer({
+  storage,
+
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/pdf",
+    ];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error("Only JPG, PNG, WEBP and PDF files are allowed"));
+    }
+
+    cb(null, true);
+  },
+}).fields([
+  {
+    name: "aadhaar",
+    maxCount: 1,
+  },
+  {
+    name: "pan",
+    maxCount: 1,
+  },
+  {
+    name: "bankProof",
+    maxCount: 1,
+  },
+]);
+
 export default uploadVehicleDocument;

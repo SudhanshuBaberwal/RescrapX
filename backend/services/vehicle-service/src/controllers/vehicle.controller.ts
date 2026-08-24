@@ -977,3 +977,104 @@ export const calculateVehicleEstimatedPrice = asyncHandler(async (req, res) => {
     data: price,
   });
 });
+
+export const getPaymentProofsForAdmin = asyncHandler(async (req, res) => {
+  const vehicles = await vehicleService.getPaymentProofsForAdmin();
+
+  return res.status(200).json({
+    success: true,
+
+    message: "Payment proofs fetched successfully",
+
+    data: vehicles,
+  });
+});
+
+export const reviewPaymentProof = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+
+  const { action, rejectionReason } = req.body;
+
+  if (!vehicleId) {
+    throw new ApiError(400, "Vehicle ID is required");
+  }
+
+  if (action !== "APPROVE" && action !== "REJECT") {
+    throw new ApiError(400, "Action must be APPROVE or REJECT");
+  }
+
+  if (action === "REJECT" && !rejectionReason?.trim()) {
+    throw new ApiError(400, "Rejection reason is required");
+  }
+  const adminId = req.headers["x-user-id"] as string;
+
+  if (!adminId) {
+    throw new ApiError(401, "Admin authentication required");
+  }
+
+  const vehicle = await vehicleService.reviewPaymentProof(
+    vehicleId,
+    adminId,
+    action,
+    rejectionReason,
+  );
+
+  return res.status(200).json({
+    success: true,
+
+    message:
+      action === "APPROVE"
+        ? "Payment approved successfully"
+        : "Payment rejected successfully",
+
+    data: vehicle,
+  });
+});
+
+export const getOwnerVerifiedPaymentVehicles = asyncHandler(
+  async (req: Request, res: Response) => {
+    const ownerId = req.headers["x-user-id"] as string;
+
+    if (!ownerId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
+    const vehicles =
+      await vehicleService.getVerifiedPaymentVehiclesForOwner(ownerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Verified payment vehicles fetched successfully",
+      data: vehicles,
+    });
+  },
+);
+
+export interface OwnerPaymentFiles {
+  aadhaar?: Express.Multer.File[];
+  pan?: Express.Multer.File[];
+  bankProof?: Express.Multer.File[];
+}
+
+export const acceptOfferAndSubmitPaymentDocuments = asyncHandler(
+  async (req: Request, res: Response) => {
+    const vehicleId = req.query.vehicleId as string;
+    const userId = req.headers["x-user-id"] as string;
+    if (!userId) {
+      throw new ApiError(401, "Unauthorized");
+    }
+    const files = req.files as OwnerPaymentFiles;
+    const result = await vehicleService.acceptOfferAndSubmitPaymentDocuments(
+      vehicleId,
+      userId,
+      files,
+    );
+
+    return ApiResponse.success(
+      res,
+      200,
+      "Final offer accepted and payment documents submitted successfully",
+      result,
+    );
+  },
+);

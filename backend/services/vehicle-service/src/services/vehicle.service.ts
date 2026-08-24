@@ -3,9 +3,12 @@ import vehicleRepository, {
 } from "../repositories/vehicle.repository.js";
 import Vehicle, {
   IVehicle,
+  OwnerPaymentDocumentStatus,
+  OwnerPaymentDocumentType,
   PartnerDocumentStatus,
   PartnerDocumentSubmissionStatus,
   PartnerDocumentType,
+  PaymentStatus,
   ProcessingStage,
   RegistrationStep,
   VehicleDocumentType,
@@ -29,6 +32,7 @@ import supabaseService from "./supabase.service.js";
 import mongoose from "mongoose";
 import { generatePickupOtp, hashPickupOtp } from "../helper/otp.js";
 import pricingService from "./pricing.service.js";
+import { OwnerPaymentFiles } from "../controllers/vehicle.controller.js";
 
 const createPhoto = (upload: any, file: Express.Multer.File) => ({
   path: upload.path,
@@ -80,7 +84,6 @@ class VehicleService {
       kmsDriven: data.odometerReading,
       ownership: data.ownership,
     };
-
     vehicle.currentStep = Math.max(vehicle.currentStep, 1);
     await vehicleRepository.saveVehicle(vehicle);
     return vehicle;
@@ -129,7 +132,7 @@ class VehicleService {
       glass: data.glass,
       lights: data.lights,
       interior: data.interior,
-      battery:data.bettery
+      battery: data.bettery,
     };
     vehicle.currentStep = Math.max(vehicle.currentStep, 3);
     await vehicleRepository.saveVehicle(vehicle);
@@ -1702,33 +1705,361 @@ class VehicleService {
 
   async calculateVehicleEstimatedPrice(vehicleId: string) {
     if (!vehicleId) {
-      throw new Error("Vehicle ID is required");
+      throw new ApiError(400, "Vehicle ID is required");
     }
 
     if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
-      throw new Error("Invalid vehicle ID");
+      throw new ApiError(400, "Invalid vehicle ID");
     }
 
     const vehicle = await vehicleRepository.findByVehicleId(vehicleId);
 
     if (!vehicle) {
-      throw new Error("Vehicle not found");
+      throw new ApiError(404, "Vehicle not found");
     }
-
-    // Make sure all required registration information exists
     if (!vehicle.vehicleDetails) {
-      throw new Error("Vehicle details are incomplete");
+      throw new ApiError(400, "Vehicle details are incomplete");
     }
 
     if (!vehicle.vehicleCondition) {
-      throw new Error("Vehicle condition is incomplete");
+      throw new ApiError(400, "Vehicle condition is incomplete");
     }
 
     if (!vehicle.majorComponents) {
-      throw new Error("Major components information is incomplete");
+      throw new ApiError(400, "Major components information is incomplete");
+    }
+    const valuation = await pricingService.calculateValuation(vehicle);
+    if (valuation.vehicle?.kerbWeightKg != null) {
+      vehicle.vehicleDetails.kerbWeightKg = valuation.vehicle.kerbWeightKg;
+    }
+    vehicle.pricing = {
+      initialBaseRate: valuation.pricing.initialBaseRate,
+      netBaseRate: valuation.pricing.netBaseRate,
+      materialValue: valuation.pricing.materialValue,
+      netFlatAdjustments: valuation.pricing.netFlatAdjustments,
+      bav: valuation.pricing.bav,
+      lowerBound: valuation.pricing.lowerBound,
+      upperBound: valuation.pricing.upperBound,
+    };
+    await vehicleRepository.saveVehicle(vehicle);
+    return valuation;
+  }
+
+  async getPaymentProofsForAdmin() {
+    return Vehicle.find({
+      paymentStatus: PaymentStatus.PROOF_UPLOADED,
+    })
+      .sort({
+        updatedAt: -1,
+      })
+      .lean();
+  }
+
+  async reviewPaymentProof(
+    vehicleId: string,
+    adminId: string,
+    action: "APPROVE" | "REJECT",
+    rejectionReason?: string,
+  ) {
+    const vehicle = await Vehicle.findById(vehicleId);
+
+    if (!vehicle) {
+      throw new ApiError(404, "Vehicle not found");
     }
 
-    return pricingService.calculateValuation(vehicle);
+    // Admin can only review uploaded proofs
+    if (vehicle.paymentStatus !== PaymentStatus.PROOF_UPLOADED) {
+      throw new ApiError(
+        400,
+        `Payment cannot be reviewed because current status is ${vehicle.paymentStatus}`,
+      );
+    }
+
+    if (action === "APPROVE") {
+      vehicle.paymentStatus = PaymentStatus.VERIFIED;
+
+      vehicle.paymentRejectionReason = "";
+
+      vehicle.paymentVerifiedAt = new Date();
+
+      vehicle.paymentVerifiedBy = new mongoose.Types.ObjectId(adminId);
+    }
+
+    if (action === "REJECT") {
+      if (!rejectionReason?.trim()) {
+        throw new ApiError(400, "Rejection reason is required");
+      }
+
+      vehicle.paymentStatus = PaymentStatus.REJECTED;
+
+      vehicle.paymentRejectionReason = rejectionReason.trim();
+
+      vehicle.paymentVerifiedAt = new Date();
+
+      vehicle.paymentVerifiedBy = new mongoose.Types.ObjectId(adminId);
+    }
+
+    await vehicle.save();
+
+    return vehicle.toObject();
+  }
+
+  async getVerifiedPaymentVehiclesForOwner(ownerId: string) {
+    if (!mongoose.Types.ObjectId.isValid(ownerId)) {
+      throw new ApiError(400, "Invalid owner ID");
+    }
+
+    const vehicles = await Vehicle.find({
+      owner: new mongoose.Types.ObjectId(ownerId),
+      paymentStatus: PaymentStatus.VERIFIED,
+    })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    return vehicles;
+  }
+  async acceptOfferAndSubmitPaymentDocuments(
+    vehicleId: string,
+    userId: string,
+    files: OwnerPaymentFiles,
+  ) {
+    // =========================================================
+    // 1. Validate IDs
+    // =========================================================
+
+    if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+      throw new ApiError(400, "Invalid vehicle ID");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      throw new ApiError(400, "Invalid user ID");
+    }
+
+    // =========================================================
+    // 2. Find vehicle belonging to logged-in user
+    // =========================================================
+
+    const vehicle = await Vehicle.findOne({
+      _id: vehicleId,
+      owner: userId,
+    });
+
+    if (!vehicle) {
+      throw new ApiError(
+        404,
+        "Vehicle not found or you do not own this vehicle",
+      );
+    }
+
+    // =========================================================
+    // 3. Pricing must exist
+    // =========================================================
+
+    if (!vehicle.pricing) {
+      throw new ApiError(400, "Vehicle pricing has not been calculated yet");
+    }
+
+    // =========================================================
+    // 4. Get uploaded files
+    // =========================================================
+
+    const aadhaarFile = files?.aadhaar?.[0];
+    const panFile = files?.pan?.[0];
+    const bankProofFile = files?.bankProof?.[0];
+
+    // =========================================================
+    // 5. Validate files
+    // =========================================================
+
+    if (!aadhaarFile) {
+      throw new ApiError(400, "Aadhaar card is required");
+    }
+
+    if (!panFile) {
+      throw new ApiError(400, "PAN card is required");
+    }
+
+    if (!bankProofFile) {
+      throw new ApiError(400, "Bank proof is required");
+    }
+
+    // =========================================================
+    // 6. Prevent duplicate submission
+    // =========================================================
+
+    if (
+      vehicle.ownerOfferAccepted === true &&
+      vehicle.ownerPaymentDocuments &&
+      vehicle.ownerPaymentDocuments.length > 0
+    ) {
+      throw new ApiError(
+        400,
+        "Offer and payment documents have already been submitted",
+      );
+    }
+
+    // =========================================================
+    // 7. Upload all documents to Supabase
+    // =========================================================
+
+    const [aadhaarUpload, panUpload, bankProofUpload] = await Promise.all([
+      supabaseService.uploadOwnerPaymentDocument(
+        aadhaarFile,
+        vehicleId,
+        "AADHAAR",
+      ),
+
+      supabaseService.uploadOwnerPaymentDocument(panFile, vehicleId, "PAN"),
+
+      supabaseService.uploadOwnerPaymentDocument(
+        bankProofFile,
+        vehicleId,
+        "BANK_PROOF",
+      ),
+    ]);
+
+    // =========================================================
+    // 8. Create MongoDB payment document records
+    // =========================================================
+
+    const paymentDocuments = [
+      {
+        type: OwnerPaymentDocumentType.AADHAAR,
+
+        fileName: aadhaarFile.originalname,
+
+        fileUrl: aadhaarUpload.fileUrl,
+
+        storagePath: aadhaarUpload.storagePath,
+
+        mimeType: aadhaarFile.mimetype,
+
+        size: aadhaarFile.size,
+
+        uploadedAt: new Date(),
+
+        status: OwnerPaymentDocumentStatus.PENDING,
+
+        rejectionReason: null,
+
+        verifiedAt: null,
+
+        verifiedBy: null,
+      },
+
+      {
+        type: OwnerPaymentDocumentType.PAN,
+
+        fileName: panFile.originalname,
+
+        fileUrl: panUpload.fileUrl,
+
+        storagePath: panUpload.storagePath,
+
+        mimeType: panFile.mimetype,
+
+        size: panFile.size,
+
+        uploadedAt: new Date(),
+
+        status: OwnerPaymentDocumentStatus.PENDING,
+
+        rejectionReason: null,
+
+        verifiedAt: null,
+
+        verifiedBy: null,
+      },
+
+      {
+        type: OwnerPaymentDocumentType.BANK_PROOF,
+
+        fileName: bankProofFile.originalname,
+
+        fileUrl: bankProofUpload.fileUrl,
+
+        storagePath: bankProofUpload.storagePath,
+
+        mimeType: bankProofFile.mimetype,
+
+        size: bankProofFile.size,
+
+        uploadedAt: new Date(),
+
+        status: OwnerPaymentDocumentStatus.PENDING,
+
+        rejectionReason: null,
+
+        verifiedAt: null,
+
+        verifiedBy: null,
+      },
+    ];
+
+    // =========================================================
+    // 9. VERY IMPORTANT
+    // Assign documents to vehicle
+    // =========================================================
+
+    vehicle.ownerPaymentDocuments = paymentDocuments;
+
+    // =========================================================
+    // 10. Update offer/payment status
+    // =========================================================
+
+    vehicle.ownerOfferAccepted = true;
+
+    vehicle.ownerOfferAcceptedAt = new Date();
+
+    vehicle.paymentStatus = PaymentStatus.PROOF_UPLOADED;
+
+    // =========================================================
+    // 11. Save everything to MongoDB
+    // =========================================================
+
+    await vehicle.save();
+
+    // =========================================================
+    // 12. Return response
+    // =========================================================
+
+    return {
+      vehicleId: vehicle._id,
+
+      offerAccepted: vehicle.ownerOfferAccepted,
+
+      offerAcceptedAt: vehicle.ownerOfferAcceptedAt,
+
+      paymentStatus: vehicle.paymentStatus,
+
+      pricing: vehicle.pricing,
+
+      documents: vehicle.ownerPaymentDocuments?.map((document) => ({
+        id: document._id,
+
+        type: document.type,
+
+        fileName: document.fileName,
+
+        fileUrl: document.fileUrl,
+
+        storagePath: document.storagePath,
+
+        mimeType: document.mimeType,
+
+        size: document.size,
+
+        status: document.status,
+
+        uploadedAt: document.uploadedAt,
+
+        rejectionReason: document.rejectionReason,
+
+        verifiedAt: document.verifiedAt,
+
+        verifiedBy: document.verifiedBy,
+      })),
+    };
   }
 }
 
