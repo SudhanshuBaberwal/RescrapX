@@ -444,10 +444,7 @@ export default function VehicleInstantOfferPage({
               <span className="font-medium">Vehicle</span>
               <span className="font-black text-gray-800">{vehicleName}</span>
             </div>
-            <div className="flex justify-between items-center text-gray-500">
-              <span className="font-medium">Registration No</span>
-              <span className="font-black text-gray-800">DL01AB1234</span>
-            </div>
+
 
             {/* Expected Range */}
             <div className="flex justify-between items-center text-gray-500">
@@ -456,18 +453,9 @@ export default function VehicleInstantOfferPage({
             </div>
 
             {/* Final Offer Amount */}
-            <div className="flex justify-between items-center text-gray-500">
-              <span className="font-medium">Final Offer Amount</span>
-              <span className="font-black text-[#0B5B32]">{formattedValue}</span>
-            </div>
+            
 
-            <div className="flex justify-between items-center text-gray-500 border-t border-gray-50 pt-1.5">
-              <span className="font-medium">Assigned Recycler</span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-gray-800">Greenovaa Recyclers Pvt. Ltd.</span>
-                <span className="text-[8px] font-black bg-emerald-50 text-[#0B5B32] border border-emerald-200 px-1.5 py-0.5 rounded">Top Partner</span>
-              </div>
-            </div>
+           
 
             <div className="flex justify-between items-center text-gray-500 pt-1">
               <span className="font-medium">Status</span>

@@ -32,6 +32,7 @@ import protect from "../middleware/protect.middleware.js";
 import { partnerSignupSchema } from "../validations/partner.validation.js";
 import adminOnly from "../middleware/adminOnly.js";
 import { getAllUserProfilesController } from "../controllers/admin.controller.js";
+import { authLimiter, otpLimiter } from "../middleware/ratelimit.middleware.js";
 
 const authrouter = Router();
 
@@ -42,39 +43,41 @@ authrouter.get("/test", (_req, res) => {
   });
 });
 
-authrouter.post("/signup", validate(signupSchema), signup);
+authrouter.post("/signup",authLimiter, validate(signupSchema), signup);
 
 authrouter.post(
-  "/verification",
+  "/verification",otpLimiter,
   validate(VerifyOtpSchema),
   verifyOtpController,
 );
-authrouter.post("/login", validate(loginSchema), login);
+authrouter.post("/login",authLimiter, validate(loginSchema), login);
 authrouter.post("/logout", protect, logout);
 authrouter.get("/me", protect, getCurrentUser);
-authrouter.post("/refresh", refreshTokenController);
+authrouter.post("/refresh",authLimiter, refreshTokenController);
 authrouter.post(
-  "/forgot-password",
+  "/forgot-password",otpLimiter,
   validate(forgotPasswordSchema),
   forgotPasswordController,
 );
 authrouter.post(
-  "/reset-password",
+  "/reset-password",authLimiter,
   validate(resetPasswordSchema),
   resetPasswordController,
 );
 authrouter.patch(
   "/change-password",
+  authLimiter,
   protect,
   validate(changePasswordSchema),
   changePasswordController,
 );
 authrouter.post(
   "/resend-verification",
+  otpLimiter,
   validate(resendVerificationSchema),
   resendVerificationController,
 );
-authrouter.post("/google", validate(googleLoginSchema), googleLoginController);
+authrouter.post("/google",authLimiter, validate(googleLoginSchema), googleLoginController);
 
 authrouter.post("/logout-all", protect, logoutAllController);
 

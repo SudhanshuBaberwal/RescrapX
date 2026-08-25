@@ -10,6 +10,7 @@ import protect from "../middleware/protect.middleware.js";
 import adminOnly from "../middleware/adminOnly.js";
 import { uploaduserDocuments } from "../middleware/uploadPartnerDocuments.js";
 import { updateKYCStatus } from "../controllers/admin.controller.js";
+import { uploadLimiter } from "../middleware/ratelimit.middleware.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.get("/customers-data", adminOnly, getAllCustomersData);
 router.post(
   "/kyc",
   protect,
+  uploadLimiter,
   uploaduserDocuments.fields([
     {
       name: "currentPic",

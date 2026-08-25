@@ -6,6 +6,7 @@ import cors from "cors";
 import { protect } from "./middleware/auth.middleware.js";
 import cookieParser from "cookie-parser";
 import router from "./routes/newRoute.js";
+import { generalLimiter } from "./middleware/ratelimit.middleware.js";
 
 const app = express();
 
@@ -14,10 +15,7 @@ app.get("/", (req, res) => {
 });
 app.use(cookieParser());
 
-const allowedOrigins = [
-  "https://www.rescrapx.com",
-  "http://localhost:3000",
-];
+const allowedOrigins = ["https://www.rescrapx.com", "http://localhost:3000"];
 
 if (process.env.ALLOWED_ORIGINS) {
   const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) =>
@@ -70,6 +68,9 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.set("trust proxy",1)
+app.use(generalLimiter)
 
 app.use("/api/auth", proxy(env.AUTH_SERVICE_URL, proxyOptions));
 

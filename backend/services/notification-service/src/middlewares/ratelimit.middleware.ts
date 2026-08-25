@@ -1,0 +1,20 @@
+import { Request, Response } from "express";
+import rateLimit from "express-rate-limit";
+export const notificationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+
+  limit: 20,
+
+  standardHeaders: "draft-8",
+
+  legacyHeaders: false,
+
+  identifier: "notification-api",
+
+  handler: (_req : Request, res:Response) => {
+    res.status(429).json({
+      success: false,
+      message: "Too many notification requests.",
+    });
+  },
+});

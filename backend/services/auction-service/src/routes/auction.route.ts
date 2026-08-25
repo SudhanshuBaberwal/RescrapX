@@ -25,21 +25,22 @@ import {
 import adminOnly from "../middlewares/adminOnly.js";
 import partnerOnly from "../middlewares/partnerOnly.js";
 import { MyBids } from "../controllers/bid.controller.js";
+import { auctionMutationLimiter, bidLimiter } from "../middlewares/ratelimit.middleware.js";
 const router = Router();
 
-router.post("/create", adminOnly, createAuction);
+router.post("/create", adminOnly,auctionMutationLimiter, createAuction);
 router.get("/auction", adminOnly, getAuctionData);
 router.get("/partner/live", getAuctionDataForPartner);
-router.post("/approve", adminOnly, approveAuction);
+router.post("/approve", adminOnly,auctionMutationLimiter, approveAuction);
 router.patch("/configure", adminOnly, condifureAuctionVehicle);
 router.get("/pending-approval", adminOnly, getPendingApprovalAuctions);
 
 router.get("/start-approval/check", adminOnly, checkStartApproval);
 router.get("/start-approval/pending", adminOnly, getPendingStartApproval);
-router.patch("/start-approval/approve", adminOnly, approveAuctionStart);
+router.patch("/start-approval/approve", adminOnly,auctionMutationLimiter, approveAuctionStart);
 router.patch("/start-approval/reject", adminOnly, rejectAuctionStart);
-router.post("/bid", placeBid);
-router.post("/:auctionId/finalize", finalizeAuction);
+router.post("/bid",partnerOnly,bidLimiter, placeBid);
+router.post("/:auctionId/finalize",adminOnly,auctionMutationLimiter, finalizeAuction);
 
 // ==========================================
 // ADMIN DASHBOARD

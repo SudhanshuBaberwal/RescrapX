@@ -87,9 +87,9 @@ export default function Footer() {
             <ul className="space-y-2 font-medium text-[11px] sm:text-xs">
               {[
                 { title: "About Us", href: "/about" },
-                { title: "Careers", href: "/careers" },
-                { title: "Blog", href: "/blog" },
-                { title: "Newsroom", href: "/newsroom" },
+                // { title: "Careers", href: "/careers" },
+                // { title: "Blog", href: "/blog" },
+                // { title: "Newsroom", href: "/newsroom" },
                 { title: "Contact Us", href: "/contact" },
               ].map((link) => (
                 <li key={link.title}>
@@ -110,7 +110,7 @@ export default function Footer() {
                 "Certificate of Deposit", "ELV Services"
               ].map((service) => (
                 <li key={service}>
-                  <a href="#" className="hover:text-emerald-400 transition-colors">{service}</a>
+                  <a href="?nav=services" className="hover:text-emerald-400 transition-colors">{service}</a>
                 </li>
               ))}
             </ul>
@@ -122,10 +122,10 @@ export default function Footer() {
             <ul className="space-y-2 font-medium text-[11px] sm:text-xs">
               {[
                 "Scrapping Guide", "Required Documents", "Vehicle Valuation Guide",
-                "FAQs", "Blogs"
+                "FAQs", 
               ].map((resource) => (
                 <li key={resource}>
-                  <a href="#" className="hover:text-emerald-400 transition-colors">{resource}</a>
+                  <a href="?nav=privacy-policy" className="hover:text-emerald-400 transition-colors">{resource}</a>
                 </li>
               ))}
             </ul>

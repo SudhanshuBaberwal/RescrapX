@@ -69,6 +69,7 @@ import uploadVehicleDocument, {
 } from "../middlewares/uploadVehicleDocument.js";
 import adminOnly from "../middlewares/adminOnly.js";
 import serviceAuth from "../middlewares/serviceAuth.js";
+import { uploadLimiter } from "../middlewares/ratelimit.middleware.js";
 
 const router = Router();
 
@@ -96,6 +97,7 @@ router.put(
 
 router.put(
   "/document",
+  uploadLimiter,
   attachUser,
   uploadVehicleDocument,
   uploadVehicleDocumentController,
@@ -105,6 +107,7 @@ router.get("/all-vehicles", attachUser, getAllVehicles);
 
 router.put(
   "/photos",
+  uploadLimiter,
   attachUser,
   uploadVehiclePhotos,
   uploadVehiclePhotosController,
@@ -154,6 +157,7 @@ router.get(
 
 router.post(
   "/partner/documents/upload",
+  uploadLimiter,
   uploadVehicleDocumentByPartner,
   uploadPartnerDocument,
 );
@@ -202,6 +206,7 @@ router.get("/partner/payments/vehicles", getPartnerPaymentVehicles);
 
 router.post(
   "/partner/payments/proof",
+  uploadLimiter,
   paymentProofUpload.single("paymentProof"),
   uploadPartnerPaymentProof,
 );
@@ -216,6 +221,7 @@ router.get("/owner/verified-payment", getOwnerVerifiedPaymentVehicles);
 
 router.post(
   "/owner/accept-offer",
+  uploadLimiter,
   uploadOwnerPaymentDocuments,
   acceptOfferAndSubmitPaymentDocuments,
 );
