@@ -32,7 +32,10 @@ export default function Footer() {
 
   const handlePartnerSignup = async () => {
     if (loading || isSuccess) return;
-
+    if (!userData){
+      router.push("/login")
+      return;
+    }
     setLoading(true);
     try {
       const result = await setPartner();
