@@ -55,6 +55,27 @@ app.get("/", (_req, res) => {
 // API routes
 app.use("/", notificationRouter);
 
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    console.error("NOTIFICATION SERVICE ERROR:", err);
+
+    const statusCode = err.statusCode || err.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || "Internal Server Error",
+      error: {
+        code: err.code || "INTERNAL_SERVER_ERROR",
+      },
+    });
+  },
+);
+
 app.use(errorHandler);
 
 export default app;

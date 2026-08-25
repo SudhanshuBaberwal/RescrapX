@@ -14,7 +14,7 @@ export const getPartnerAuctionData = () => {
         const fetchData = async () => {
             try {
                 const res = await partnerAuctionData();
-                dispatch(setPartnerAuctionData(res?.data));
+                dispatch(setPartnerAuctionData(res));
             } catch (err: any) {
                 console.error(err);
             }

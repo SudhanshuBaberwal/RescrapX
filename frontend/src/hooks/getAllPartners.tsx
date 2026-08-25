@@ -13,7 +13,7 @@ export const getAllPartners = () => {
         const fetchPartners = async () => {
             try {
                 const res = await getAllPartnersData();
-                dispatch(setAllPartnersData(res?.data.data));
+                dispatch(setAllPartnersData(res));
             } catch (err: any) {
 
                 console.error(err);

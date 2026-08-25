@@ -13,7 +13,7 @@ export const getPickupDetailsData = () => {
         const fetchData = async () => {
             try {
                 const res = await vehiclesRegisterForPickup();
-                dispatch(setPickupDetails(res?.data));
+                dispatch(setPickupDetails(res));
             } catch (err: any) {
                 console.error(err);
             }

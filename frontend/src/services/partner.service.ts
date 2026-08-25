@@ -11,47 +11,26 @@ export const partnerRegister = async (data: {
   state: string;
   pincode: string;
 }) => {
-  try {
-    const result = await api.post("/api/auth/partner/signup",data);
-    return result;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.post("/api/auth/partner/signup", data);
+  return result.data.data;
 };
 
 export const getPartnerStatus = async () => {
-  try {
-    const data= await api.get("/api/auth/partner/status")
-    return data.data;
-  } catch (error) {
-    console.log(error)
-  }
-}
+  const data = await api.get("/api/auth/partner/status");
+  return data.data.data;
+};
 
 export const setPartner = async () => {
-  try {
-    const data = await api.post("/api/auth/partner/set-partner")
-    return data.data;
-  } catch (error) {
-    console.log(error)
-  }
-}
+  const data = await api.post("/api/auth/partner/set-partner");
+  return data.data.data;
+};
 
 export const partnerDashboardData = async () => {
-  try {
-    const response1 = await api.get("/api/vehicle/register/partner/dashboard")
-    // const response2 = await api.get("/api/auction/partner/live-opportunities")
-    return response1.data ;
-  } catch (error) {
-    console.log(error)
-  }
-}
+  const response1 = await api.get("/api/vehicle/register/partner/dashboard");
+  return response1.data.data;
+};
 
 export const liveBiddingPartnerDashboardData = async () => {
-  try {
-    const response = await api.get("/api/auction/partner/live-opportunities")
-    return response.data;
-  } catch (error) {
-    console.log(error)
-  }
-}
+  const response = await api.get("/api/auction/partner/live-opportunities");
+  return response.data.data;
+};

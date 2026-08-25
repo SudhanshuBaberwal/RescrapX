@@ -15,7 +15,7 @@ export const useCurrentUser = () => {
       dispatch(setLoading(true));
       try {
         const res = await getCurrentUser()
-        return res.data.data;
+        return res;
       } catch (err: any) {
         dispatch(clearUser());
         if (err.response?.status === 401) {

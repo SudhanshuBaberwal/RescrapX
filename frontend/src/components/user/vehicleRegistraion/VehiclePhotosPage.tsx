@@ -133,7 +133,7 @@ export default function VehiclePhotosPage({
       const response = await photos(vehicleId, payload);
 
       // STRICT CHECK: Sirf API succeed hone par Next step switch karenge
-      if (response && (response.success || response.data)) {
+      if (response) {
         onContinue();
       } else {
         setApiError(response?.message || 'Failed to upload vehicle photos.');

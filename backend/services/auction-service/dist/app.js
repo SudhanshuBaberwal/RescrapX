@@ -9,22 +9,34 @@ const app = express();
 app.use(helmet());
 app.use(cors({
     origin: true,
-    credentials: true
+    credentials: true,
 }));
 app.use(compression());
 app.use(cookieParser());
 app.use(express.json({
-    limit: "10mb"
+    limit: "10mb",
 }));
 app.use(express.urlencoded({
-    extended: true
+    extended: true,
 }));
 app.use(morgan("dev"));
 app.get("/health", (_, res) => {
     res.json({
         success: true,
-        service: "Auction Service"
+        service: "Auction Service",
     });
 });
 app.use("/", auctionRoutes);
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("AUCTION SERVICE ERROR:", err);
+    const statusCode = err.statusCode || err.status || 500;
+    res.status(statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        error: {
+            code: err.code || "INTERNAL_SERVER_ERROR",
+        },
+    });
+});
 export default app;

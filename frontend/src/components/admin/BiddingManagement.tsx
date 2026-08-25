@@ -140,6 +140,8 @@ export const BiddingManagement: React.FC = () => {
         autoExtend: formData.autoExtend,
       });
 
+      console.log(response.data)
+
       const newAuctionId = response?._id || response?.id || response?.data?._id || response?.data?.id;
 
       if (!newAuctionId) {
@@ -149,7 +151,14 @@ export const BiddingManagement: React.FC = () => {
       setIsModalOpen(false);
       router.push(`/auctions/${newAuctionId}`);
     } catch (err: any) {
-      setSubmitError(err.message || 'Failed to create auction. Please try again.');
+      console.error("CREATE AUCTION ERROR:", err);
+
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to create auction. Please try again.";
+
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }

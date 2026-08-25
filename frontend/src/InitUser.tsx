@@ -22,7 +22,7 @@ const InitUser = () => {
       dispatch(setLoading(true));
       try {
         const res = await getCurrentUser();
-        dispatch(setUserData(res.data));
+        dispatch(setUserData(res));
       } catch (e) {
         console.log("Error", e);
         dispatch(clearUser());

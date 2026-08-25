@@ -13,7 +13,7 @@ export const getPartnerDashboardData = () => {
             try {
                 const res1 = await partnerDashboardData();
                 const res2 = await liveBiddingPartnerDashboardData()
-                dispatch(setPartnerDashboardData(res1?.data));
+                dispatch(setPartnerDashboardData(res1));
             } catch (err: any) {
                 console.error(err);
             }

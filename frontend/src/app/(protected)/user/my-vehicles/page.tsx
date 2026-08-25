@@ -4,7 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import UserNavbar from '@/components/navbar/user/UserNavbar';
 import Footer from '@/components/footer/Footer';
-import { createDraftVehicle } from '@/services/vehicle.service';
+import { createDraftVehicle, getVehiclePricing } from '@/services/vehicle.service';
 import { useDispatch, useSelector } from 'react-redux';
 import { setVehicleData } from '@/store/vehicleSlice';
 import {
@@ -19,6 +19,7 @@ import {
 import { getAllVehicles } from '@/hooks/getAllVehicles';
 import { RootState } from '@/store/store';
 import { IVehicle, VehicleStatus } from '@/context/vehicleProvider';
+import { setUserEstimatedPrice } from '@/store/userSlice';
 
 // 1. Core Component Logic
 function MyVehiclesContent() {
@@ -61,7 +62,6 @@ function MyVehiclesContent() {
   // Dynamic Navigation based on Vehicle Status
   const handleVehicleClick = (vehicle: IVehicle) => {
     const status = vehicle.status?.toUpperCase();
-
     if (status === VehicleStatus.DRAFT || (!vehicle.isRegistered && vehicle.currentStep && vehicle.currentStep < 8)) {
       dispatch(setVehicleData(vehicle));
       router.push(`/register-vehicle/${vehicle._id}/${vehicle.currentStep || 1}`);

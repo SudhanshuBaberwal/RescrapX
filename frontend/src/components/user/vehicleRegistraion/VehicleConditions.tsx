@@ -52,7 +52,7 @@ export default function VehicleConditionPage({
       const response = await vehicleCondition(vehicleId, payload);
 
       // STRICT CHECK: Sirf API response success hone par hi next page transition hoga
-      if (response && (response.success || response.data)) {
+      if (response) {
         onContinue();
       } else {
         setApiError(response?.message || 'Failed to save condition details.');

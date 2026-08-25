@@ -13,7 +13,7 @@ export const getIncomingVehicleData = () => {
         const fetchData = async () => {
             try {
                 const res = await getIncomingVehicles();
-                dispatch(setPartnerIncomingVehicleData(res?.data));
+                dispatch(setPartnerIncomingVehicleData(res));
             } catch (err: any) {
                 console.error(err);
             }

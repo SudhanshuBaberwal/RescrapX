@@ -12,7 +12,7 @@ export const getProcessingYardData = () => {
         const fetchData = async () => {
             try {
                 const res = await processingVehicles();
-                dispatch(setPartnerProcessingYardData(res?.data));
+                dispatch(setPartnerProcessingYardData(res));
             } catch (err: any) {
                 console.error(err);
             }

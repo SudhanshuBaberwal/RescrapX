@@ -12,7 +12,7 @@ export const getAllUserProfileData = () => {
         const fetchProfileData = async () => {
             try {
                 const res = await geAllUserProfiles();
-                dispatch(setAllUserPrfileData(res?.data));
+                dispatch(setAllUserPrfileData(res));
             } catch (err: any) {
                 console.error(err);
             }

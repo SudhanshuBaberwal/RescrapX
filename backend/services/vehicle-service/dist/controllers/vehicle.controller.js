@@ -634,3 +634,12 @@ export const acceptOfferAndSubmitPaymentDocuments = asyncHandler(async (req, res
     const result = await vehicleService.acceptOfferAndSubmitPaymentDocuments(vehicleId, userId, files);
     return ApiResponse.success(res, 200, "Final offer accepted and payment documents submitted successfully", result);
 });
+export const getVehiclePricing = asyncHandler(async (req, res) => {
+    const vehicleId = req.query.vehicleId;
+    const userId = req.headers["x-user-id"];
+    if (!vehicleId || !userId) {
+        throw new ApiError(401, "Unauthorized or vehicleId Not Found");
+    }
+    const pricing = await vehicleService.getVehiclePricing(vehicleId, userId);
+    return ApiResponse.success(res, 201, "Vehicle Pricing fetched successfully", pricing);
+});

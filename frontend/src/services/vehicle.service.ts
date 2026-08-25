@@ -3,13 +3,8 @@ import { ComponentCondition, ProcessingStage } from "@/context/vehicleProvider";
 import api from "@/utils/api";
 
 export const createDraftVehicle = async () => {
-  try {
-    const result = await api.post("/api/vehicle/register");
-    return result.data;
-  } catch (error) {
-    console.error("createDraftVehicle error:", error);
-    throw error;
-  }
+  const result = await api.post("/api/vehicle/register");
+  return result.data;
 };
 
 // vehicle.service.ts
@@ -27,16 +22,11 @@ export const basicDetails = async (
     ownership: number;
   },
 ) => {
-  try {
-    const result = await api.put(
-      `/api/vehicle/register/basic-details?vehicleId=${vehicleId}`,
-      data,
-    );
-    return result.data;
-  } catch (error) {
-    console.error("basicDetails error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/basic-details?vehicleId=${vehicleId}`,
+    data,
+  );
+  return result.data.data;
 };
 
 // vehicle.service.ts
@@ -49,16 +39,11 @@ export const vehicleCondition = async (
     description?: string;
   },
 ) => {
-  try {
-    const result = await api.put(
-      `/api/vehicle/register/vehicle-condition?vehicleId=${vehicleId}`,
-      data,
-    );
-    return result.data;
-  } catch (error) {
-    console.error("vehicleCondition error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/vehicle-condition?vehicleId=${vehicleId}`,
+    data,
+  );
+  return result.data.data;
 };
 
 export const majorComponents = async (
@@ -80,16 +65,11 @@ export const majorComponents = async (
     interior: string;
   },
 ) => {
-  try {
-    const result = await api.put(
-      `/api/vehicle/register/major-components?vehicleId=${vehicleId}`,
-      data,
-    );
-    return result.data;
-  } catch (error) {
-    console.error("majorComponents error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/major-components?vehicleId=${vehicleId}`,
+    data,
+  );
+  return result.data.data;
 };
 
 export const documents = async (
@@ -102,26 +82,21 @@ export const documents = async (
     other?: File | null;
   },
 ) => {
-  try {
-    const formData = new FormData();
-    if (data.rcbook) formData.append("rcbook", data.rcbook);
-    if (data.loan_closure) formData.append("loan_closure", data.loan_closure);
-    if (data.puc) formData.append("puc", data.puc);
-    if (data.insurance) formData.append("insurance", data.insurance);
-    if (data.other) formData.append("other", data.other);
+  const formData = new FormData();
+  if (data.rcbook) formData.append("rcbook", data.rcbook);
+  if (data.loan_closure) formData.append("loan_closure", data.loan_closure);
+  if (data.puc) formData.append("puc", data.puc);
+  if (data.insurance) formData.append("insurance", data.insurance);
+  if (data.other) formData.append("other", data.other);
 
-    const result = await api.put(
-      `/api/vehicle/register/document?vehicleId=${vehicleId}`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return result.data;
-  } catch (error) {
-    console.error("documents error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/document?vehicleId=${vehicleId}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return result.data.data;
 };
 
 export const photos = async (
@@ -137,24 +112,19 @@ export const photos = async (
     odometer?: File;
   },
 ) => {
-  try {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, file]) => {
-      if (file) formData.append(key, file);
-    });
+  const formData = new FormData();
+  Object.entries(data).forEach(([key, file]) => {
+    if (file) formData.append(key, file);
+  });
 
-    const result = await api.put(
-      `/api/vehicle/register/photos?vehicleId=${vehicleId}`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return result.data;
-  } catch (error) {
-    console.error("photos error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/photos?vehicleId=${vehicleId}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return result.data.data;
 };
 
 export const pickupLocation = async (
@@ -179,57 +149,35 @@ export const pickupLocation = async (
     currentVehiclePosition: string;
   },
 ) => {
-  try {
-    const result = await api.put(
-      `/api/vehicle/register/pickup-location?vehicleId=${vehicleId}`,
-      data,
-    );
-    return result.data;
-  } catch (error) {
-    console.error("pickupLocation error:", error);
-    throw error;
-  }
+  const result = await api.put(
+    `/api/vehicle/register/pickup-location?vehicleId=${vehicleId}`,
+    data,
+  );
+  return result.data.data;
 };
 
 export const getAllVehiclesData = async () => {
-  try {
-    const res = await api.get("/api/vehicle/register/user-vehicles");
-    return res.data;
-  } catch (error) {
-    console.error("getAllVehiclesData error:", error);
-    throw error;
-  }
+  const res = await api.get("/api/vehicle/register/user-vehicles");
+  return res.data.data;
 };
 
 export const getVehicle = async (vehicleId: string) => {
-  try {
-    const data = await api.get(
-      `/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`,
-    );
-    return data;
-  } catch (error) {
-    console.log(error);
-  }
+  const data = await api.get(
+    `/api/vehicle/register/get-vehicle?vehicleId=${vehicleId}`,
+  );
+  return data.data.data;
 };
 
 export const reviewAndSubmit = async (vehicleId: string) => {
-  try {
-    const data = await api.put(
-      `/api/vehicle/register/reviews?vehicleId=${vehicleId}`,
-    );
-    return data;
-  } catch (error) {
-    console.log(error);
-  }
+  const data = await api.put(
+    `/api/vehicle/register/reviews?vehicleId=${vehicleId}`,
+  );
+  return data.data.data;
 };
 
 export const getAllVehiclesDataForAdmin = async () => {
-  try {
-    const res = await api.get("/api/vehicle/register/vehicles");
-    return res;
-  } catch (error) {
-    console.log(error);
-  }
+  const res = await api.get("/api/vehicle/register/vehicles");
+  return res.data.data;
 };
 
 export const updateVehicleStatus = async (
@@ -237,24 +185,16 @@ export const updateVehicleStatus = async (
   status: VehicleStatus,
   rejectionReason?: string,
 ) => {
-  try {
-    const res = await api.put(
-      `/api/vehicle/register/status?vehicleId=${vehicleId}`,
-      { status, rejectionReason },
-    );
-    return res.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const res = await api.put(
+    `/api/vehicle/register/status?vehicleId=${vehicleId}`,
+    { status, rejectionReason },
+  );
+  return res.data.data;
 };
 
 export const vehiclesRegisterForPickup = async () => {
-  try {
-    const result = await api.get("/api/vehicle/register/scheduled-vehicles");
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.get("/api/vehicle/register/scheduled-vehicles");
+  return result.data.data;
 };
 
 export const schedulePickup = async (
@@ -273,161 +213,105 @@ export const schedulePickup = async (
     },
   );
 
-  return response.data;
+  return response.data.data;
 };
 
 export const assignDriver = async (vehicleId: string, driverName: string) => {
-  try {
-    const response = await api.patch(
-      "/api/vehicle/register/admin/pickup/assign-driver",
-      {
-        vehicleId,
-        driverName,
-      },
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    "/api/vehicle/register/admin/pickup/assign-driver",
+    {
+      vehicleId,
+      driverName,
+    },
+  );
+  return response.data.data;
 };
 
 export const getIncomingVehicles = async () => {
-  try {
-    const response = await api.get("/api/vehicle/register/partner/incoming");
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/vehicle/register/partner/incoming");
+  return response.data.data;
 };
 
 export const pickupVehicle = async (vehicleId: string) => {
-  try {
-    const response = await api.post("/api/vehicle/register/pickup-vehicle", {
-      vehicleId,
-    });
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.post("/api/vehicle/register/pickup-vehicle", {
+    vehicleId,
+  });
+  return response.data.data;
 };
 
 export const processingVehicles = async () => {
-  try {
-    const response = await api.get("/api/vehicle/register/partner/processing");
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/vehicle/register/partner/processing");
+  return response.data.data;
 };
 
 export const processingVehicleStates = async () => {
-  try {
-    const response = await api.get(
-      "/api/vehicle/register/partner/processing/stats",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    "/api/vehicle/register/partner/processing/stats",
+  );
+  return response.data.data;
 };
 
 export const getAllVehiclesService = async () => {
-  try {
-    const response = await api.get("/api/vehicle/register/admin/all-status");
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/vehicle/register/admin/all-status");
+  return response.data.data;
 };
 
 export const makeVehicleArrived = async (vehicleId: string) => {
-  try {
-    const response = await api.patch("/api/vehicle/register/admin/arrived", {
-      vehicleId,
-    });
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch("/api/vehicle/register/admin/arrived", {
+    vehicleId,
+  });
+  return response.data.data;
 };
 
 export const partnerDocuments = async () => {
-  try {
-    const response = await api.get(
-      "/api/vehicle/register/partner/documents/vehicles",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    "/api/vehicle/register/partner/documents/vehicles",
+  );
+  return response.data.data;
 };
 
 export const uploadPartnerDocument = async () => {
-  try {
-    const response = await api.post(
-      "/api/vehicle/register/partner/documents/upload",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.post(
+    "/api/vehicle/register/partner/documents/upload",
+  );
+  return response.data.data;
 };
 
 export const submitPartnerDocuments = async () => {
-  try {
-    const response = await api.patch(
-      "/api/vehicle/register/partner/documents/submit",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    "/api/vehicle/register/partner/documents/submit",
+  );
+  return response.data.data;
 };
 
 export const customerBooking = async () => {
-  try {
-    const response = await api.get("/api/vehicle/register/customer/bookings");
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/vehicle/register/customer/bookings");
+  return response.data.data;
 };
 
 export const customerBookingByid = async (vehicleId: string) => {
-  try {
-    const response = await api.get(
-      `/api/vehicle/register/customer/bookings?vehicleId=${vehicleId}`,
-    );
-    return response.data.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    `/api/vehicle/register/customer/bookings?vehicleId=${vehicleId}`,
+  );
+  return response.data.data.data;
 };
 
 export const changeProcessingStage = async (
   vehicleId: string,
   processingStage: ProcessingStage,
 ) => {
-  try {
-    const response = await api.patch(
-      "/api/vehicle/register/partner/processing-stage",
-      { vehicleId, processingStage },
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    "/api/vehicle/register/partner/processing-stage",
+    { vehicleId, processingStage },
+  );
+  return response.data.data;
 };
 
 export const getPartnerUploadedDocuments = async () => {
-  try {
-    const response = await api.get(
-      "/api/vehicle/register/admin/partner-documents/vehicles",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    "/api/vehicle/register/admin/partner-documents/vehicles",
+  );
+  return response.data.data;
 };
 
 export const revirePartnerUploadedDocumentByAdmin = async (
@@ -438,116 +322,90 @@ export const revirePartnerUploadedDocumentByAdmin = async (
     rejectionReason: string;
   },
 ) => {
-  try {
-    const response = await api.patch(
-      `api/vehicle/register/admin/partner-documents/vehicles/review?vehicleId=${vehicleId}`,
-      data,
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    `api/vehicle/register/admin/partner-documents/vehicles/review?vehicleId=${vehicleId}`,
+    data,
+  );
+  return response.data.data;
 };
 
 export const approvePartnerDocuments = async (vehicleId: string) => {
-  try {
-    const response = await api.patch(
-      `/api/vehicle/register/admin/partner-documents/vehicles/approve?vehicleId=${vehicleId}`,
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    `/api/vehicle/register/admin/partner-documents/vehicles/approve?vehicleId=${vehicleId}`,
+  );
+  return response.data.data;
 };
 
 export const pendingVehiclesForPayment = async () => {
-  try {
-    const response = await api.get(
-      "/api/vehicle/register/partner/payments/vehicles",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    "/api/vehicle/register/partner/payments/vehicles",
+  );
+  return response.data.data;
 };
 export const addPaymentProof = async (data: {
   vehicleId: string;
   paymentProof: File;
 }) => {
-  try {
-    const formData = new FormData();
-    // Must match multer field name: 'paymentProof'
-    formData.append("paymentProof", data.paymentProof);
-    formData.append("vehicleId", data.vehicleId);
+  const formData = new FormData();
+  // Must match multer field name: 'paymentProof'
+  formData.append("paymentProof", data.paymentProof);
+  formData.append("vehicleId", data.vehicleId);
 
-    const response = await api.post(
-      "/api/vehicle/register/partner/payments/proof",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+  const response = await api.post(
+    "/api/vehicle/register/partner/payments/proof",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Error in addPaymentProof:", error);
-    throw error;
-  }
+    },
+  );
+  return response.data.data;
 };
 
 export const getPendingPaymentsData = async () => {
-  try {
-    const response = await api.get(
-      "/api/vehicle/register/admin/payments/pending",
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get(
+    "/api/vehicle/register/admin/payments/pending",
+  );
+  return response.data.data;
 };
 
 export const approvePayment = async (vehicleId: string) => {
-  try {
-    const response = await api.patch(
-      `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
-      {
-        action: "APPROVE",
-      },
-    );
+  const response = await api.patch(
+    `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
+    {
+      action: "APPROVE",
+    },
+  );
 
-    return response.data;
-  } catch (error) {
-    console.error("Failed to approve payment:", error);
-    throw error;
-  }
+  return response.data.data;
 };
 
 export const rejectPayment = async (
   vehicleId: string,
   rejectionReason: string,
 ) => {
-  try {
-    const response = await api.patch(
-      `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
-      {
-        action: "REJECT",
-        rejectionReason,
-      },
-    );
+  const response = await api.patch(
+    `/api/vehicle/register/admin/payments/review?vehicleId=${vehicleId}`,
+    {
+      action: "REJECT",
+      rejectionReason,
+    },
+  );
 
-    return response.data;
-  } catch (error) {
-    console.error("Failed to reject payment:", error);
-    throw error;
-  }
+  return response.data.data;
 };
 
-export const calculateVehicleEstimatedPrice = async (vehicleId:string) => {
-  try {
-    const response = await api.get(`/api/vehicle/register/vehicles/estimated-price?vehicleId=${vehicleId}`)
-    return response.data;
-  } catch (error) {
-    console.log(error)
-  }
-}
+export const calculateVehicleEstimatedPrice = async (vehicleId: string) => {
+  const response = await api.get(
+    `/api/vehicle/register/vehicles/estimated-price?vehicleId=${vehicleId}`,
+  );
+  return response.data.data;
+};
+
+export const getVehiclePricing = async (vehicleId: string) => {
+  const response = await api.get(
+    `/api/vehicle/register/vehicles/pricing?vehicleId=${vehicleId}`,
+  );
+  return response.data.data;
+};

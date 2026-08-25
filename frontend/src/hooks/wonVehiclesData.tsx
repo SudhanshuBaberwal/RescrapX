@@ -12,7 +12,7 @@ export const wonVehiclesData = () => {
         const fetchData = async () => {
             try {
                 const res = await wonVehicles();
-                dispatch(setPartnerWonVehiclesData(res?.data));
+                dispatch(setPartnerWonVehiclesData(res));
             } catch (err: any) {
                 console.error(err);
             }

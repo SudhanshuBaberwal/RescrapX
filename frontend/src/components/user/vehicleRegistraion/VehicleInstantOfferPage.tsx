@@ -1,14 +1,26 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import axios from "axios";
 import {
-  CheckCircle2, FileText, AlertCircle, PhoneCall,
-  Upload, ShieldCheck, ArrowLeft, Lock, Check, HelpCircle, Tag, Loader2
-} from 'lucide-react';
+  CheckCircle2,
+  FileText,
+  AlertCircle,
+  PhoneCall,
+  Upload,
+  ShieldCheck,
+  ArrowLeft,
+  Lock,
+  Check,
+  HelpCircle,
+  Tag,
+  Loader2,
+  Home,
+} from "lucide-react";
+import { getVehiclePricing } from "@/services/vehicle.service";
 
 interface StepComponentProps {
   onContinue?: () => void;
@@ -26,22 +38,15 @@ export default function VehicleInstantOfferPage({
   onPrevious,
 }: StepComponentProps) {
   const router = useRouter();
-
-  const { userEstimatedPrice } = useSelector(
-    (state: RootState) => state.user
-  );
-
+  const { userEstimatedPrice } = useSelector((state: RootState) => state.user);
+  console.log(userEstimatedPrice);
   const estimatedData: any = userEstimatedPrice || {};
 
-  const vehicle =
-    estimatedData?.vehicle ||
-    estimatedData?.data?.vehicle ||
-    {};
+  const reduxVehicle =
+    estimatedData?.vehicle || estimatedData?.data?.vehicle || {};
 
-  const pricing =
-    estimatedData?.pricing ||
-    estimatedData?.data?.pricing ||
-    {};
+  const reduxPricing =
+    estimatedData?.pricing || estimatedData?.data?.pricing || {};
 
   const params = useParams<{
     _id: string;
@@ -49,19 +54,111 @@ export default function VehicleInstantOfferPage({
   }>();
 
   const vehicleId = params._id;
-  const step = params.step;
+
+  const [pricing, setPricing] = useState<any>(reduxPricing);
+  const [vehicle, setVehicle] = useState<any>(reduxVehicle);
+
+  const [isPricingLoading, setIsPricingLoading] = useState(false);
+
+  const [pricingError, setPricingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!vehicleId) return;
+
+    let cancelled = false;
+
+    const loadPricing = async () => {
+      const cacheKey = `vehicle-pricing-${vehicleId}`;
+
+      try {
+        setIsPricingLoading(true);
+        setPricingError(null);
+
+        // ==========================================
+        // 1. CHECK SESSION STORAGE
+        // ==========================================
+
+        const cachedPricing = sessionStorage.getItem(cacheKey);
+
+        if (cachedPricing) {
+          const parsed = JSON.parse(cachedPricing);
+
+          if (!cancelled) {
+            setPricing(parsed?.pricing ?? parsed);
+
+            if (parsed?.vehicle) {
+              setVehicle(parsed.vehicle);
+            }
+
+            setIsPricingLoading(false);
+          }
+
+          return;
+        }
+
+        // ==========================================
+        // 2. CALL API ONLY IF CACHE DOES NOT EXIST
+        // ==========================================
+
+        console.log("Fetching vehicle pricing:", vehicleId);
+
+        const result = await getVehiclePricing(vehicleId);
+
+        if (cancelled) return;
+
+        console.log("Vehicle pricing response:", result);
+
+        // ==========================================
+        // 3. SAVE API RESULT TO SESSION STORAGE
+        // ==========================================
+
+        sessionStorage.setItem(cacheKey, JSON.stringify(result));
+
+        // ==========================================
+        // 4. SAVE TO REACT STATE
+        // ==========================================
+
+        setPricing(result?.pricing ?? result);
+
+        if (result?.vehicle) {
+          setVehicle(result.vehicle);
+        }
+      } catch (error: any) {
+        console.error("Failed to fetch vehicle pricing:", error);
+
+        if (!cancelled) {
+          setPricingError(
+            error?.response?.data?.message ||
+              error?.message ||
+              "Failed to load vehicle pricing.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setIsPricingLoading(false);
+        }
+      }
+    };
+
+    loadPricing();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vehicleId]);
 
   // Dynamic Vehicle Name
-  const vehicleName = `${vehicle.manufacturer || ''} ${vehicle.model || 'Swift'} ${vehicle.variant || 'ZXI+'}`.trim();
+  const vehicleName =
+    `${vehicle.manufacturer || ""} ${vehicle.model || "Swift"} ${vehicle.variant || "ZXI+"}`.trim();
 
   // Actual Final Offer Value
   const netAmount = pricing.lowerBound || pricing.netAmount || 26598;
-  const formattedValue = `₹ ${Number(netAmount).toLocaleString('en-IN')}`;
+  const formattedValue = `₹ ${Number(netAmount).toLocaleString("en-IN")}`;
 
   // Estimated Price Range
   const lowerBound = pricing.lowerBound || 26598;
   const upperBound = pricing.upperBound || 29458;
-  const formattedRange = `₹ ${Number(lowerBound).toLocaleString('en-IN')} – ₹ ${Number(upperBound).toLocaleString('en-IN')}`;
+  const formattedRange = `₹ ${Number(lowerBound).toLocaleString("en-IN")} – ₹ ${Number(upperBound).toLocaleString("en-IN")}`;
 
   // Form State
   const [isAccepted, setIsAccepted] = useState<boolean>(true);
@@ -83,14 +180,14 @@ export default function VehicleInstantOfferPage({
     file: File | null,
     setFile: React.Dispatch<React.SetStateAction<File | null>>,
     setPreview: React.Dispatch<React.SetStateAction<string | null>>,
-    currentPreview: string | null
+    currentPreview: string | null,
   ) => {
     if (currentPreview) {
       URL.revokeObjectURL(currentPreview);
     }
     if (file) {
       setFile(file);
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         setPreview(URL.createObjectURL(file));
       } else {
         setPreview(null);
@@ -114,17 +211,21 @@ export default function VehicleInstantOfferPage({
     e.preventDefault();
 
     if (!vehicleId) {
-      setErrorMessage('Vehicle ID is missing. Please refresh or restart the flow.');
+      setErrorMessage(
+        "Vehicle ID is missing. Please refresh or restart the flow.",
+      );
       return;
     }
 
     if (!isAccepted) {
-      alert('Please accept the final offer before submitting.');
+      alert("Please accept the final offer before submitting.");
       return;
     }
 
     if (!aadhaarFile || !panFile || !bankProofFile) {
-      alert('Please upload all mandatory documents (Aadhaar Card, PAN Card, Bank Proof).');
+      alert(
+        "Please upload all mandatory documents (Aadhaar Card, PAN Card, Bank Proof).",
+      );
       return;
     }
 
@@ -133,10 +234,10 @@ export default function VehicleInstantOfferPage({
       setErrorMessage(null);
 
       const formData = new FormData();
-      formData.append('accepted', 'true');
-      formData.append('aadhaar', aadhaarFile);
-      formData.append('pan', panFile);
-      formData.append('bankProof', bankProofFile);
+      formData.append("accepted", "true");
+      formData.append("aadhaar", aadhaarFile);
+      formData.append("pan", panFile);
+      formData.append("bankProof", bankProofFile);
 
       const response = await axios.post(
         `${API_URL}/api/vehicle/register/owner/accept-offer?vehicleId=${vehicleId}`,
@@ -144,22 +245,23 @@ export default function VehicleInstantOfferPage({
         {
           withCredentials: true,
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
-        }
+        },
       );
 
       if (response.status === 200 || response.status === 201) {
         if (onContinue) {
           onContinue();
         } else {
-          router.push('/');
+          router.push("/");
         }
       }
     } catch (error: any) {
-      console.error('Error submitting offer acceptance:', error);
+      console.error("Error submitting offer acceptance:", error);
       setErrorMessage(
-        error?.response?.data?.message || 'Failed to submit documents. Please try again.'
+        error?.response?.data?.message ||
+          "Failed to submit documents. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -168,62 +270,80 @@ export default function VehicleInstantOfferPage({
 
   const documentFields = [
     {
-      label: 'Aadhaar Card',
-      sub: 'Upload front side of Aadhaar card',
+      label: "Aadhaar Card",
+      sub: "Upload front side of Aadhaar card",
       state: aadhaarFile,
       preview: aadhaarPreview,
       onChange: (file: File | null) =>
-        handleFileChange(file, setAadhaarFile, setAadhaarPreview, aadhaarPreview),
+        handleFileChange(
+          file,
+          setAadhaarFile,
+          setAadhaarPreview,
+          aadhaarPreview,
+        ),
     },
     {
-      label: 'PAN Card',
-      sub: 'Upload PAN card',
+      label: "PAN Card",
+      sub: "Upload PAN card",
       state: panFile,
       preview: panPreview,
       onChange: (file: File | null) =>
         handleFileChange(file, setPanFile, setPanPreview, panPreview),
     },
     {
-      label: 'Bank Proof',
-      sub: 'Upload cancelled cheque / passbook / bank statement',
+      label: "Bank Proof",
+      sub: "Upload cancelled cheque / passbook / bank statement",
       state: bankProofFile,
       preview: bankProofPreview,
       onChange: (file: File | null) =>
-        handleFileChange(file, setBankProofFile, setBankProofPreview, bankProofPreview),
+        handleFileChange(
+          file,
+          setBankProofFile,
+          setBankProofPreview,
+          bankProofPreview,
+        ),
     },
   ];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full text-xs font-sans text-gray-800">
-
       {/* MAIN LEFT SECTION */}
       <main className="lg:col-span-8 bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-2xs space-y-6">
-
         {/* HERO TITLE HEADER */}
         <div className="space-y-1">
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">Accept Your Final Offer</h1>
-          <p className="text-xs font-medium text-gray-500">Your vehicle has been picked up successfully.</p>
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">
+            Accept Your Final Offer
+          </h1>
+          <p className="text-xs font-medium text-gray-500">
+            Your vehicle has been picked up successfully.
+          </p>
         </div>
 
         {/* HERO BANNER WITH FINAL OFFER & ESTIMATED PRICE RANGE */}
         <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
           <div className="space-y-3 z-10 max-w-sm">
-
             {/* Final Offer Badge */}
             <div className="inline-flex items-center gap-2 bg-emerald-100/80 px-3 py-1 rounded-full text-[#0B5B32]">
               <CheckCircle2 size={16} className="fill-[#0B5B32] text-white" />
-              <span className="font-black text-xs">Your Final Offer: {formattedValue}</span>
+              <span className="font-black text-xs">
+                Your Final Offer: {formattedValue}
+              </span>
             </div>
 
             {/* Estimated Price Range Card */}
             <div className="flex items-center gap-2 bg-white/80 border border-emerald-100 px-3 py-1.5 rounded-xl text-gray-700 shadow-3xs">
               <Tag size={15} className="text-[#0B5B32] shrink-0" />
-              <span className="text-[11px] font-bold text-gray-500">Expected Value Range:</span>
-              <span className="text-xs font-black text-[#0B5B32]">{formattedRange}</span>
+              <span className="text-[11px] font-bold text-gray-500">
+                Expected Value Range:
+              </span>
+              <span className="text-xs font-black text-[#0B5B32]">
+                {formattedRange}
+              </span>
             </div>
 
             <p className="text-[11px] font-medium text-gray-600 leading-relaxed pt-0.5">
-              Our team has inspected your vehicle. You can now accept the final offer and proceed to receive your payment.
+              Our team has inspected your vehicle. You can now accept the final
+              offer and proceed to receive your payment.
             </p>
           </div>
 
@@ -234,7 +354,7 @@ export default function VehicleInstantOfferPage({
               alt="Vehicle Picked Up Tow Truck"
               className="w-full h-full object-contain"
               onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
+                (e.target as HTMLElement).style.display = "none";
               }}
             />
           </div>
@@ -249,13 +369,21 @@ export default function VehicleInstantOfferPage({
 
           <div className="border border-emerald-100/80 bg-emerald-50/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Final Offer Amount</span>
-              <div className="text-3xl font-black text-gray-900 tracking-tight">{formattedValue}</div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Final Offer Amount
+              </span>
+              <div className="text-3xl font-black text-gray-900 tracking-tight">
+                {formattedValue}
+              </div>
             </div>
 
             <div className="bg-white border border-emerald-100 px-4 py-2 rounded-xl space-y-0.5 text-center shadow-3xs">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Estimated Car Range</span>
-              <div className="text-sm font-black text-[#0B5B32]">{formattedRange}</div>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Estimated Car Range
+              </span>
+              <div className="text-sm font-black text-[#0B5B32]">
+                {formattedRange}
+              </div>
             </div>
           </div>
 
@@ -263,7 +391,10 @@ export default function VehicleInstantOfferPage({
           <div className="bg-emerald-50/50 border border-emerald-100/80 p-3 rounded-xl flex items-center gap-2 text-[11px]">
             <HelpCircle size={15} className="text-[#0B5B32] shrink-0" />
             <p className="font-semibold text-gray-700">
-              <span className="font-black text-[#0B5B32]">Offer valid for today only.</span> Please accept to proceed.
+              <span className="font-black text-[#0B5B32]">
+                Offer valid for today only.
+              </span>{" "}
+              Please accept to proceed.
             </p>
           </div>
         </div>
@@ -284,10 +415,12 @@ export default function VehicleInstantOfferPage({
             />
             <div className="space-y-0.5">
               <span className="font-black text-gray-900 text-[11px]">
-                I have reviewed the final offer and accept the amount of {formattedValue} (Estimated Range: {formattedRange}).
+                I have reviewed the final offer and accept the amount of{" "}
+                {formattedValue} (Estimated Range: {formattedRange}).
               </span>
               <p className="text-[10px] text-gray-400 font-medium">
-                By accepting, I confirm that all the details provided are correct and I agree to proceed for payment.
+                By accepting, I confirm that all the details provided are
+                correct and I agree to proceed for payment.
               </p>
             </div>
           </label>
@@ -301,16 +434,24 @@ export default function VehicleInstantOfferPage({
               <span>Upload Documents to Receive Payment</span>
             </h2>
             <p className="text-[10px] text-gray-400 font-medium pl-4">
-              To transfer the payment, please upload the following documents. All documents are mandatory.
+              To transfer the payment, please upload the following documents.
+              All documents are mandatory.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {documentFields.map((doc, idx) => (
-              <div key={idx} className="border border-gray-100 rounded-xl p-3 bg-white space-y-2 text-center flex flex-col justify-between">
+              <div
+                key={idx}
+                className="border border-gray-100 rounded-xl p-3 bg-white space-y-2 text-center flex flex-col justify-between"
+              >
                 <div className="space-y-0.5">
-                  <h4 className="font-black text-gray-900 text-[11px]">{doc.label}</h4>
-                  <p className="text-[9px] text-gray-400 font-medium">{doc.sub}</p>
+                  <h4 className="font-black text-gray-900 text-[11px]">
+                    {doc.label}
+                  </h4>
+                  <p className="text-[9px] text-gray-400 font-medium">
+                    {doc.sub}
+                  </p>
                 </div>
 
                 {doc.state ? (
@@ -322,7 +463,10 @@ export default function VehicleInstantOfferPage({
                     <span className="font-black text-[10px] text-[#0B5B32] uppercase tracking-wide">
                       Document Uploaded
                     </span>
-                    <span className="font-semibold text-[9px] text-gray-600 truncate max-w-[140px]" title={doc.state.name}>
+                    <span
+                      className="font-semibold text-[9px] text-gray-600 truncate max-w-[140px]"
+                      title={doc.state.name}
+                    >
                       {doc.state.name}
                     </span>
                   </div>
@@ -330,14 +474,22 @@ export default function VehicleInstantOfferPage({
                   /* DEFAULT UPLOAD BOX */
                   <label className="border border-dashed border-gray-200 rounded-xl p-3 bg-gray-50/50 hover:bg-emerald-50/30 transition-colors cursor-pointer flex flex-col items-center justify-center space-y-1 min-h-[110px]">
                     <Upload size={16} className="text-[#0B5B32]" />
-                    <span className="font-black text-[10px] text-gray-700">Click to upload</span>
-                    <span className="text-[8px] text-gray-400">or drag and drop</span>
-                    <span className="text-[8px] text-gray-400">JPG, PNG, PDF (Max 5MB)</span>
+                    <span className="font-black text-[10px] text-gray-700">
+                      Click to upload
+                    </span>
+                    <span className="text-[8px] text-gray-400">
+                      or drag and drop
+                    </span>
+                    <span className="text-[8px] text-gray-400">
+                      JPG, PNG, PDF (Max 5MB)
+                    </span>
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
-                      onChange={(e) => e.target.files?.[0] && doc.onChange(e.target.files[0])}
+                      onChange={(e) =>
+                        e.target.files?.[0] && doc.onChange(e.target.files[0])
+                      }
                     />
                   </label>
                 )}
@@ -349,8 +501,12 @@ export default function VehicleInstantOfferPage({
           <div className="bg-emerald-50/40 border border-emerald-100 p-3 rounded-xl flex items-center gap-2.5">
             <Lock size={15} className="text-[#0B5B32] shrink-0" />
             <div className="space-y-0.5">
-              <h4 className="font-black text-[#0B5B32] text-[10px]">Your documents are secure and encrypted.</h4>
-              <p className="text-[9px] text-gray-500 font-medium">We use them only for payment processing and verification.</p>
+              <h4 className="font-black text-[#0B5B32] text-[10px]">
+                Your documents are secure and encrypted.
+              </h4>
+              <p className="text-[9px] text-gray-500 font-medium">
+                We use them only for payment processing and verification.
+              </p>
             </div>
           </div>
         </div>
@@ -363,7 +519,8 @@ export default function VehicleInstantOfferPage({
               <span>Confirm & Submit</span>
             </h2>
             <p className="text-[10px] text-gray-400 font-medium pl-4">
-              Once you accept the offer and upload documents, our team will verify and process your payment.
+              Once you accept the offer and upload documents, our team will
+              verify and process your payment.
             </p>
           </div>
 
@@ -371,7 +528,9 @@ export default function VehicleInstantOfferPage({
           <div className="bg-amber-50/60 border border-amber-200/80 p-3 rounded-xl flex items-center gap-2 text-amber-900">
             <AlertCircle size={16} className="text-amber-600 shrink-0" />
             <span className="font-bold text-[10px]">
-              Payment will be made within <span className="font-black">24–48 hours</span> after document verification.
+              Payment will be made within{" "}
+              <span className="font-black">24–48 hours</span> after document
+              verification.
             </span>
           </div>
 
@@ -384,7 +543,14 @@ export default function VehicleInstantOfferPage({
           )}
 
           {/* Main Action Submit Button */}
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-between pt-2">
+            <button
+              onClick={() => router.push("/")}
+              className="w-full sm:w-auto bg-gray-500 disabled:opacity-60 text-white font-black px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+            >
+              <Home size={14} />
+              <span>Home</span>
+            </button>
             <button
               type="button"
               onClick={handleSubmit}
@@ -419,15 +585,16 @@ export default function VehicleInstantOfferPage({
 
           <div className="flex items-center gap-1.5 text-[10px] font-medium">
             <Lock size={12} className="text-emerald-700" />
-            <span>Your information is encrypted and safe with us. We never share your data with anyone.</span>
+            <span>
+              Your information is encrypted and safe with us. We never share
+              your data with anyone.
+            </span>
           </div>
         </div>
-
       </main>
 
       {/* RIGHT SIDEBAR */}
       <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
-
         {/* BOOKING SUMMARY */}
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3.5">
           <div className="flex items-center gap-2 font-black text-gray-900 text-xs border-b border-gray-50 pb-2">
@@ -438,24 +605,24 @@ export default function VehicleInstantOfferPage({
           <div className="space-y-2 text-[11px]">
             <div className="flex justify-between items-center text-gray-500">
               <span className="font-medium">Booking ID</span>
-              <span className="font-black text-gray-800">{vehicleId ? vehicleId.substring(0, 18) : 'N/A'}</span>
+              <span className="font-black text-gray-800">
+                {vehicleId ? vehicleId.substring(0, 18) : "N/A"}
+              </span>
             </div>
             <div className="flex justify-between items-center text-gray-500">
               <span className="font-medium">Vehicle</span>
               <span className="font-black text-gray-800">{vehicleName}</span>
             </div>
 
-
             {/* Expected Range */}
             <div className="flex justify-between items-center text-gray-500">
               <span className="font-medium">Expected Range</span>
-              <span className="font-black text-[#0B5B32]">{formattedRange}</span>
+              <span className="font-black text-[#0B5B32]">
+                {formattedRange}
+              </span>
             </div>
 
             {/* Final Offer Amount */}
-            
-
-           
 
             <div className="flex justify-between items-center text-gray-500 pt-1">
               <span className="font-medium">Status</span>
@@ -476,25 +643,56 @@ export default function VehicleInstantOfferPage({
 
         {/* WHAT HAPPENS NEXT TIMELINE */}
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3">
-          <h4 className="font-black text-gray-900 text-xs">What happens next?</h4>
+          <h4 className="font-black text-gray-900 text-xs">
+            What happens next?
+          </h4>
 
           <div className="space-y-4 relative border-l-2 border-emerald-100 ml-3.5 pl-4 py-1 text-[11px]">
             {[
-              { num: 1, title: 'Offer Accepted', desc: 'You accept the final offer after pickup.', current: true },
-              { num: 2, title: 'Documents Verification', desc: 'We verify your documents.' },
-              { num: 3, title: 'Payment Initiated', desc: 'Payment will be processed within 24–48 hours.' },
-              { num: 4, title: 'Payment Received', desc: 'You will receive the amount directly in your bank account.' },
+              {
+                num: 1,
+                title: "Offer Accepted",
+                desc: "You accept the final offer after pickup.",
+                current: true,
+              },
+              {
+                num: 2,
+                title: "Documents Verification",
+                desc: "We verify your documents.",
+              },
+              {
+                num: 3,
+                title: "Payment Initiated",
+                desc: "Payment will be processed within 24–48 hours.",
+              },
+              {
+                num: 4,
+                title: "Payment Received",
+                desc: "You will receive the amount directly in your bank account.",
+              },
             ].map((stepItem) => (
-              <div key={stepItem.num} className="relative flex items-start justify-between gap-2">
-                <div className={`absolute -left-[23px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${stepItem.current ? 'bg-[#0B5B32] text-white' : 'bg-gray-100 text-gray-500'
-                  }`}>
+              <div
+                key={stepItem.num}
+                className="relative flex items-start justify-between gap-2"
+              >
+                <div
+                  className={`absolute -left-[23px] top-0.5 w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black ${
+                    stepItem.current
+                      ? "bg-[#0B5B32] text-white"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
                   {stepItem.num}
                 </div>
                 <div>
-                  <h5 className={`font-black ${stepItem.current ? 'text-[#0B5B32]' : 'text-gray-800'}`}>
+                  <h5
+                    className={`font-black ${stepItem.current ? "text-[#0B5B32]" : "text-gray-800"}`}
+                  >
                     {stepItem.num}. {stepItem.title}
                   </h5>
-                  <p className="text-[10px] text-gray-400 font-medium leading-tight">{stepItem.desc}</p>
+                  <p className="text-[10px] text-gray-400 font-medium leading-tight">
+                    {stepItem.desc}
+                  </p>
                 </div>
               </div>
             ))}
@@ -505,7 +703,9 @@ export default function VehicleInstantOfferPage({
         <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-2xs space-y-3 text-center">
           <div className="space-y-1">
             <h4 className="font-black text-gray-900 text-xs">Need Help?</h4>
-            <p className="text-[10px] text-gray-400 font-medium">Our support team is here to help you at every step.</p>
+            <p className="text-[10px] text-gray-400 font-medium">
+              Our support team is here to help you at every step.
+            </p>
           </div>
           <a
             href="tel:+919990856709"
@@ -541,9 +741,7 @@ export default function VehicleInstantOfferPage({
             </div>
           </div>
         </div>
-
       </aside>
-
     </div>
   );
 }

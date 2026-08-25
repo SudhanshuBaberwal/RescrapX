@@ -1078,3 +1078,19 @@ export const acceptOfferAndSubmitPaymentDocuments = asyncHandler(
     );
   },
 );
+
+export const getVehiclePricing = asyncHandler(async (req, res) => {
+  const vehicleId = req.query.vehicleId as string;
+  const userId = req.headers["x-user-id"] as string;
+  if (!vehicleId || !userId) {
+    throw new ApiError(401, "Unauthorized or vehicleId Not Found");
+  }
+
+  const pricing = await vehicleService.getVehiclePricing(vehicleId, userId);
+  return ApiResponse.success(
+    res,
+    201,
+    "Vehicle Pricing fetched successfully",
+    pricing,
+  );
+});

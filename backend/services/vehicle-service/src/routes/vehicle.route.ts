@@ -28,6 +28,7 @@ import {
   getPickupMap,
   getReadyForBiddingVehicles,
   getVehicleDashboardStats,
+  getVehiclePricing,
   getVehicleStatusById,
   majorComponents,
   markVehicleArrived,
@@ -225,5 +226,7 @@ router.post(
   uploadOwnerPaymentDocuments,
   acceptOfferAndSubmitPaymentDocuments,
 );
+
+router.get("/vehicles/pricing", getVehiclePricing);
 
 export default router;

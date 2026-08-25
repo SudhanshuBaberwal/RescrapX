@@ -7,8 +7,9 @@ import notificationRouter from "./routes/notification.route.js";
 const app = express();
 // app.use(helmet());
 const allowedOrigins = [
-    process.env.GATEWAY_URL || "http://localhost:8000", "http://localhost:8001",
-    "https://rescrap-x.vercel.app",
+    process.env.GATEWAY_URL || "http://localhost:8000",
+    "http://localhost:8001",
+    "https://www.rescrapx.com",
     "http://localhost:3000",
 ];
 if (process.env.ALLOWED_ORIGINS) {
@@ -41,5 +42,16 @@ app.get("/", (_req, res) => {
 });
 // API routes
 app.use("/", notificationRouter);
+app.use((err, req, res, next) => {
+    console.error("NOTIFICATION SERVICE ERROR:", err);
+    const statusCode = err.statusCode || err.status || 500;
+    res.status(statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        error: {
+            code: err.code || "INTERNAL_SERVER_ERROR",
+        },
+    });
+});
 app.use(errorHandler);
 export default app;

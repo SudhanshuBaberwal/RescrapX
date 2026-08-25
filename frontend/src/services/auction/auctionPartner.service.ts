@@ -1,12 +1,8 @@
 import api from "@/utils/api";
 
 export const partnerAuctionData = async () => {
-  try {
-    const result = await api.get("/api/auction/partner/live");
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.get("/api/auction/partner/live");
+  return result.data.data;
 };
 
 export const placeBid = async (data: {
@@ -14,30 +10,18 @@ export const placeBid = async (data: {
   vehicleId: string;
   bidAmount: number;
 }) => {
-  try {
-    const result = await api.post("/api/auction/bid", data);
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.post("/api/auction/bid", data);
+  return result.data.data;
 };
 
 export const getMyBids = async () => {
-  try {
-    const response = await api.get("/api/auction/partner/my-bids", {
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/auction/partner/my-bids", {
+    withCredentials: true,
+  });
+  return response.data.data;
 };
 
 export const wonVehicles = async () => {
-  try {
-    const result = await api.get("/api/auction/partner/won-vehicles");
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.get("/api/auction/partner/won-vehicles");
+  return result.data.data;
 };

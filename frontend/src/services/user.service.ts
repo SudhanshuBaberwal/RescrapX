@@ -1,79 +1,52 @@
 import api from "@/utils/api";
 
 export const getUserDocument = async () => {
-  try {
-    const result = await api.post("/api/auth/sync-vehicle-documents");
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.post("/api/auth/sync-vehicle-documents");
+  return result.data.data;
 };
 
 export const KYC = async (formData: FormData) => {
-  try {
-    const result = await api.post("/api/auth/KYC", formData, {
-      headers: {
-        "Content-Type": "multipart/form-[#form-data]",
-      },
-    });
-    return result;
-  } catch (error) {
-    console.log(error);
-    throw error;
-  }
+  const result = await api.post("/api/auth/KYC", formData, {
+    headers: {
+      "Content-Type": "multipart/form-[#form-data]",
+    },
+  });
+  return result.data.data;
 };
 
 export const updateProfile = async (profileData: Record<string, any>) => {
-  try {
-    const result = await api.put("/api/auth/profile", profileData);
-    return result;
-  } catch (error) {
-    console.log(error);
-    throw error;
-  }
+  const result = await api.put("/api/auth/profile", profileData);
+  return result.data.data;
 };
 export const approveKYC = async (documentId: string) => {
-  try {
-    const response = await api.patch(
-      `/api/auth/update-status?documentId=${documentId}`,
-      {
-        verified: true,
-      },
-    );
+  const response = await api.patch(
+    `/api/auth/update-status?documentId=${documentId}`,
+    {
+      verified: true,
+    },
+  );
 
-    return response.data;
-  } catch (error) {
-    console.error("Approve KYC error:", error);
-    throw error;
-  }
+  return response.data.data;
 };
 
 export const rejectKYC = async (
   documentId: string,
   rejectionReason: string,
 ) => {
-  try {
-    const response = await api.patch(
-      `/api/auth/update-status?documentId=${documentId}`,
-      {
-        verified: false,
-        rejectionReason,
-      },
-    );
+  const response = await api.patch(
+    `/api/auth/update-status?documentId=${documentId}`,
+    {
+      verified: false,
+      rejectionReason,
+    },
+  );
 
-    return response.data;
-  } catch (error) {
-    console.error("Reject KYC error:", error);
-    throw error;
-  }
+  return response.data.data;
 };
 
 export const getMyVerifiedPaymentVehicles = async () => {
-  try {
-    const response = await api.get("/api/vehicle/register/owner/verified-payment");
-    return response.data;
-  } catch (error) {
-    console.error("Failed to fetch verified payment vehicles:", error);
-    throw error;
-  }
+  const response = await api.get(
+    "/api/vehicle/register/owner/verified-payment",
+  );
+  return response.data.data;
 };

@@ -12,7 +12,7 @@ export const getAllVehiclesForAdmin = () => {
         const fetchVehicles = async () => {
             try {
                 const res = await getAllVehiclesDataForAdmin();
-                dispatch(setAllVehiclesData(res?.data.data));
+                dispatch(setAllVehiclesData(res));
             } catch (err: any) {
                 console.error(err);
             }

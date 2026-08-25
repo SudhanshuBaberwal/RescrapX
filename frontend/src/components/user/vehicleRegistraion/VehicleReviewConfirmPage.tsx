@@ -178,32 +178,56 @@ export default function VehicleReviewConfirmPage({
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isConfirmed) {
-      alert("Please check the confirmation box to declare that your provided details are accurate.");
-      return;
+  e.preventDefault();
+
+  if (!isConfirmed) {
+    alert(
+      "Please check the confirmation box to declare that your provided details are accurate."
+    );
+    return;
+  }
+
+  setRegistrationStatus("submitting");
+
+  try {
+    console.log("1️⃣ Submitting vehicle review...");
+
+    const reviewResponse = await reviewAndSubmit(vehicleId);
+
+    console.log("✅ Review submitted:", reviewResponse);
+
+    if (!reviewResponse) {
+      throw new Error("Vehicle review submission failed.");
     }
 
-    setRegistrationStatus('submitting');
+    console.log("2️⃣ Calculating estimated vehicle price...");
 
-    try {
-      // 1. Submit review
-      const response = await reviewAndSubmit(vehicleId);
+    const priceData = await calculateVehicleEstimatedPrice(vehicleId);
 
-      if (response && (response.data?.success || response.data?.status === 200 || response.data)) {
-        // 2. Fetch estimated price range immediately after submission
-        const priceData = await calculateVehicleEstimatedPrice(vehicleId);
-        setRegistrationStatus('success');
-        dispatch(setUserEstimatedPrice(priceData.data))
-        onContinue();
-      } else {
-        setRegistrationStatus('failed');
-      }
-    } catch (error) {
-      console.error("Submission error:", error);
-      setRegistrationStatus('failed');
+    console.log("✅ Estimated price response:", priceData);
+
+    if (!priceData) {
+      throw new Error("Estimated price API returned no data.");
     }
-  };
+
+    console.log("3️⃣ Storing estimated price in Redux...");
+
+    dispatch(
+      setUserEstimatedPrice(
+        priceData
+      )
+    );
+
+    console.log("✅ Estimated price stored in Redux");
+    setRegistrationStatus("success");
+
+  } catch (error: any) {
+
+    console.error("❌ Vehicle submission flow failed:", error);
+
+    setRegistrationStatus("failed");
+  }
+};
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] w-full bg-white border border-gray-100 rounded-2xl p-8 text-center space-y-4 shadow-3xs">

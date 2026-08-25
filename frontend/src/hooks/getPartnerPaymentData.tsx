@@ -15,7 +15,7 @@ export const getPartnerPaymentsData = () => {
         const fetchData = async () => {
             try {
                 const res = await pendingVehiclesForPayment();
-                dispatch(setPartnerPaymentData(res?.data));
+                dispatch(setPartnerPaymentData(res));
             } catch (err: any) {
                 console.error(err);
             }

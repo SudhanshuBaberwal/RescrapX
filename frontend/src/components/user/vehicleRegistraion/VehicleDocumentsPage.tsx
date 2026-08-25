@@ -95,7 +95,7 @@ export default function VehicleDocumentsPage({
       const response = await documents(vehicleId, payload);
 
       // STRICT CHECK: Next step logic after success confirmation
-      if (response && (response.success || response.data)) {
+      if (response) {
         onContinue();
       } else {
         setApiError(response?.message || 'Failed to upload documents.');

@@ -168,7 +168,7 @@ export default function VehiclePickupLocationPage({
       const response = await pickupLocation(vehicleId, payload);
       console.log(response)
 
-      if (response && (response.success || response.data)) {
+      if (response) {
         onContinue();
       } else {
         setApiError(response?.message || "Failed to save pickup location.");

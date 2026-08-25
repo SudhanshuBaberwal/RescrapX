@@ -39,7 +39,7 @@ export default function UserDashBoard() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1 text-[11px] sm:text-xs font-black text-gray-600">
           <div className="flex items-center gap-1.5"><ShieldCheck size={16} className="text-[#0B5B32]" /> 100% Legal & Compliant</div>
           <div className="flex items-center gap-1.5"><IndianRupee size={16} className="text-[#0B5B32]" /> Best Price Assured</div>
-          <div className="flex items-center gap-1.5"><Truck size={16} className="text-[#0B5B32]" /> Hassle-free Pickup</div>
+          <div className="flex items-center gap-1.5"><Truck size={16} className="text-[#0B5B32]" />  Pickup</div>
           <div className="flex items-center gap-1.5"><Leaf size={16} className="text-[#0B5B32]" /> Eco-friendly Process</div>
         </div>
 
@@ -77,11 +77,11 @@ export default function UserDashBoard() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { step: "1", title: "Book Pickup", desc: "Schedule a free pickup online" },
+            { step: "1", title: "Book Pickup", desc: "Schedule a pickup online" },
             { step: "2", title: "We Arrive", desc: "Our team arrives at your location" },
             { step: "3", title: "Free Inspection", desc: "We inspect your vehicle & offer best price" },
             { step: "4", title: "RVSFs Compete", desc: "Verified RVSFs give competitive offers" },
-            { step: "5", title: "Free Pickup", desc: "We pick up your vehicle from your doorstep" },
+            { step: "5", title: "Pickup", desc: "We pick up your vehicle from your doorstep" },
             { step: "6", title: "Payment & Certificate", desc: "Get instant payment & certificate of destruction" },
           ].map((item) => (
             <div key={item.step} className="bg-gray-50/50 border border-gray-100 p-4 rounded-xl text-center space-y-2 relative group hover:bg-white hover:shadow-xs transition">

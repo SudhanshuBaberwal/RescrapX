@@ -13,7 +13,7 @@ export const getUserPaymentsData = () => {
         const fetchData = async () => {
             try {
                 const res = await getMyVerifiedPaymentVehicles();
-                dispatch(setUserPaymentsData(res?.data));
+                dispatch(setUserPaymentsData(res));
             } catch (err: any) {
                 console.error(err);
             }

@@ -6,63 +6,37 @@ export const createAuction = async (data: {
   visibility: "PUBLIC" | "PRIVATE";
   autoExtend: boolean;
 }) => {
-  try {
-    const result = await api.post("/api/auction/create", data);
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.post("/api/auction/create", data);
+  return result.data.data;
 };
 
 export const getAuctionDataService = async () => {
-  try {
-    const result = await api.get("/api/auction/auction");
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.get("/api/auction/auction");
+  return result.data.data;
 };
 
 export const approveAuction = async (auctionId: string) => {
-  try {
-    const result = await api.post(
-      `/api/auction/approve?auctionId=${auctionId}`,
-    );
-    return result.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const result = await api.post(`/api/auction/approve?auctionId=${auctionId}`);
+  return result.data.data;
 };
 
 export const getPendingStartApprovalAuctions = async () => {
-  try {
-    const response = await api.get("/api/auction/start-approval/pending");
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.get("/api/auction/start-approval/pending");
+  return response.data.data;
 };
 
 export const approveAuctionStart = async (auctionId: string) => {
-  try {
-    const response = await api.patch(
-      `/api/auction/start-approval/approve?auctionId=${auctionId}`,
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    `/api/auction/start-approval/approve?auctionId=${auctionId}`,
+  );
+  return response.data.data;
 };
 
 export const rejectAuctionStart = async (auctionId: string) => {
-  try {
-    const response = await api.patch(
-      `/api/auction/start-approval/reject?auctionId=${auctionId}`,
-    );
-    return response.data;
-  } catch (error) {
-    console.log(error);
-  }
+  const response = await api.patch(
+    `/api/auction/start-approval/reject?auctionId=${auctionId}`,
+  );
+  return response.data.data;
 };
 
 export interface AdminAuctionStats {
@@ -147,90 +121,33 @@ export interface AdminAuction {
   updatedAt: string;
 }
 
-
-
-
 export const getAdminAuctionStats = async () => {
-  try {
-    const response = await api.get("/api/auction/admin/stats");
-
-    return response.data?.data ?? response.data;
-  } catch (error: any) {
-    console.error(
-      "Failed to fetch admin auction stats:",
-      error?.response?.data || error
-    );
-
-    throw error;
-  }
+  const response = await api.get("/api/auction/admin/stats");
+  return response.data?.data;
 };
 
-
 export const getAdminAuctionActivity = async () => {
-  try {
-    const response = await api.get("/api/auction/admin/activity");
-
-    return response.data?.data ?? response.data;
-  } catch (error: any) {
-    console.error(
-      "Failed to fetch admin auction activity:",
-      error?.response?.data || error
-    );
-
-    throw error;
-  }
+  const response = await api.get("/api/auction/admin/activity");
+  return response.data?.data ?? response.data;
 };
 
 export const getAdminAuctions = async () => {
-  try {
-    const response = await api.get("/api/auction/admin");
-
-    return response.data?.data ?? response.data;
-  } catch (error: any) {
-    console.error(
-      "Failed to fetch admin auctions:",
-      error?.response?.data || error
-    );
-
-    throw error;
-  }
+  const response = await api.get("/api/auction/admin");
+  return response.data?.data ?? response.data;
 };
 
 export const getAdminAuctionById = async (auctionId: string) => {
-  try {
-    const response = await api.get(
-      `/api/auction/admin/${auctionId}`
-    );
+  const response = await api.get(`/api/auction/admin/${auctionId}`);
 
-    return response.data?.data ?? response.data;
-  } catch (error: any) {
-    console.error(
-      "Failed to fetch admin auction:",
-      error?.response?.data || error
-    );
-
-    throw error;
-  }
+  return response.data?.data ?? response.data;
 };
 
 export const cancelAdminAuction = async (
   auctionId: string,
-  reason?: string
+  reason?: string,
 ) => {
-  try {
-    const response = await api.patch(
-      `/api/auction/admin/${auctionId}/cancel`,
-      {
-        reason: reason || "Cancelled by administrator",
-      }
-    );
-    return response.data?.data ?? response.data;
-  } catch (error: any) {
-    console.error(
-      "Failed to cancel auction:",
-      error?.response?.data || error
-    );
-
-    throw error;
-  }
+  const response = await api.patch(`/api/auction/admin/${auctionId}/cancel`, {
+    reason: reason || "Cancelled by administrator",
+  });
+  return response.data?.data ?? response.data;
 };

@@ -14,7 +14,7 @@ export const getAdminToPartnerDocuments = () => {
         const fetchData = async () => {
             try {
                 const res1 = await getPartnerUploadedDocuments();
-                dispatch(setPartnerDocuments(res1?.data));
+                dispatch(setPartnerDocuments(res1));
             } catch (err: any) {
                 console.error(err);
             }

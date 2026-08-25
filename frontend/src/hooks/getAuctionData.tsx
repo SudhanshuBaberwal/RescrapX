@@ -12,7 +12,7 @@ export const getAuctionData = () => {
         const fetchData = async () => {
             try {
                 const res = await getAuctionDataService();
-                dispatch(setAuctionData(res?.data));
+                dispatch(setAuctionData(res));
             } catch (err: any) {
                 console.error(err);
             }

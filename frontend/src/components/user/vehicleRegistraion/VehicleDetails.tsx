@@ -369,8 +369,7 @@ export default function VehicleDetailsPage({
       };
 
       const response = await basicDetails(vehicleId, payload);
-
-      if (response && (response.success || response.data)) {
+      if (response) {
         if (response.data) {
           dispatch(setVehicleData(response.data));
         }

@@ -12,7 +12,7 @@ export const getUserBookingData = () => {
         const fetchData = async () => {
             try {
                 const res = await customerBooking();
-                dispatch(setUserBookingData(res?.data));
+                dispatch(setUserBookingData(res));
             } catch (err: any) {
                 console.error(err);
             }

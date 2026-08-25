@@ -14,7 +14,7 @@ export const getPartnerBidsData = () => {
         const fetchData = async () => {
             try {
                 const res = await getMyBids();
-                dispatch(setPartnerBidsData(res?.data));
+                dispatch(setPartnerBidsData(res));
             } catch (err: any) {
                 console.error(err);
             }

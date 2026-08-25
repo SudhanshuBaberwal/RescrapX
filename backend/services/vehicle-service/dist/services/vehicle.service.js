@@ -1321,5 +1321,45 @@ class VehicleService {
             })),
         };
     }
+    async getVehiclePricing(vehicleId, userId) {
+        if (!mongoose.Types.ObjectId.isValid(vehicleId)) {
+            throw new ApiError(400, "Invalid vehicle ID");
+        }
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            throw new ApiError(400, "Invalid user ID");
+        }
+        const vehicle = await Vehicle.findOne({
+            _id: vehicleId,
+            owner: userId,
+        }, {
+            _id: 1,
+            owner: 1,
+            pricing: 1,
+            status: 1,
+            ownerOfferAccepted: 1,
+            ownerOfferAcceptedAt: 1,
+        }).lean();
+        if (!vehicle) {
+            throw new ApiError(404, "Vehicle not found or you do not own this vehicle");
+        }
+        if (!vehicle.pricing) {
+            throw new ApiError(404, "Pricing has not been calculated for this vehicle yet");
+        }
+        return {
+            vehicleId: vehicle._id,
+            pricing: {
+                initialBaseRate: vehicle.pricing.initialBaseRate,
+                netBaseRate: vehicle.pricing.netBaseRate,
+                materialValue: vehicle.pricing.materialValue,
+                netFlatAdjustments: vehicle.pricing.netFlatAdjustments,
+                bav: vehicle.pricing.bav,
+                lowerBound: vehicle.pricing.lowerBound,
+                upperBound: vehicle.pricing.upperBound,
+            },
+            status: vehicle.status,
+            ownerOfferAccepted: vehicle.ownerOfferAccepted ?? false,
+            ownerOfferAcceptedAt: vehicle.ownerOfferAcceptedAt ?? null,
+        };
+    }
 }
 export default new VehicleService();

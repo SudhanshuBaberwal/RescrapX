@@ -11,11 +11,13 @@ app.use(helmet());
 const allowedOrigins = [
   process.env.GATEWAY_URL || "http://localhost:8000",
   "https://www.rescrapx.com",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ];
 
 if (process.env.ALLOWED_ORIGINS) {
-  const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+  const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) =>
+    o.trim(),
+  );
   allowedOrigins.push(...customOrigins);
 }
 
@@ -23,7 +25,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -36,9 +38,30 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-app.get("/" , (req , res) => {
-  return res.status(200).json({message:"Vehicle Service"})
-})
+app.get("/", (req, res) => {
+  return res.status(200).json({ message: "Vehicle Service" });
+});
 app.use("/register", vehicleRoutes);
+
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    console.error("Vehicle SERVICE ERROR:", err);
+
+    const statusCode = err.statusCode || err.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || "Internal Server Error",
+      error: {
+        code: err.code || "INTERNAL_SERVER_ERROR",
+      },
+    });
+  },
+);
 
 export default app;

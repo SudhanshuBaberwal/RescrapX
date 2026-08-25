@@ -53,7 +53,7 @@ authrouter.post(
 authrouter.post("/login", validate(loginSchema), login);
 authrouter.post("/logout", protect, logout);
 authrouter.get("/me", protect, getCurrentUser);
-authrouter.post("/refresh",authLimiter, refreshTokenController);
+authrouter.post("/refresh", refreshTokenController);
 authrouter.post(
   "/forgot-password",otpLimiter,
   validate(forgotPasswordSchema),

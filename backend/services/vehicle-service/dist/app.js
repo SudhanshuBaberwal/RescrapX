@@ -7,11 +7,11 @@ const app = express();
 app.use(helmet());
 const allowedOrigins = [
     process.env.GATEWAY_URL || "http://localhost:8000",
-    "https://rescrap-x.vercel.app",
-    "http://localhost:3000"
+    "https://www.rescrapx.com",
+    "http://localhost:3000",
 ];
 if (process.env.ALLOWED_ORIGINS) {
-    const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+    const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
     allowedOrigins.push(...customOrigins);
 }
 app.use(cors({
@@ -33,4 +33,15 @@ app.get("/", (req, res) => {
     return res.status(200).json({ message: "Vehicle Service" });
 });
 app.use("/register", vehicleRoutes);
+app.use((err, req, res, next) => {
+    console.error("Vehicle SERVICE ERROR:", err);
+    const statusCode = err.statusCode || err.status || 500;
+    res.status(statusCode).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+        error: {
+            code: err.code || "INTERNAL_SERVER_ERROR",
+        },
+    });
+});
 export default app;

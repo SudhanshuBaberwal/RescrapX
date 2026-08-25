@@ -12,7 +12,7 @@ export const getPartnerPaymentsData = () => {
         const fetchData = async () => {
             try {
                 const res = await getPendingPaymentsData();
-                dispatch(setPartnerPaymentsData(res?.data));
+                dispatch(setPartnerPaymentsData(res));
             } catch (err: any) {
                 console.error(err);
             }

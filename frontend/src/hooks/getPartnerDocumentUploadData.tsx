@@ -13,7 +13,7 @@ export const getPartnerDocumentUploadData = () => {
         const fetchVehicles = async () => {
             try {
                 const res = await partnerDocuments();
-                dispatch(setPartnerDocumentUploadData(res?.data));
+                dispatch(setPartnerDocumentUploadData(res));
             } catch (err: any) {
                 console.error(err);
             }

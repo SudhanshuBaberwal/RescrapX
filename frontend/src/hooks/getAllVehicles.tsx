@@ -12,7 +12,7 @@ export const getAllVehicles = () => {
         const fetchVehicles = async () => {
             try {
                 const res = await getAllVehiclesData();
-                dispatch(setAllVehiclesData(res?.data));
+                dispatch(setAllVehiclesData(res));
             } catch (err: any) {
                 console.error(err);
             }

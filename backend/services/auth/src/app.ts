@@ -16,11 +16,13 @@ const app: Application = express();
 const allowedOrigins = [
   process.env.GATEWAY_URL || "http://localhost:8000",
   "https://www.rescrapx.com",
-  "http://localhost:3000"
+  "http://localhost:3000",
 ];
 
 if (process.env.ALLOWED_ORIGINS) {
-  const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim());
+  const customOrigins = process.env.ALLOWED_ORIGINS.split(",").map((o) =>
+    o.trim(),
+  );
   allowedOrigins.push(...customOrigins);
 }
 
@@ -28,7 +30,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -38,6 +40,28 @@ app.use("/", authrouter);
 app.use("/partner", partnerRoutes);
 app.use("/admin", adminRouter);
 app.use("/", documentRouter);
+
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    console.error("AUTH SERVICE ERROR:", err);
+
+    const statusCode = err.statusCode || err.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || "Internal Server Error",
+      error: {
+        code: err.code || "INTERNAL_SERVER_ERROR",
+      },
+    });
+  },
+);
+
 /**
  * Health Check
  */

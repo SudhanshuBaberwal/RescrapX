@@ -108,7 +108,7 @@ export default function VehicleComponentsPage({
 
       const response = await majorComponents(vehicleId, payload);
 
-      if (response && (response.success || response.data)) {
+      if (response) {
         onContinue();
       } else {
         setApiError(response?.message || 'Failed to update major components details.');
