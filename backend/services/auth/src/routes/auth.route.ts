@@ -50,7 +50,7 @@ authrouter.post(
   validate(VerifyOtpSchema),
   verifyOtpController,
 );
-authrouter.post("/login",authLimiter, validate(loginSchema), login);
+authrouter.post("/login", validate(loginSchema), login);
 authrouter.post("/logout", protect, logout);
 authrouter.get("/me", protect, getCurrentUser);
 authrouter.post("/refresh",authLimiter, refreshTokenController);

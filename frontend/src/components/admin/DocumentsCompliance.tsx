@@ -50,13 +50,16 @@ interface RealPartnerDocumentRecord {
 }
 
 // Custom Hook to Fetch Signed URL for Private Supabase Partner Vehicle Documents
-function useSignedUrl(pathObj: any) {
+function useSignedUrl(pathObj: unknown) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
 
-  const rawPath = typeof pathObj === 'object'
-    ? pathObj?.path || pathObj?.url || pathObj?.fullPath || pathObj?.key
+  const rawPath = typeof pathObj === 'object' && pathObj !== null
+    ? (pathObj as Record<string, string>).path ||
+    (pathObj as Record<string, string>).url ||
+    (pathObj as Record<string, string>).fullPath ||
+    (pathObj as Record<string, string>).key
     : pathObj;
 
   useEffect(() => {
@@ -98,7 +101,7 @@ function useSignedUrl(pathObj: any) {
           }
         }
       } catch (err) {
-        console.error("Error fetching signed URL for partner document:", err);
+        console.error('Error fetching signed URL for partner document:', err);
         if (isMounted) setError(true);
       } finally {
         if (isMounted) setLoading(false);
@@ -120,7 +123,7 @@ const PartnerDocumentPreviewCard: React.FC<{ docItem: PartnerDocItem }> = ({ doc
   const { signedUrl, loading, error, rawPath } = useSignedUrl(docItem);
   const handleOpenDoc = () => {
     if (signedUrl) {
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -132,7 +135,7 @@ const PartnerDocumentPreviewCard: React.FC<{ docItem: PartnerDocItem }> = ({ doc
           {docItem.type}
         </span>
         <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[220px]">
-          {rawPath || 'document_file.pdf'}
+          {typeof rawPath === 'string' ? rawPath : 'document_file.pdf'}
         </span>
       </div>
 
@@ -141,7 +144,7 @@ const PartnerDocumentPreviewCard: React.FC<{ docItem: PartnerDocItem }> = ({ doc
           type="button"
           onClick={handleOpenDoc}
           disabled={loading || !signedUrl || error}
-          className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] py-2 rounded-lg hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all shadow-3xs cursor-pointer"
+          className="flex-1 bg-white border border-slate-200 text-slate-700 font-bold text-[11px] py-2 rounded-lg hover:bg-slate-100 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
         >
           {loading ? (
             <span>Loading Document...</span>
@@ -220,7 +223,7 @@ export const DocumentsCompliance: React.FC = () => {
     setRejectReasonInput('');
   };
 
-  // Individual Document Actions (One by One)
+  // Individual Document Actions
   const handleApproveSingleDoc = async () => {
     if (!selectedVehicle?._id) return;
     const vId = selectedVehicle._id;
@@ -242,9 +245,9 @@ export const DocumentsCompliance: React.FC = () => {
           [selectedDocIndex]: { status: 'APPROVED' }
         }
       }));
-      showToast("Document Approved", 'success');
+      showToast('Document Approved', 'success');
       setShowRejectInput(false);
-    } catch (error) {
+    } catch {
       alert('Failed to approve document. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -268,7 +271,7 @@ export const DocumentsCompliance: React.FC = () => {
         status: 'REJECTED',
         rejectionReason: rejectReasonInput,
       });
-      showToast("Document Rejected", 'warning');
+      showToast('Document Rejected', 'warning');
       setDocStatuses(prev => ({
         ...prev,
         [vId]: {
@@ -278,7 +281,7 @@ export const DocumentsCompliance: React.FC = () => {
       }));
       setShowRejectInput(false);
       setRejectReasonInput('');
-    } catch (error) {
+    } catch {
       alert('Failed to reject document. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -293,7 +296,6 @@ export const DocumentsCompliance: React.FC = () => {
       setIsSubmitting(true);
       await approvePartnerDocuments(vId);
 
-      // Update local state to show overall approved & mark all individual documents as approved
       setStatusOverrideMap((prev) => ({
         ...prev,
         [vId]: { status: 'APPROVED' }
@@ -310,8 +312,8 @@ export const DocumentsCompliance: React.FC = () => {
         }));
       }
 
-      showToast("All Documents Approved Successfully", 'success');
-    } catch (error) {
+      showToast('All Documents Approved Successfully', 'success');
+    } catch {
       alert('Failed to complete vehicle document approval. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -337,21 +339,15 @@ export const DocumentsCompliance: React.FC = () => {
     }
   };
 
-  // Helpers to inspect status of selected vehicle's docs
   const totalDocCount = selectedVehicle?.partnerDocuments?.length || 0;
   const currentVehicleDocMap = selectedVehicle?._id ? (docStatuses[selectedVehicle._id] || {}) : {};
 
-  // Calculate status considering initial doc status OR current session overrides
   const getDocStatus = (doc: PartnerDocItem, idx: number) => {
     return currentVehicleDocMap[idx]?.status || doc.status;
   };
 
   const approvedDocsCount = selectedVehicle?.partnerDocuments?.filter(
     (doc, idx) => getDocStatus(doc, idx) === 'APPROVED'
-  ).length || 0;
-
-  const rejectedDocsCount = selectedVehicle?.partnerDocuments?.filter(
-    (doc, idx) => getDocStatus(doc, idx) === 'REJECTED'
   ).length || 0;
 
   const currentDoc = selectedVehicle?.partnerDocuments?.[selectedDocIndex];
@@ -362,7 +358,7 @@ export const DocumentsCompliance: React.FC = () => {
       <main className="p-4 md:p-6 space-y-6 w-full mx-auto">
 
         {/* Header Ribbon */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-3xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200/80 shadow-xs">
           <div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">Documents & Compliance</h2>
             <p className="text-xs text-slate-500 mt-0.5">Review and manage partner uploaded verification documents.</p>
@@ -372,7 +368,7 @@ export const DocumentsCompliance: React.FC = () => {
         {/* Analytics Counters */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {complianceKPIs.map((kpi, idx) => (
-            <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl shadow-3xs flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div key={idx} className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
               <span className="text-[11px] font-bold tracking-wide text-slate-400 uppercase truncate">{kpi.title}</span>
               <div className="mt-2">
                 <div className="text-xl font-black text-slate-900 tracking-tight">{kpi.value}</div>
@@ -388,20 +384,20 @@ export const DocumentsCompliance: React.FC = () => {
         <div className="border-b border-slate-200 overflow-x-auto whitespace-nowrap flex gap-6 scrollbar-none">
           <button
             onClick={() => setActiveTab('CVS')}
-            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'CVS' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 cursor-pointer ${activeTab === 'CVS' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
           >
             CVS (Certificate of Deposit)
           </button>
           <button
             onClick={() => setActiveTab('COD')}
-            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 ${activeTab === 'COD' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            className={`pb-3 text-xs font-bold transition-all border-b-2 px-1 cursor-pointer ${activeTab === 'COD' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
           >
             COD (Certificate of Destruction)
           </button>
         </div>
 
         {/* Search & Filter Row */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-3xs space-y-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="relative sm:col-span-2">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
@@ -410,13 +406,13 @@ export const DocumentsCompliance: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by Vehicle ID, Reg Number, or Model..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-hidden focus:border-slate-300"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-slate-300"
               />
             </div>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-hidden text-slate-600"
+              className="bg-white border border-slate-200 rounded-lg p-2 text-xs outline-none text-slate-600"
             >
               <option value="ALL">All Status</option>
               <option value="SUBMITTED">Pending Review</option>
@@ -430,7 +426,7 @@ export const DocumentsCompliance: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
           {/* Table View Container */}
-          <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-3xs transition-all ${selectedVehicle ? 'xl:col-span-7' : 'xl:col-span-12'}`}>
+          <div className={`bg-white border border-slate-200 rounded-xl p-4 shadow-xs transition-all ${selectedVehicle ? 'xl:col-span-7' : 'xl:col-span-12'}`}>
             <div className="flex justify-between items-center pb-2 border-b border-slate-100 mb-3">
               <h3 className="text-sm font-bold text-slate-900">Partner Uploaded Documents <span className="text-slate-400 font-normal">({filteredList.length})</span></h3>
             </div>
@@ -495,7 +491,7 @@ export const DocumentsCompliance: React.FC = () => {
 
           {/* Dynamic Interactive Right Sidebar */}
           {selectedVehicle && (
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-3xs xl:col-span-5 space-y-5 sticky top-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs xl:col-span-5 space-y-5 sticky top-4">
 
               <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                 <div>
@@ -507,7 +503,7 @@ export const DocumentsCompliance: React.FC = () => {
                   </div>
                   <span className="text-[10px] font-mono text-slate-400 block mt-0.5">ID: {selectedVehicle._id}</span>
                 </div>
-                <button onClick={() => setSelectedVehicle(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-50">
+                <button onClick={() => setSelectedVehicle(null)} className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg hover:bg-slate-50 cursor-pointer">
                   <X size={16} />
                 </button>
               </div>
@@ -543,7 +539,7 @@ export const DocumentsCompliance: React.FC = () => {
                           setShowRejectInput(false);
                           setRejectReasonInput(currentVehicleDocMap[idx]?.reason || doc.rejectionReason || '');
                         }}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${selectedDocIndex === idx
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all cursor-pointer ${selectedDocIndex === idx
                           ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 font-bold'
                           : 'border-slate-200 hover:bg-slate-50 text-slate-700'
                           }`}
@@ -591,7 +587,7 @@ export const DocumentsCompliance: React.FC = () => {
 
                   <PartnerDocumentPreviewCard docItem={selectedVehicle.partnerDocuments[selectedDocIndex]} />
 
-                  {/* Individual Document Verification Controls (One by One) */}
+                  {/* Individual Document Verification Controls */}
                   {currentDocEffectiveStatus === 'APPROVED' ? (
                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-bold text-xs flex items-center justify-center gap-2">
                       <CheckCircle2 size={16} className="text-emerald-600" />
@@ -606,20 +602,20 @@ export const DocumentsCompliance: React.FC = () => {
                         value={rejectReasonInput}
                         onChange={(e) => setRejectReasonInput(e.target.value)}
                         placeholder="State why this specific document is unaccepted..."
-                        className="w-full bg-white border border-rose-200 rounded-lg p-2 text-xs outline-hidden focus:ring-1 focus:ring-rose-500 min-h-[50px]"
+                        className="w-full bg-white border border-rose-200 rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-rose-500 min-h-[50px]"
                       />
                       <div className="flex justify-end gap-2">
                         <button
                           disabled={isSubmitting}
                           onClick={() => setShowRejectInput(false)}
-                          className="px-3 py-1 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg text-[10px] disabled:opacity-50"
+                          className="px-3 py-1 bg-white border border-slate-200 text-slate-600 font-bold rounded-lg text-[10px] disabled:opacity-50 cursor-pointer"
                         >
                           Cancel
                         </button>
                         <button
                           disabled={isSubmitting}
                           onClick={handleRejectSingleDoc}
-                          className="px-3 py-1 bg-rose-600 text-white font-bold rounded-lg text-[10px] disabled:opacity-50 flex items-center gap-1"
+                          className="px-3 py-1 bg-rose-600 text-white font-bold rounded-lg text-[10px] disabled:opacity-50 flex items-center gap-1 cursor-pointer"
                         >
                           {isSubmitting && <Loader2 size={10} className="animate-spin" />} Reject Document
                         </button>
@@ -630,7 +626,7 @@ export const DocumentsCompliance: React.FC = () => {
                       <button
                         disabled={isSubmitting}
                         onClick={() => setShowRejectInput(true)}
-                        className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg border transition-all flex items-center justify-center gap-1 disabled:opacity-50 ${currentDocEffectiveStatus === 'REJECTED'
+                        className={`flex-1 font-bold text-xs py-2 px-3 rounded-lg border transition-all flex items-center justify-center gap-1 disabled:opacity-50 cursor-pointer ${currentDocEffectiveStatus === 'REJECTED'
                           ? 'bg-rose-100 text-rose-800 border-rose-300'
                           : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-100'
                           }`}
@@ -676,7 +672,7 @@ export const DocumentsCompliance: React.FC = () => {
                     <button
                       onClick={handleApproveAll}
                       disabled={isSubmitting}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs py-2.5 px-3 rounded-lg transition-all shadow-3xs flex items-center justify-center gap-1 cursor-pointer"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-xs py-2.5 px-3 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                     >
                       {isSubmitting ? (
                         <Loader2 size={14} className="animate-spin" />
