@@ -9,8 +9,8 @@ import {
 import dynamic from 'next/dynamic';
 import { useToast } from '@/lib/ui/toast/ToastContext';
 import { partnerRegister } from '@/services/partner.service';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/store/store';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store/store';
 import { setUserData } from '@/store/userSlice';
 import { useCurrentLocation } from '@/hooks/getCurrentUserLocation';
 import { reverseGeocode } from '@/lib/location';
@@ -30,8 +30,6 @@ const LocationMap = dynamic<{ lat: number; lng: number }>(
 export default function SignUpPartnerPortal() {
   const router = useRouter();
   const { showToast } = useToast();
-
-  const { userData } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch<AppDispatch>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -89,13 +87,18 @@ export default function SignUpPartnerPortal() {
   useEffect(() => {
     const autoFillFromLocation = async () => {
       if (!location?.latitude || !location?.longitude) return;
-
-      // Update lat/lng in form data state
       setFormData((prev) => ({
         ...prev,
         latitude: location.latitude,
         longitude: location.longitude,
       }));
+
+      // Clear latitude/longitude error if set
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated.location;
+        return updated;
+      });
 
       try {
         setIsFetchingAddress(true);
@@ -149,22 +152,53 @@ export default function SignUpPartnerPortal() {
     }
   };
 
+  // Strict Form Validation including RVSF & Location checks
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // 1. Phone Number Validation
     const phoneDigits = formData.phoneNumber.replace(/\D/g, '');
     if (phoneDigits.length < 10 || phoneDigits.length > 15) {
       newErrors.phoneNumber = 'Phone number must be between 10 to 15 digits';
     }
 
-    if (formData.companyName.trim().length < 2) newErrors.companyName = 'Company name is required';
-    if (formData.gstNumber.trim().length !== 15) newErrors.gstNumber = 'Invalid GST Number (exactly 15 characters required)';
-    if (formData.panNumber.trim().length !== 10) newErrors.panNumber = 'Invalid PAN Number (exactly 10 characters required)';
-    if (formData.registrationNumber.trim().length < 3) newErrors.registrationNumber = 'Registration number is required';
+    // 2. Business Details Validation
+    if (formData.companyName.trim().length < 2) {
+      newErrors.companyName = 'Company name is required';
+    }
+    
+    // 3. GST & PAN Validation
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    if (!gstRegex.test(formData.gstNumber.trim().toUpperCase())) {
+      newErrors.gstNumber = 'Invalid GST format (e.g. 22AAAAA0000A1Z5)';
+    }
+
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+    if (!panRegex.test(formData.panNumber.trim().toUpperCase())) {
+      newErrors.panNumber = 'Invalid PAN format (e.g. ABCDE1234F)';
+    }
+
+    // 4. RVSF Registration Number Validation (Format: e.g., RVSF/KA/2024/001 or alphanumeric 6+ chars)
+    const rvsfRegex = /^[A-Z0-9\/-]{6,20}$/i;
+    if (!formData.registrationNumber.trim()) {
+      newErrors.registrationNumber = 'RVSF Registration number is required';
+    } else if (!rvsfRegex.test(formData.registrationNumber.trim())) {
+      newErrors.registrationNumber = 'Invalid RVSF Registration No. (Must be 6-20 alphanumeric characters)';
+    }
+
+    // 5. Mandatory GPS Location (Latitude & Longitude Check)
+    const lat = formData.latitude || location?.latitude || 0;
+    const lng = formData.longitude || location?.longitude || 0;
+
+    if (!lat || !lng || (lat === 0 && lng === 0)) {
+      newErrors.location = 'Partner facility GPS Location (Latitude & Longitude) is mandatory. Please capture location.';
+    }
+
+    // 6. Address Fields Validation
     if (formData.address.trim().length < 5) newErrors.address = 'Address must be at least 5 characters';
     if (formData.city.trim().length < 2) newErrors.city = 'City is required';
     if (formData.state.trim().length < 2) newErrors.state = 'State is required';
-    if (formData.pincode.trim().length !== 6) newErrors.pincode = 'Pincode must be exactly 6 digits';
+    if (!/^\d{6}$/.test(formData.pincode.trim())) newErrors.pincode = 'Pincode must be exactly 6 digits';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -174,7 +208,7 @@ export default function SignUpPartnerPortal() {
     e.preventDefault();
 
     if (!validateForm()) {
-      showToast('Please resolve validation errors in the form.', 'warning');
+      showToast('Please resolve validation errors before submitting.', 'warning');
       return;
     }
 
@@ -186,13 +220,12 @@ export default function SignUpPartnerPortal() {
     try {
       setIsLoading(true);
 
-      // Backend Payload with explicit Latitude and Longitude values
       const payload = {
         phoneNumber: formData.phoneNumber,
         companyName: formData.companyName,
         gstNumber: formData.gstNumber.toUpperCase(),
         panNumber: formData.panNumber.toUpperCase(),
-        registrationNumber: formData.registrationNumber,
+        registrationNumber: formData.registrationNumber.toUpperCase(),
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -346,8 +379,8 @@ export default function SignUpPartnerPortal() {
                     name="registrationNumber"
                     value={formData.registrationNumber}
                     onChange={handleChange}
-                    placeholder="Facility Reg Number"
-                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32]"
+                    placeholder="Facility Reg Number (e.g. RVSF/KA/001)"
+                    className="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-xs outline-hidden focus:border-[#0B5B32] focus:ring-1 focus:ring-[#0B5B32] uppercase"
                   />
                   {errors.registrationNumber && <p className="text-[10px] text-red-500 font-bold">{errors.registrationNumber}</p>}
                 </div>
@@ -358,7 +391,9 @@ export default function SignUpPartnerPortal() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-[#0B5B32]" />
-                    <span className="text-xs font-black text-gray-800">Facility GPS Location</span>
+                    <span className="text-xs font-black text-gray-800">
+                      Facility GPS Location <span className="text-red-500">*</span>
+                    </span>
                   </div>
 
                   <button
@@ -390,8 +425,12 @@ export default function SignUpPartnerPortal() {
                   <div className="w-full h-28 rounded-xl bg-white border border-dashed border-gray-200 flex flex-col items-center justify-center p-3 text-center">
                     <Navigation size={18} className="text-gray-400 mb-1" />
                     <p className="font-bold text-gray-600 text-xs">No GPS coordinates captured</p>
-                    <p className="text-gray-400 text-[10px]">Click 'Use Current Location' to record latitude and longitude for backend storage.</p>
+                    <p className="text-gray-400 text-[10px]">Click 'Use Current Location' to capture facility latitude and longitude.</p>
                   </div>
+                )}
+
+                {errors.location && (
+                  <p className="text-[10px] text-red-500 font-bold pt-1">{errors.location}</p>
                 )}
               </div>
 

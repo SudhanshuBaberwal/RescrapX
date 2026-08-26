@@ -15,47 +15,63 @@ import adminRepository from "../repository/admin.repository.js";
 
 class PartnerService {
   async uploadDocuments(userId: string, files: UploadedFiles) {
-    try {
-      validatePartnerDocuments(files);
+    validatePartnerDocuments(files);
+    const partner = await partnerRepository.findPartnerById(userId);
 
-      const partner = await partnerRepository.findPartnerById(userId);
-
-      if (!partner) {
-        throw new ApiError(404, "Partner not found");
-      }
-
-      if (partner.documents?.uploadedAt) {
-        throw new ApiError(400, "Documents have already been uploaded");
-      }
-
-      const folder = `partners/${userId}/documents`;
-
-      const [rvsf, gst, pan, reg, bank] = await Promise.all([
-        uploadToSupabase(files.rvsfCertificate[0], folder, "rvsf"),
-        uploadToSupabase(files.gstCertificate[0], folder, "gst"),
-        uploadToSupabase(files.panCard[0], folder, "pan"),
-        uploadToSupabase(
-          files.registrationCertificate[0],
-          folder,
-          "registration",
-        ),
-        uploadToSupabase(files.bankDetails[0], folder, "bank"),
-      ]);
-
-      const documents = {
-        rvsfCertificate: { path: rvsf.path },
-        gstCertificate: { path: gst.path },
-        panCard: { path: pan.path },
-        registrationCertificate: { path: reg.path },
-        bankDetails: { path: bank.path },
-        uploadedAt: new Date(),
-      };
-
-      return await partnerRepository.updatePartnerDocuments(userId, documents);
-    } catch (error) {
-      console.error("Upload Documents Error:", error);
-      throw error;
+    if (!partner) {
+      throw new ApiError(404, "Partner not found");
     }
+
+    if (partner.documents?.uploadedAt) {
+      throw new ApiError(400, "Documents have already been uploaded");
+    }
+    const folder = `partners/${userId}/documents`;
+    const uploadTasks = [
+      uploadToSupabase(files.rvsfCertificate[0], folder, "rvsf"),
+
+      uploadToSupabase(files.gstCertificate[0], folder, "gst"),
+
+      uploadToSupabase(files.panCard[0], folder, "pan"),
+
+      uploadToSupabase(
+        files.registrationCertificate[0],
+        folder,
+        "registration",
+      ),
+
+      uploadToSupabase(files.bankDetails[0], folder, "bank"),
+    ];
+
+    const [rvsf, gst, pan, registration, bank] = await Promise.all(uploadTasks);
+    const documents = {
+      rvsfCertificate: {
+        path: rvsf.path,
+      },
+
+      gstCertificate: {
+        path: gst.path,
+      },
+
+      panCard: {
+        path: pan.path,
+      },
+
+      registrationCertificate: {
+        path: registration.path,
+      },
+
+      bankDetails: {
+        path: bank.path,
+      },
+
+      uploadedAt: new Date(),
+    };
+    const updatedPartner = await partnerRepository.updatePartnerDocuments(
+      userId,
+      documents,
+    );
+
+    return updatedPartner;
   }
 
   async getPartnertStatus(userId: string) {

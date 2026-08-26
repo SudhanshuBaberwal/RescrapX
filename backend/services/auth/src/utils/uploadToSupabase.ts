@@ -15,9 +15,13 @@ interface UploadResult {
 export const uploadToSupabase = async (
   file: UploadedFile,
   folder: string,
-  prefix: string = "file", // ✅ New parameter
+  prefix: string,
 ): Promise<UploadResult> => {
-  const extension = file.originalname.split(".").pop();
+  if (!file?.buffer) {
+    throw new Error(`Invalid file for ${prefix}`);
+  }
+
+  const extension = file.originalname.split(".").pop()?.toLowerCase() || "bin";
 
   const fileName = `${prefix}-${randomUUID()}.${extension}`;
 
@@ -28,6 +32,7 @@ export const uploadToSupabase = async (
     .upload(filePath, file.buffer, {
       contentType: file.mimetype,
       upsert: false,
+      cacheControl: "3600",
     });
 
   if (error) {
