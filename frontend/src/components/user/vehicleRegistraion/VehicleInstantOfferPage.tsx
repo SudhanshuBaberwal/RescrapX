@@ -39,7 +39,6 @@ export default function VehicleInstantOfferPage({
 }: StepComponentProps) {
   const router = useRouter();
   const { userEstimatedPrice } = useSelector((state: RootState) => state.user);
-  console.log(userEstimatedPrice);
   const estimatedData: any = userEstimatedPrice || {};
 
   const reduxVehicle =

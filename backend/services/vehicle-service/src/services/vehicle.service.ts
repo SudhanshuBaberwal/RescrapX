@@ -1898,10 +1898,6 @@ class VehicleService {
       );
     }
 
-    // =========================================================
-    // 7. Upload all documents to Supabase
-    // =========================================================
-
     const [aadhaarUpload, panUpload, bankProofUpload] = await Promise.all([
       supabaseService.uploadOwnerPaymentDocument(
         aadhaarFile,
@@ -1917,10 +1913,6 @@ class VehicleService {
         "BANK_PROOF",
       ),
     ]);
-
-    // =========================================================
-    // 8. Create MongoDB payment document records
-    // =========================================================
 
     const paymentDocuments = [
       {
@@ -1995,34 +1987,14 @@ class VehicleService {
         verifiedBy: null,
       },
     ];
-
-    // =========================================================
-    // 9. VERY IMPORTANT
-    // Assign documents to vehicle
-    // =========================================================
-
     vehicle.ownerPaymentDocuments = paymentDocuments;
-
-    // =========================================================
-    // 10. Update offer/payment status
-    // =========================================================
 
     vehicle.ownerOfferAccepted = true;
 
     vehicle.ownerOfferAcceptedAt = new Date();
 
     vehicle.paymentStatus = PaymentStatus.PROOF_UPLOADED;
-
-    // =========================================================
-    // 11. Save everything to MongoDB
-    // =========================================================
-
     await vehicle.save();
-
-    // =========================================================
-    // 12. Return response
-    // =========================================================
-
     return {
       vehicleId: vehicle._id,
 

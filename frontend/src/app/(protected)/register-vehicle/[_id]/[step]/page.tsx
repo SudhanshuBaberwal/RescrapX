@@ -18,7 +18,7 @@ export default function Page() {
   const stepParam = params?.step;
   const currentStepNumber = Number(stepParam) || 1;
 
-  const TOTAL_PAGES = 8;
+  const TOTAL_PAGES = 9;
 
   // Access vehicle data from Redux if needed
   const { vehicleData } = useSelector((state: RootState) => state.vehicle);
@@ -30,7 +30,7 @@ export default function Page() {
       router.push(`/register-vehicle/${vehicleId}/${nextStep}`);
     } else {
       // Final Step Complete -> Go to My Vehicles or Summary
-      router.push('/my-vehicles');
+      router.push('/user/my-vehicles');
     }
   };
 
