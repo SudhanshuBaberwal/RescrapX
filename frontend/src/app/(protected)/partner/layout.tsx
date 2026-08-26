@@ -2,7 +2,7 @@
 
 import { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useSelector } from "react-redux";
 
 export default function PartnerLayout({
@@ -12,68 +12,33 @@ export default function PartnerLayout({
 }) {
   const router = useRouter();
 
-  const { userData } = useSelector(
-    (state: RootState) => state.user
-  );
-
-  const [checkingAccess, setCheckingAccess] = useState(true);
-
+  const { userData } = useSelector((state: RootState) => state.user);
+  const partnerStatus = userData?.partnerStatus
   useEffect(() => {
-    if (userData === undefined) {
-      return;
-    }
-    if (!userData) {
-      router.replace("/login");
-      return;
-    }
-    if (userData.role !== "PARTNER") {
-      router.replace("/");
-      return;
-    }
-    const nextStep = userData.partnerNextStep;
+    if (!userData) return;
 
-    if (!nextStep) {
-      router.replace("/partner/register");
+    if (!userData.partnerNextStep){
+      router.replace("/partner/register")
       return;
     }
 
-    switch (nextStep) {
-      case "UPLOAD_DOCUMENTS":
+    switch (partnerStatus) {
+      case "PENDING":
         router.replace("/partner/verify-documents");
-        return;
+        break;
 
-      case "WAIT_APPROVAL":
+      case "UNDER_REVIEW":
         router.replace("/partner/waiting-approval");
-        return;
+        break;
 
-      case "REUPLOAD_DOCUMENTS":
-        router.replace("/partner/verify-documents");
-        return;
-
-      case "DASHBOARD":
+      case "APPROVED":
         router.replace("/");
-        return;
-
-      default:
+        break;
+      case "REJECTED":
+        router.replace("/partner/reject-approval")
         break;
     }
-
-    setCheckingAccess(false);
   }, [userData, router]);
-
-  if (checkingAccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-
-          <p className="text-sm font-semibold text-gray-500">
-            Checking access...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return <>{children}</>;
 }
