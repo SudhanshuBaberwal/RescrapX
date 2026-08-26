@@ -6,8 +6,8 @@ import axios, {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
-  // baseURL: API_BASE_URL,
-  baseURL : "http://localhost:8000",
+  baseURL: API_BASE_URL,
+  // baseURL : "http://localhost:8000",
   withCredentials: true,
   timeout: 60000,
   
