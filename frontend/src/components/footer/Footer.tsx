@@ -39,7 +39,7 @@ export default function Footer() {
     setLoading(true);
     try {
       const result = await setPartner();
-      if (result?.data) {
+      if (result) {
         setIsSuccess(true);
         if (showToast) {
           showToast("Partner registration initiated successfully!", "success");
