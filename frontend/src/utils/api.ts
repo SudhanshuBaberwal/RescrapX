@@ -1,22 +1,25 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  // baseURL : "http://localhost:8000",
+
   withCredentials: true,
+
   timeout: 60000,
+
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-/**
- * ============================================================
- * TYPES
- * ============================================================
- */
+/* ============================================================
+   TYPES
+============================================================ */
 
 interface BackendErrorResponse {
   success?: boolean;
@@ -27,41 +30,30 @@ interface BackendErrorResponse {
   };
 }
 
-/**
- * ============================================================
- * ERROR MESSAGE EXTRACTOR
- * ============================================================
- *
- * Handles:
- *
- * JSON:
- * {
- *   success: false,
- *   message: "No vehicles are ready for auction."
- * }
- *
- * HTML:
- * <pre>Error: No vehicles are ready for auction.<br>...</pre>
- *
- * Network errors
- * Timeout errors
- */
+interface RetryRequestConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
+/* ============================================================
+   ERROR MESSAGE EXTRACTOR
+============================================================ */
 
 const extractErrorMessage = (
   error: AxiosError<BackendErrorResponse | string>,
 ): string => {
-  /**
-   * ----------------------------------------------------------
-   * No response from server
-   * ----------------------------------------------------------
-   */
+  /* ----------------------------------------------------------
+     No response from server
+  ---------------------------------------------------------- */
 
   if (!error.response) {
     if (error.code === "ECONNABORTED") {
       return "Request timed out. Please try again.";
     }
 
-    if (error.code === "ERR_NETWORK") {
+    if (
+      error.code === "ERR_NETWORK" ||
+      error.code === "ERR_NETWORK_CHANGED"
+    ) {
       return "Unable to connect to the server. Please check your internet connection.";
     }
 
@@ -70,11 +62,9 @@ const extractErrorMessage = (
 
   const data = error.response.data;
 
-  /**
-   * ----------------------------------------------------------
-   * Backend returned JSON
-   * ----------------------------------------------------------
-   */
+  /* ----------------------------------------------------------
+     JSON error
+  ---------------------------------------------------------- */
 
   if (data && typeof data === "object") {
     return (
@@ -85,21 +75,11 @@ const extractErrorMessage = (
     );
   }
 
-  /**
-   * ----------------------------------------------------------
-   * Backend returned HTML
-   * ----------------------------------------------------------
-   */
+  /* ----------------------------------------------------------
+     HTML error
+  ---------------------------------------------------------- */
 
   if (typeof data === "string") {
-    /**
-     * Example:
-     *
-     * <pre>Error: No vehicles are ready for auction.<br>
-     *     at AuctionService...
-     * </pre>
-     */
-
     const preMatch = data.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
 
     if (preMatch?.[1]) {
@@ -112,20 +92,6 @@ const extractErrorMessage = (
         .replace(/&gt;/gi, ">")
         .trim();
 
-      /**
-       * Remove stack trace.
-       *
-       * Example:
-       *
-       * Error: No vehicles are ready for auction.
-       *     at AuctionService.createAuction(...)
-       *     at ...
-       *
-       * We only want:
-       *
-       * No vehicles are ready for auction.
-       */
-
       const firstLine = message
         .split("\n")
         .map((line) => line.trim())
@@ -135,10 +101,6 @@ const extractErrorMessage = (
         return firstLine.replace(/^Error:\s*/i, "").trim();
       }
     }
-
-    /**
-     * If HTML doesn't contain <pre>
-     */
 
     const cleanText = data
       .replace(/<[^>]*>/g, " ")
@@ -153,14 +115,9 @@ const extractErrorMessage = (
   return error.message || "Something went wrong. Please try again.";
 };
 
-/**
- * ============================================================
- * AUTH ROUTES
- * ============================================================
- *
- * We should NEVER automatically refresh token for these
- * endpoints.
- */
+/* ============================================================
+   AUTH ROUTES
+============================================================ */
 
 const isAuthRoute = (url?: string): boolean => {
   if (!url) return false;
@@ -177,11 +134,22 @@ const isAuthRoute = (url?: string): boolean => {
   return authRoutes.some((route) => url.includes(route));
 };
 
-/**
- * ============================================================
- * REFRESH STATE
- * ============================================================
- */
+/* ============================================================
+   AUTH ME ROUTE
+============================================================ */
+
+const isMeRoute = (url?: string): boolean => {
+  if (!url) return false;
+
+  return (
+    url.includes("/api/auth/me") ||
+    url.endsWith("/auth/me")
+  );
+};
+
+/* ============================================================
+   REFRESH STATE
+============================================================ */
 
 let isRefreshing = false;
 
@@ -192,11 +160,9 @@ type FailedRequest = {
 
 let failedQueue: FailedRequest[] = [];
 
-/**
- * ============================================================
- * PROCESS FAILED REQUEST QUEUE
- * ============================================================
- */
+/* ============================================================
+   PROCESS QUEUE
+============================================================ */
 
 const processQueue = (error: AxiosError | null) => {
   failedQueue.forEach((promise) => {
@@ -210,104 +176,97 @@ const processQueue = (error: AxiosError | null) => {
   failedQueue = [];
 };
 
-/**
- * ============================================================
- * RESPONSE INTERCEPTOR
- * ============================================================
- *
- * Handles:
- *
- * 1. Normal responses
- * 2. Error extraction
- * 3. 401 token refresh
- * 4. Multiple simultaneous 401 requests
- */
+/* ============================================================
+   RESPONSE INTERCEPTOR
+============================================================ */
 
 api.interceptors.response.use(
-  /**
-   * ----------------------------------------------------------
-   * SUCCESS
-   * ----------------------------------------------------------
-   */
+  /* ----------------------------------------------------------
+     SUCCESS
+  ---------------------------------------------------------- */
 
   (response) => {
     return response;
   },
 
-  /**
-   * ----------------------------------------------------------
-   * ERROR
-   * ----------------------------------------------------------
-   */
+  /* ----------------------------------------------------------
+     ERROR
+  ---------------------------------------------------------- */
 
-  async (error: AxiosError<BackendErrorResponse | string>) => {
-    console.error("========== API ERROR ==========");
-    console.error("URL:", error.config?.url);
-    console.error("Method:", error.config?.method);
-    console.error("Status:", error.response?.status);
-    console.error("Data:", error.response?.data);
-    console.error("Message:", error.message);
-    console.error("================================");
+  async (
+    error: AxiosError<BackendErrorResponse | string>,
+  ) => {
+    const url = error.config?.url || "";
 
-    /**
-     * Extract clean backend error message
-     */
+    const status = error.response?.status;
 
-    const cleanMessage = extractErrorMessage(error);
+    const meEndpoint = isMeRoute(url);
 
-    /**
-     * Store clean message on Axios error
-     */
+    /* --------------------------------------------------------
+       LOG API ERROR
 
-    error.message = cleanMessage;
+       Don't spam console for /auth/me 401.
+       A 401 from /auth/me simply means the user is not logged in.
+    -------------------------------------------------------- */
 
-    const originalRequest = error.config as
-      | (InternalAxiosRequestConfig & {
-          _retry?: boolean;
-        })
-      | undefined;
+    if (!(status === 401 && meEndpoint)) {
+      console.error("========== API ERROR ==========");
+      console.error("URL:", url);
+      console.error("Method:", error.config?.method);
+      console.error("Status:", status);
+      console.error("Data:", error.response?.data);
+      console.error("Message:", error.message);
+      console.error("================================");
+    }
 
-    /**
-     * --------------------------------------------------------
-     * No request config
-     * --------------------------------------------------------
-     */
+    /* --------------------------------------------------------
+       Extract clean backend message
+    -------------------------------------------------------- */
+
+    error.message = extractErrorMessage(error);
+
+    const originalRequest =
+      error.config as RetryRequestConfig | undefined;
 
     if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    /**
-     * --------------------------------------------------------
-     * Only handle 401
-     * --------------------------------------------------------
-     */
+    /* ========================================================
+       IMPORTANT
 
-    if (error.response?.status !== 401) {
+       /auth/me 401 is NOT a fatal authentication error.
+
+       It simply means:
+       "There is currently no authenticated user."
+
+       DO NOT refresh.
+       DO NOT redirect.
+    ======================================================== */
+
+    if (status === 401 && meEndpoint) {
       return Promise.reject(error);
     }
 
-    /**
-     * --------------------------------------------------------
-     * DO NOT REFRESH AUTH ROUTES
-     * --------------------------------------------------------
-     *
-     * Especially:
-     *
-     * /api/auth/login
-     * /api/auth/signup
-     * /api/auth/refresh
-     */
+    /* --------------------------------------------------------
+       Only handle 401 from protected APIs
+    -------------------------------------------------------- */
 
-    if (isAuthRoute(originalRequest.url)) {
+    if (status !== 401) {
       return Promise.reject(error);
     }
 
-    /**
-     * --------------------------------------------------------
-     * DON'T RETRY SAME REQUEST TWICE
-     * --------------------------------------------------------
-     */
+    /* --------------------------------------------------------
+       Never refresh auth routes
+    -------------------------------------------------------- */
+
+    if (isAuthRoute(url)) {
+      return Promise.reject(error);
+    }
+
+    /* --------------------------------------------------------
+       Don't retry same request twice
+    -------------------------------------------------------- */
 
     if (originalRequest._retry) {
       return Promise.reject(error);
@@ -315,13 +274,9 @@ api.interceptors.response.use(
 
     originalRequest._retry = true;
 
-    /**
-     * --------------------------------------------------------
-     * IF REFRESH IS ALREADY RUNNING
-     * --------------------------------------------------------
-     *
-     * Put this request into queue.
-     */
+    /* ========================================================
+       REFRESH ALREADY RUNNING
+    ======================================================== */
 
     if (isRefreshing) {
       return new Promise<void>((resolve, reject) => {
@@ -334,25 +289,21 @@ api.interceptors.response.use(
       });
     }
 
-    /**
-     * --------------------------------------------------------
-     * START TOKEN REFRESH
-     * --------------------------------------------------------
-     */
+    /* ========================================================
+       START REFRESH
+    ======================================================== */
 
     isRefreshing = true;
 
     try {
       console.log("Access token expired. Refreshing token...");
 
-      /**
-       * IMPORTANT:
-       *
+      /*
        * Refresh token is HttpOnly.
        *
-       * We DO NOT read it from localStorage.
+       * We don't access it from JavaScript.
        *
-       * Browser automatically sends cookie because:
+       * Browser sends it automatically because:
        *
        * withCredentials: true
        */
@@ -367,29 +318,47 @@ api.interceptors.response.use(
 
       console.log("Token refreshed successfully");
 
-      /**
-       * ------------------------------------------------------
-       * Tell all waiting requests that refresh succeeded
-       * ------------------------------------------------------
-       */
+      /* ------------------------------------------------------
+         Refresh successful
+      ------------------------------------------------------ */
 
       processQueue(null);
 
-      /**
-       * ------------------------------------------------------
-       * Retry original request
-       * ------------------------------------------------------
-       */
+      /* ------------------------------------------------------
+         Retry original request
+      ------------------------------------------------------ */
 
       return api(originalRequest);
     } catch (refreshError) {
-      console.error("Refresh token failed:", refreshError);
-      const axiosRefreshError = refreshError as AxiosError<
-        BackendErrorResponse | string
-      >;
+      console.error(
+        "Refresh token failed:",
+        refreshError,
+      );
+
+      const axiosRefreshError =
+        refreshError as AxiosError<
+          BackendErrorResponse | string
+        >;
+
+      /* ------------------------------------------------------
+         Reject all queued requests
+      ------------------------------------------------------ */
+
       processQueue(axiosRefreshError);
 
-      if (typeof window !== "undefined") {
+      /* ------------------------------------------------------
+         Refresh really failed.
+
+         NOW redirect to login.
+
+         /auth/me is already handled above, so it will
+         NEVER reach this block.
+      ------------------------------------------------------ */
+
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== "/login"
+      ) {
         window.location.replace("/login");
       }
 

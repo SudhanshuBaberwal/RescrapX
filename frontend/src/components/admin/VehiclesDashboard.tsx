@@ -179,10 +179,12 @@ const getStatusStyle = (status?: string) => {
 };
 
 export default function VehiclesDashboard() {
-  getAllVehiclesForAdmin();
+  const { allVehiclesData } = useSelector(
+    (state: RootState) => state.vehicle
+  ) || { allVehiclesData: [] };
 
-  const { allVehiclesData } = useSelector((state: RootState) => state.vehicle) || { allVehiclesData: [] };
-  console.log(allVehiclesData)
+  const hasVehiclesData = Array.isArray(allVehiclesData) && allVehiclesData.length > 0;
+  getAllVehiclesForAdmin(!hasVehiclesData);
   const [vehiclesList, setVehiclesList] = useState<any[]>([]);
 
   useEffect(() => {

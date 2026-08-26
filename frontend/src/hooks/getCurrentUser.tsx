@@ -18,10 +18,6 @@ export const useCurrentUser = () => {
         return res;
       } catch (err: any) {
         dispatch(clearUser());
-        if (err.response?.status === 401) {
-          window.location.replace("/register");
-          return;
-        }
       }
       finally {
         dispatch(setLoading(false))

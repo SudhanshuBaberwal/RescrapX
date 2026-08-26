@@ -1,141 +1,141 @@
-
 export enum UserRole {
-    USER = "USER",
-    PARTNER = "PARTNER",
-    ADMIN = "ADMIN",
+  USER = "USER",
+  PARTNER = "PARTNER",
+  ADMIN = "ADMIN",
 }
 
 export enum AuthProvider {
-    LOCAL = "LOCAL",
-    GOOGLE = "GOOGLE",
-}
-
-export enum PartnerStatus {
-    PENDING = "PENDING",
-    UNDER_REVIEW = "UNDER_REVIEW",
-    APPROVED = "APPROVED",
-    REJECTED = "REJECTED",
+  LOCAL = "LOCAL",
+  GOOGLE = "GOOGLE",
 }
 
 export enum PartnerNextStep {
-    UPLOAD_DOCUMENTS = "UPLOAD_DOCUMENTS",
-    WAIT_APPROVAL = "WAIT_APPROVAL",
-    DASHBOARD = "DASHBOARD",
-    REUPLOAD_DOCUMENTS = "REUPLOAD_DOCUMENTS",
+  COMPLETE_COMPANY_PROFILE = "COMPLETE_COMPANY_PROFILE",
+  UPLOAD_DOCUMENTS = "UPLOAD_DOCUMENTS",
+  WAIT_APPROVAL = "WAIT_APPROVAL",
+  DASHBOARD = "DASHBOARD",
+  REUPLOAD_DOCUMENTS = "REUPLOAD_DOCUMENTS",
+}
+
+export enum PartnerStatus {
+  PENDING = "PENDING",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 export interface User {
-    _id: string
-    fullName: string;
-    userName?: string;
-    email: string;
-    password?: string;
-    phoneNumber: string;
-    avatar: string;
+  _id: string;
+  fullName: string;
+  userName?: string;
+  email: string;
+  password?: string;
+  phoneNumber: string;
+  avatar: string;
 
-    role: UserRole;
-    provider: AuthProvider;
+  role: UserRole;
+  provider: AuthProvider;
 
-    googleId?: string;
-    roleSelected: boolean;
+  googleId?: string;
+  roleSelected: boolean;
 
-    isVerified: boolean;
-    isActive: boolean;
+  isVerified: boolean;
+  isActive: boolean;
 
-    verificationToken?: string;
-    verificationTokenExpiresAt?: Date;
-    verificationOtpSentAt?: Date;
+  verificationToken?: string;
+  verificationTokenExpiresAt?: Date;
+  verificationOtpSentAt?: Date;
 
-    resetPasswordToken?: string;
-    resetPasswordExpires?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
 
-    refreshToken?: string;
+  refreshToken?: string;
 
-    lastLogin?: Date;
+  lastLogin?: Date;
 
-    partnerStatus?: PartnerStatus;
-    partnerNextStep?: PartnerNextStep
-    rejectionReason: string;
-    company?: {
-        companyName: string;
-        gstNumber: string;
-        panNumber: string;
-        registrationNumber: string;
-        address: string;
-        latitude: number,
-        longitude: number,
-        city?: string;
-        state?: string;
-        pincode?: string;
-    };
-    documents?: {
-        idProof: string;
-        gstCertificate: string;
-        panCard: string;
-        registrationCertificate: string;
-        bankDetails: string;
-        rvsfCertificate: string;
-        uploadedAt?: Date;
-    };
-
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-export interface Company {
+  partnerStatus?: PartnerStatus;
+  partnerNextStep?: PartnerNextStep;
+  rejectionReason: string;
+  company?: {
     companyName: string;
     gstNumber: string;
     panNumber: string;
     registrationNumber: string;
     address: string;
-
+    latitude: number;
+    longitude: number;
     city?: string;
     state?: string;
     pincode?: string;
-}
-
-export interface Documents {
-    //   idProof: string;
+  };
+  documents?: {
+    idProof: string;
     gstCertificate: string;
     panCard: string;
     registrationCertificate: string;
     bankDetails: string;
     rvsfCertificate: string;
-    uploadedAt?: string;
+    uploadedAt?: Date;
+  };
+
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+export interface Company {
+  companyName: string;
+  gstNumber: string;
+  panNumber: string;
+  registrationNumber: string;
+  address: string;
+
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
+export interface Documents {
+  //   idProof: string;
+  gstCertificate: string;
+  panCard: string;
+  registrationCertificate: string;
+  bankDetails: string;
+  rvsfCertificate: string;
+  uploadedAt?: string;
 }
 export interface Partner {
-    _id: string;
+  _id: string;
 
-    fullName: string;
-    userName?: string;
+  fullName: string;
+  userName?: string;
 
-    email: string;
-    phoneNumber: string;
-    avatar: string;
+  email: string;
+  phoneNumber: string;
+  avatar: string;
 
-    role: UserRole;
-    roleSelected: boolean;
+  role: UserRole;
+  roleSelected: boolean;
 
-    provider: AuthProvider;
-    googleId?: string;
-    PartnerStatus: PartnerStatus
-    isVerified: boolean;
-    isActive: boolean;
+  provider: AuthProvider;
+  googleId?: string;
+  PartnerStatus: PartnerStatus;
+  isVerified: boolean;
+  isActive: boolean;
 
-    verificationToken?: string;
-    verificationTokenExpiresAt?: string;
-    verificationOtpSentAt?: string;
+  verificationToken?: string;
+  verificationTokenExpiresAt?: string;
+  verificationOtpSentAt?: string;
 
-    resetPasswordToken?: string;
-    resetPasswordExpires?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: string;
 
-    lastLogin?: string;
+  lastLogin?: string;
 
-    partnerStatus?: PartnerStatus;
-    partnerNextStep?: PartnerNextStep;
+  partnerStatus?: PartnerStatus;
+  partnerNextStep?: PartnerNextStep;
 
-    company?: Company;
+  company?: Company;
 
-    documents?: Documents;
+  documents?: Documents;
 
-    createdAt?: string;
-    updatedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

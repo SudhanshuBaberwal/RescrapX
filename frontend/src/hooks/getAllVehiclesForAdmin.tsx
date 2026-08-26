@@ -6,9 +6,10 @@ import { AppDispatch } from "@/store/store";
 import { setAllVehiclesData } from "@/store/vehicleSlice";
 import { getAllVehiclesDataForAdmin } from "@/services/vehicle.service";
 
-export const getAllVehiclesForAdmin = () => {
+export const getAllVehiclesForAdmin = (enabled=true) => {
     const dispatch = useDispatch<AppDispatch>();
     useEffect(() => {
+        if (!enabled) return;
         const fetchVehicles = async () => {
             try {
                 const res = await getAllVehiclesDataForAdmin();
