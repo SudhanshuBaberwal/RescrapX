@@ -3,26 +3,21 @@ import partnerService from "../service/partner.service.js";
 import ApiResponse from "../lib/ApiResponse.js";
 import asyncHandler from "../lib/asyncHandler.js";
 import { UploadedFiles } from "../validations/partner.validation.js";
+import ApiError from "../lib/ApiError.js";
 
 class PartnerController {
-  uploadDocuments = asyncHandler(async (req: Request, res: Response) => {
+  uploadDocuments = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
-    if (!userId) {
-      throw new Error("Unauthorized");
-    }
+    const files = req.files as UploadedFiles;
+    const result = await partnerService.uploadDocuments(userId, files);
 
-    const files = (req as any).files as UploadedFiles;
-    const partner = await partnerService.uploadDocuments(userId, files);
-
-    return ApiResponse.success(
-      res,
-      200,
-      "Documents uploaded successfully. Your account is now under review.",
-      partner,
-    );
+    return res.status(200).json({
+      success: true,
+      message: "Documents uploaded successfully",
+      data: result,
+    });
   });
-
   getPartnerStatusController = asyncHandler(async (req, res) => {
     const data = await partnerService.getPartnertStatus(req.user.id);
 

@@ -68,7 +68,16 @@ export type UploadedFile = {
 
 export type UploadedFiles = Record<string, UploadedFile[]>;
 
-export const validatePartnerDocuments = (files: UploadedFiles): void => {
+export const validatePartnerDocuments = (
+  files: UploadedFiles | undefined,
+): void => {
+  if (!files) {
+    throw new ApiError(
+      400,
+      "No documents received. Please upload all required documents.",
+    );
+  }
+
   for (const field of REQUIRED_DOCUMENTS) {
     if (!files[field] || files[field].length === 0) {
       throw new ApiError(400, `${field} document is required`);

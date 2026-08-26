@@ -27,19 +27,19 @@ class PartnerService {
     }
     const folder = `partners/${userId}/documents`;
     const uploadTasks = [
-      uploadToSupabase(files.rvsfCertificate[0], folder, "rvsf"),
+      uploadToSupabase(files.rvsfCertificate[0], folder, "rvsfCertificate"),
 
-      uploadToSupabase(files.gstCertificate[0], folder, "gst"),
+      uploadToSupabase(files.gstCertificate[0], folder, "gstCertificate"),
 
-      uploadToSupabase(files.panCard[0], folder, "pan"),
+      uploadToSupabase(files.panCard[0], folder, "panCard"),
 
       uploadToSupabase(
         files.registrationCertificate[0],
         folder,
-        "registration",
+        "registrationCertificate",
       ),
 
-      uploadToSupabase(files.bankDetails[0], folder, "bank"),
+      uploadToSupabase(files.bankDetails[0], folder, "bankDetails"),
     ];
 
     const [rvsf, gst, pan, registration, bank] = await Promise.all(uploadTasks);

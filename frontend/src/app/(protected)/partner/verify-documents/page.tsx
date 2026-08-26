@@ -153,8 +153,6 @@ export default function PartnerDocumentsPage() {
 
       // Instantiating standard dynamic multipart wrapper
       const formData = new FormData();
-
-      // Appending all the backend required file objects
       formData.append("rvsfCertificate", documents.rvsf_auth.file as File);
       formData.append("gstCertificate", documents.gst_cert.file as File);
       formData.append("panCard", documents.pan_card.file as File);
@@ -162,9 +160,9 @@ export default function PartnerDocumentsPage() {
         "registrationCertificate",
         documents.company_reg.file as File,
       );
+
       formData.append("bankDetails", documents.bank_details.file as File);
 
-      // API Pipeline call
       await api.post("/api/auth/partner/upload-documents", formData);
       dispatch(
         setUserData({
