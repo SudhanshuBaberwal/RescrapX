@@ -16,7 +16,8 @@ export default function RegistrationStepper({ currentStep }: RegistrationStepper
     { id: 5, label: "Photos" },
     { id: 6, label: "Pickup & Location" },
     { id: 7, label: "Review & Confirm" },
-    { id: 8, label: "Waitng For Approval" },
+    { id: 8, label: "Offers" },
+    { id: 9, label: "Bank Details"}
   ];
 
   return (

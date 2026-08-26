@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ChevronDown, Bell, LogIn, LogOut, User, Menu, X, Calendar, Shield, FileText } from 'lucide-react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -15,10 +15,16 @@ export default function Navbar() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   
+  const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [resourcesHovered, setResourcesHovered] = useState(false);
   const [mobileResourcesOpen, setMobileResourcesOpen] = useState(false);
   const { userData } = useSelector((state: RootState) => state.user);
+
+  // Prevent SSR/hydration mismatch by ensuring dynamic auth UI only renders post-mount on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const currentNav = searchParams.get('nav');
 
@@ -158,7 +164,7 @@ export default function Navbar() {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-600 rounded-full ring-2 ring-white"></span>
           </button>
 
-          {userData && (
+          {mounted && userData && (
             <button
               onClick={() => router.push('/?tab=bookings')}
               className="hidden sm:flex items-center gap-2 border border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50 px-3.5 py-1.5 rounded-xl text-xs font-extrabold text-[#0B5B32] transition duration-150"
@@ -171,40 +177,42 @@ export default function Navbar() {
             </button>
           )}
 
-          {userData ? (
-            <>
-              <div
-                onClick={() => router.push('/?tab=overview')}
-                className="hidden lg:flex items-center gap-2.5 pl-3 border-l border-gray-200 cursor-pointer group"
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-xs font-black text-[#0B5B32] group-hover:bg-emerald-200 transition duration-150">
-                  {firstInitial || <User size={16} />}
+          {mounted && (
+            userData ? (
+              <>
+                <div
+                  onClick={() => router.push('/?tab=overview')}
+                  className="hidden lg:flex items-center gap-2.5 pl-3 border-l border-gray-200 cursor-pointer group"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-xs font-black text-[#0B5B32] group-hover:bg-emerald-200 transition duration-150">
+                    {firstInitial || <User size={16} />}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-gray-800 group-hover:text-black transition duration-150">
+                      {fullName}
+                    </p>
+                  </div>
+                  <ChevronDown size={12} className="text-gray-400 group-hover:text-gray-600 transition duration-150" />
                 </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-gray-800 group-hover:text-black transition duration-150">
-                    {fullName}
-                  </p>
-                </div>
-                <ChevronDown size={12} className="text-gray-400 group-hover:text-gray-600 transition duration-150" />
-              </div>
 
+                <button
+                  onClick={handleLogout}
+                  className="lg:hidden p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition duration-150 border border-red-100"
+                  title="Logout"
+                >
+                  <LogOut size={20} />
+                </button>
+              </>
+            ) : (
               <button
-                onClick={handleLogout}
-                className="lg:hidden p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition duration-150 border border-red-100"
-                title="Logout"
+                onClick={() => router.push('/login')}
+                className="flex items-center justify-center bg-[#0B5B32] hover:bg-[#094d2a] text-white px-4 py-2 rounded-xl text-xs font-black transition-all duration-150 shadow-xs active:scale-[0.98]"
+                title="Login"
               >
-                <LogOut size={20} />
+                <LogIn size={16} />
+                <span className="ml-1.5">Login</span>
               </button>
-            </>
-          ) : (
-            <button
-              onClick={() => router.push('/login')}
-              className="flex items-center justify-center bg-[#0B5B32] hover:bg-[#094d2a] text-white px-4 py-2 rounded-xl text-xs font-black transition-all duration-150 shadow-xs active:scale-[0.98]"
-              title="Login"
-            >
-              <LogIn size={16} />
-              <span className="ml-1.5">Login</span>
-            </button>
+            )
           )}
 
           <button
@@ -279,23 +287,25 @@ export default function Navbar() {
               );
             })}
 
-            <div className="pt-2 border-t border-gray-100">
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  router.push('/?tab=bookings');
-                }}
-                className="w-full flex items-center justify-between border border-emerald-300 bg-[#E6F4EA]/80 px-4 py-3 rounded-2xl text-sm font-extrabold text-[#0B5B32]"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Calendar size={18} className="text-[#0B5B32]" />
-                  <span>My Bookings</span>
-                </div>
-                <span className="text-xs bg-[#0B5B32] text-white px-3 py-1 rounded-lg font-black">
-                  Track
-                </span>
-              </button>
-            </div>
+            {mounted && userData && (
+              <div className="pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/?tab=bookings');
+                  }}
+                  className="w-full flex items-center justify-between border border-emerald-300 bg-[#E6F4EA]/80 px-4 py-3 rounded-2xl text-sm font-extrabold text-[#0B5B32]"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Calendar size={18} className="text-[#0B5B32]" />
+                    <span>My Bookings</span>
+                  </div>
+                  <span className="text-xs bg-[#0B5B32] text-white px-3 py-1 rounded-lg font-black">
+                    Track
+                  </span>
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

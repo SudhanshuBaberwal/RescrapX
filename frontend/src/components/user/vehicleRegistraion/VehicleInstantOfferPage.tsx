@@ -69,15 +69,9 @@ export default function VehicleInstantOfferPage({
 
     const loadPricing = async () => {
       const cacheKey = `vehicle-pricing-${vehicleId}`;
-
       try {
         setIsPricingLoading(true);
         setPricingError(null);
-
-        // ==========================================
-        // 1. CHECK SESSION STORAGE
-        // ==========================================
-
         const cachedPricing = sessionStorage.getItem(cacheKey);
 
         if (cachedPricing) {
@@ -95,11 +89,6 @@ export default function VehicleInstantOfferPage({
 
           return;
         }
-
-        // ==========================================
-        // 2. CALL API ONLY IF CACHE DOES NOT EXIST
-        // ==========================================
-
         console.log("Fetching vehicle pricing:", vehicleId);
 
         const result = await getVehiclePricing(vehicleId);
@@ -319,73 +308,9 @@ export default function VehicleInstantOfferPage({
           </p>
         </div>
 
-        {/* HERO BANNER WITH FINAL OFFER & ESTIMATED PRICE RANGE */}
-        <div className="bg-emerald-50/40 border border-emerald-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden">
-          <div className="space-y-3 z-10 max-w-sm">
-            {/* Final Offer Badge */}
-            <div className="inline-flex items-center gap-2 bg-emerald-100/80 px-3 py-1 rounded-full text-[#0B5B32]">
-              <CheckCircle2 size={16} className="fill-[#0B5B32] text-white" />
-              <span className="font-black text-xs">
-                Your Final Offer: {formattedValue}
-              </span>
-            </div>
-
-            {/* Estimated Price Range Card */}
-            <div className="flex items-center gap-2 bg-white/80 border border-emerald-100 px-3 py-1.5 rounded-xl text-gray-700 shadow-3xs">
-              <Tag size={15} className="text-[#0B5B32] shrink-0" />
-              <span className="text-[11px] font-bold text-gray-500">
-                Expected Value Range:
-              </span>
-              <span className="text-xs font-black text-[#0B5B32]">
-                {formattedRange}
-              </span>
-            </div>
-
-            <p className="text-[11px] font-medium text-gray-600 leading-relaxed pt-0.5">
-              Our team has inspected your vehicle. You can now accept the final
-              offer and proceed to receive your payment.
-            </p>
-          </div>
-
-          {/* Tow Truck Image */}
-          <div className="w-56 h-32 relative flex items-center justify-center shrink-0">
-            <img
-              src="/Tow2.jpeg"
-              alt="Vehicle Picked Up Tow Truck"
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
-              }}
-            />
-          </div>
-        </div>
-
         {/* SECTION 1: FINAL OFFER SUMMARY */}
         <div className="space-y-3 pt-2">
-          <h2 className="text-xs font-black text-gray-900 flex items-center gap-1.5">
-            <span>1.</span>
-            <span>Final Offer Summary</span>
-          </h2>
 
-          <div className="border border-emerald-100/80 bg-emerald-50/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Final Offer Amount
-              </span>
-              <div className="text-3xl font-black text-gray-900 tracking-tight">
-                {formattedValue}
-              </div>
-            </div>
-
-            <div className="bg-white border border-emerald-100 px-4 py-2 rounded-xl space-y-0.5 text-center shadow-3xs">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                Estimated Car Range
-              </span>
-              <div className="text-sm font-black text-[#0B5B32]">
-                {formattedRange}
-              </div>
-            </div>
-          </div>
 
           {/* Offer Validity Strip */}
           <div className="bg-emerald-50/50 border border-emerald-100/80 p-3 rounded-xl flex items-center gap-2 text-[11px]">
